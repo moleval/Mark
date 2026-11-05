@@ -4547,6 +4547,7 @@
 ;; Выборка (или весь чертёж) + рамки всего чертежа + группы по витражам
 (defun mk:prepare-run (/ enames frames res mode)
   (mk:group-cache-clear)
+  (setq *mk:in-group* nil)   ; состояние предыдущего прогона не наследуем
   ;; режим сбора спрашивается один раз на прогон: в пакете его задаёт МАРКАВ,
   ;; при одиночном запуске этапа — сам mk:prepare-run
   (if (null *mk:last-mode*)
@@ -4808,7 +4809,11 @@
                           (length fills) (length windows) (length doors)
                           dup overlap outj)
                     *mk:geo-summary*))))
+        ;; *mk:in-group* ставится внутри mk:group-data; если сбор упал, флаг
+        ;; мог остаться поднятым и следующий витраж потерял бы привязку к рамке
+        (setq *mk:in-group* nil)
         (setq *mk:run-errors* (cons (list (nth 0 grp) err) *mk:run-errors*)))
+      (setq *mk:in-group* nil)
       (mk:dump-groups)
       (setq *mk:run-errors* (reverse *mk:run-errors*))
       (mk:print-run-errors)
