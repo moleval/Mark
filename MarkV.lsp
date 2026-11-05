@@ -122,7 +122,7 @@
 ;;; 1. КОНФИГУРАЦИЯ
 ;;;=====================================================================
 ;; Версия — как у заказчика: редакция и билд отдельными записями «Ред. N.N».
-;; В логах печатается «Ред. 7.0 / Ред. 33.4», то есть РЕД.7.0 и РЕД.33.4.
+;; В логах печатается «Ред. 7.0 / Ред. 33.5» — редакция и билд.
 (setq *mk:ver*            "Ред. 7.0")
 (setq *mk:build*          "Ред. 33.5")
 
@@ -1380,19 +1380,11 @@
 
 ;; Проёмы выборки по маскам с учётом масок-исключений («Кассета» и т.п.):
 ;; глухое заполнение, случайно совпавшее с "*ОКН*", окном не становится.
-(defun mk:find-proems (ss masks / i e lst hit skip)
-  (setq lst nil)
-  (if ss
-    (progn
-      (setq i 0)
-      (repeat (sslength ss)
-        (setq e (ssname ss i) hit nil)
-        (foreach m masks
-          (if (and (null hit) m (mk:blk-match? e m)) (setq hit t)))
-        (if (and hit (not (mk:opening-skipped? e)))
-          (setq lst (cons e lst)))
-        (setq i (1+ i)))))
-  lst)
+(defun mk:find-proems (ss masks / out)
+  (setq out nil)
+  (foreach e (mk:find-blocks-any ss masks)
+    (if (not (mk:opening-skipped? e)) (setq out (cons e out))))
+  (reverse out))
 
 (defun mk:find-mlines-in-ss (ss / i e lst)
   (setq lst nil)
@@ -1652,8 +1644,8 @@
   (if (or (null left-post) (null right-post))
     (progn
       (prompt (strcat "\n  [ERROR] Заполнение вне ячейки: "
-                      (rtos (car (cdr (assoc 'INS_PT fill))) 2 1) ","
-                      (rtos (cadr (cdr (assoc 'INS_PT fill))) 2 1)))
+                      (mk:safe-num (car (cdr (assoc 'INS_PT fill)))) ","
+                      (mk:safe-num (cadr (cdr (assoc 'INS_PT fill))))))
       nil)
     t))
 
@@ -2054,10 +2046,10 @@
       (write-line "=== ДАННЫЕ ВИТРАЖА (MarkZV) ===" f)
       (write-line "" f)
       (write-line "--- ГРАНИЦЫ ВИТРАЖА ---" f)
-      (write-line (strcat "  MIN_X: " (rtos (cdr (assoc 'MIN_X bounds)) 2 1)) f)
-      (write-line (strcat "  MAX_X: " (rtos (cdr (assoc 'MAX_X bounds)) 2 1)) f)
-      (write-line (strcat "  MIN_Y: " (rtos (cdr (assoc 'MIN_Y bounds)) 2 1)) f)
-      (write-line (strcat "  MAX_Y: " (rtos (cdr (assoc 'MAX_Y bounds)) 2 1)) f)
+      (write-line (strcat "  MIN_X: " (mk:safe-num (cdr (assoc 'MIN_X bounds)))) f)
+      (write-line (strcat "  MAX_X: " (mk:safe-num (cdr (assoc 'MAX_X bounds)))) f)
+      (write-line (strcat "  MIN_Y: " (mk:safe-num (cdr (assoc 'MIN_Y bounds)))) f)
+      (write-line (strcat "  MAX_Y: " (mk:safe-num (cdr (assoc 'MAX_Y bounds)))) f)
       (write-line "" f)
       (write-line "--- АТРИБУТЫ ВИТРАЖА ---" f)
       (if vitrage
