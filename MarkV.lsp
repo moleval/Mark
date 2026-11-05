@@ -132,9 +132,9 @@
 ;;; 1. КОНФИГУРАЦИЯ
 ;;;=====================================================================
 ;; Версия — как у заказчика: редакция и билд отдельными записями «Ред. N.N».
-;; В логах печатается «Ред. 7.0 / Ред. 33.14» — две редакции, без слова build.
+;; В логах печатается «Ред. 7.0 / Ред. 33.15» — две редакции, без слова build.
 (setq *mk:ver*            "Ред. 7.0")
-(setq *mk:build*          "Ред. 33.14")
+(setq *mk:build*          "Ред. 33.15")
 
 (setq *mk:block-fill*     "Заполнение в витраж")
 (setq *mk:block-vitrage*  "Атрибуты витража")
@@ -1845,7 +1845,7 @@
   ;; mk:emk нельзя: он складывает объекты в *mk:drawn* (это только графика
   ;; модели). Слой создаётся напрямую entmake — и, если слой уже есть,
   ;; ничего не делаем, чтобы не перебить цвета настройки заказчика.
-  ;; Ред. 33.14: пары DXF — ТОЛЬКО точечные: (70 . 0), а не (70 0).
+  ;; Ред. 33.15: пары DXF — ТОЛЬКО точечные: (70 . 0), а не (70 0).
   ;; Запись без точки даёт «неверная DXF-группа: (70 0)» и валит этап 1
   ;; (слой не создаётся, а ошибка всплывает позже, на entmake объектов).
   (if (null (tblsearch "LAYER" name))
@@ -2498,7 +2498,8 @@
   ;; не входит и подындекс ожидаем.
   (if extra
     (mk:say-once
-      (strcat "\n  [INFO] Ширин заполнений вне шкалы ригелей: "
+      (strcat "\n  [INFO] " (if *mk:last-prefix* *mk:last-prefix* "")
+              ": ширин заполнений вне шкалы ригелей "
               (itoa (length extra))
               " — в MarkZ это подъячейки Т-узла (подындекс .1/.2): "
               (mk:join (mapcar '(lambda (v) (rtos v 2 0)) extra) " "))))
@@ -4298,28 +4299,18 @@
 ;;;--- Точка вставки таблицы в пакете ----------------------------------
 
 ;; В пакете МАРКАВ getpoint недоступен (этап идёт через vl-catch-all-apply),
-;; поэтому точка вставки ведомости считается сама: под самым нижним витражом,
-;; по левому краю. *mk:table-ins-pt* можно задать заранее, тогда берётся он.
+;; поэтому точка вставки ведомости у него своя — начало координат.
+;; *mk:table-ins-pt* можно задать заранее, тогда берётся он.
 (setq *mk:table-ins-pt* nil)
 
-(defun mk:auto-table-point (/ b min-x min-y)
-  (if (> (length *mk:last-groups*) 0)
-    (progn
-      (setq min-x nil min-y nil)
-      (foreach grp *mk:last-groups*
-        (setq b (mk:find-vitrage-bounds
-                  (cdr (assoc 'POSTS (mk:group-data grp)))
-                  (cdr (assoc 'BEAMS (mk:group-data grp)))))
-        (if (numberp (cdr (assoc 'MIN_X b)))
-          (if (or (null min-x) (< (cdr (assoc 'MIN_X b)) min-x))
-            (setq min-x (cdr (assoc 'MIN_X b)))))
-        (if (numberp (cdr (assoc 'MIN_Y b)))
-          (if (or (null min-y) (< (cdr (assoc 'MIN_Y b)) min-y))
-            (setq min-y (cdr (assoc 'MIN_Y b))))))
-      (if min-x
-        (list min-x (- min-y (* 2.0 *mk:acc-gap*)) 0.0)
-        (list 0.0 0.0 0.0)))
-    (list 0.0 0.0 0.0)))
+;; Точка по умолчанию — (0,0). Раньше она считалась по габаритам витражей
+;; (левый нижний угол минус два зазора): в одном и том же чертеже получалось
+;; одно и то же место, а зависимость от состава выборки только мешала — при
+;; повторном прогоне таблица вставала «куда-то туда же» и её искали руками.
+(setq *mk:default-table-pt* '(0.0 0.0 0.0))
+
+(defun mk:auto-table-point ()
+  *mk:default-table-pt*)
 
 ;;;--- Служебное -------------------------------------------------------
 
@@ -4732,7 +4723,11 @@
     (if (and e (null (mk:obj-kind e)))
       (progn
         (setq typ (cdr (assoc 0 (entget e))))
-        (setq nm  (strcat (mk:unknown-label e) "  [" (mk:safe-str typ) "]"))
+        ;; у объекта без блока подпись уже равна <DXF-тип> — второй раз тип
+        ;; в скобках не печатаем
+        (setq nm (mk:unknown-label e))
+        (if (/= nm (strcat "<" (mk:safe-str typ) ">"))
+          (setq nm (strcat nm "  [" (mk:safe-str typ) "]")))
         (if (setq hit (assoc nm out))
           (setq out (subst (cons nm (1+ (cdr hit))) hit out))
           (setq out (cons (cons nm 1) out))))))
@@ -4895,7 +4890,6 @@
       ;; второй список («Вставок вне типов MarkV: N — имена блоков ниже»)
       ;; дублировал его строка в строку. Объекты без блока (SPDSPOLYMORPHMARK,
       ;; POINT) видны в нём как <DXF-тип>.
-      (if *mk:last-unknown* (mk:dump-unknown *mk:last-unknown*))
       (setq n (mk:count-unknown))
       (if (> n 0)
         (progn
@@ -4912,6 +4906,9 @@
           (prompt (strcat "\n    дамп: " *mk:out-file*
                           "; подробная диагностика — МАРКАВДИАГНОЗОПТОМ ("
                           *mk:diag-all-file* ")"))))
+      ;; в пакете подробный дамп дописывает этап 1 (mk:dump-groups)
+      (if (and *mk:last-unknown* (null *mk:batch*))
+        (mk:dump-unknown *mk:last-unknown*))
       (if (null (car res))
         (progn (prompt "\n[WARN] Ни один объект не попал в рамки витражей.") nil)
         res))))
@@ -4989,15 +4986,14 @@
 ;;;--- Дамп по витражам ----------------------------------------------
 
 (defun mk:dump-groups (/ f fn grp data posts beams fills windows doors bounds)
-  (setq fn (strcat (vl-filename-directory *mk:out-file*)
-                   "/MARKZV_MODEL.txt"))
+  (setq fn *mk:out-file*)
   (setq f (open fn "w"))
   (if (null f)
     (prompt (strcat "\n  [WARN] Дамп не создан: " fn))
     (progn
       (write-line "=== ДАННЫЕ ВИТРАЖЕЙ (MarkV, многовитражный прогон) ===" f)
       (write-line (strcat "  " *mk:ver* " / " *mk:build*) f)
-      (write-line (strcat "  Черновик: " (getvar "DWGNAME")) f)
+      (write-line (strcat "  Чертёж: " (getvar "DWGNAME")) f)
       (write-line (strcat "  Область: " (if *mk:scope-source* *mk:scope-source* "?")) f)
       (write-line (strcat "  Рамок: " (itoa (length *mk:last-frames*))) f)
       (write-line "" f)
@@ -5048,7 +5044,10 @@
         (write-line (strcat "  " (mk:safe-str (cdr (assoc 'TYPE r)))
                             " HANDLE=" (mk:safe-str (cdr (assoc 'HANDLE r)))) f))
       (close f)
-      (prompt (strcat "\n  [OK] Дамп по витражам: " fn)))))
+      (prompt (strcat "\n  [OK] Дамп по витражам: " fn))
+      ;; подробный список объектов вне типов — в конец того же файла
+      ;; (mk:dump-unknown открывает его на дозапись)
+      (if *mk:last-unknown* (mk:dump-unknown *mk:last-unknown*)))))
 
 ;;;--- ЭТАП 1/4. МАРКАВГЕОМЕТРИЯ ------------------------------------
 
