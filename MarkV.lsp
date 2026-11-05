@@ -125,9 +125,9 @@
 ;;; 1. КОНФИГУРАЦИЯ
 ;;;=====================================================================
 ;; Версия — как у заказчика: редакция и билд отдельными записями «Ред. N.N».
-;; В логах печатается «Ред. 7.0 / Ред. 33.8» — две редакции, без слова build.
+;; В логах печатается «Ред. 7.0 / Ред. 33.9» — две редакции, без слова build.
 (setq *mk:ver*            "Ред. 7.0")
-(setq *mk:build*          "Ред. 33.8")
+(setq *mk:build*          "Ред. 33.9")
 
 (setq *mk:block-fill*     "Заполнение в витраж")
 (setq *mk:block-vitrage*  "Атрибуты витража")
@@ -208,7 +208,10 @@
 (setq *mk:allowance-kp50k*      25.0)   ; КП50К
 ;; Припуск для ригелей с нераспознанным артикулом (неименованные мультилинии).
 ;; nil — спросить один раз за прогон; число — использовать молча.
-(setq *mk:quiet-edges*           nil)   ; t — не предупреждать о выходе панели за границы
+(setq *mk:quiet-edges*           t)     ; t — не предупреждать о выходе панели за границы
+;;                                      (панель при этом не двигается: выход за
+;;                                       границы — справочная информация, а не
+;;                                       дефект; nil — печатать предупреждения)
 (setq *mk:allowance-unknown*    nil)
 (setq *mk:ask-unknown-allowance* t)     ; задавать ли вопрос
 ;; Припуск по артикулу профиля: ((маска . припуск) ...), маска — wcmatch,
@@ -1824,12 +1827,16 @@
   ;; mk:emk нельзя: он складывает объекты в *mk:drawn* (это только графика
   ;; модели). Слой создаётся напрямую entmake — и, если слой уже есть,
   ;; ничего не делаем, чтобы не перебить цвета настройки заказчика.
+  ;; Ред. 33.9: пары DXF — ТОЛЬКО точечные: (70 . 0), а не (70 0).
+  ;; Запись без точки даёт «неверная DXF-группа: (70 0)» и валит этап 1
+  ;; (слой не создаётся, а ошибка всплывает позже, на entmake объектов).
   (if (null (tblsearch "LAYER" name))
     (entmake (list '(0 . "LAYER")
                    '(100 . "AcDbSymbolTableRecord")
                    '(100 . "AcDbLayerTableRecord")
                    (cons 2 name)
-                   '(70 0)
+                   '(70 . 0)
+                   '(290 . 1)
                    (cons 62 color)
                    '(6 . "Continuous"))))
   name)
@@ -3438,7 +3445,7 @@
   (if (null data)
     (progn (prompt "\n  [INFO] Нет данных для таблицы.") nil)
     (progn
-      (if (and (null pt) (null *mk:batch*))
+      (if (and (null pt) (not *mk:batch*))
         (setq pt (getpoint "\nУкажите точку вставки таблицы: ")))
       (if (null pt)
         (progn (prompt "\n  [INFO] Таблица пропущена (нет точки вставки).") nil)
@@ -4183,6 +4190,15 @@
 (setq *mk:last-mode*     nil)   ; режим сбора каркаса прогона (nil — ещё не задан)
 (setq *mk:vitrage-none*  "<ВНЕ РАМОК>")
 
+;; Этап обработки текущего витража — чтобы [ERROR] называл место сбоя,
+;; а не только текст исключения («неверная DXF-группа: (70 0)»).
+(setq *mk:step* nil)
+
+;; Спрашивать точку вставки ведомости в пакете МАРКАВ.
+;; nil — как было: точка считается сама и команда ничего не спрашивает;
+;; t   — после уборки сеток МАРКАВ спрашивает точку вставки таблицы.
+(setq *mk:ask-table-pt* nil)
+
 ;;;--- Точка вставки таблицы в пакете ----------------------------------
 
 ;; В пакете МАРКАВ getpoint недоступен (этап идёт через vl-catch-all-apply),
@@ -4851,7 +4867,9 @@
 ;; (МАРКАВГЕОМЕТРИЯ вызывает её через vl-catch-all-apply).
 (defun mk:process-group (grp / data posts beams fills windows doors bounds
                              all-panels dup overlap outj topo res2)
+  (setq *mk:step* "сбор объектов витража")
   (setq data (mk:group-data grp))
+  (setq *mk:step* "данные витража")
   (setq posts   (cdr (assoc 'POSTS data))
         beams   (cdr (assoc 'BEAMS data))
         fills   (cdr (assoc 'FILLS data))
@@ -4877,14 +4895,19 @@
       (setq res2 (mk:identify-protruding-posts posts bounds))
       (setq posts (nth 0 res2))
       ;; топология и разметка внутри витража
+      (setq *mk:step* "топология, стыки")
       (setq topo (mk:build-topology posts beams fills windows doors bounds))
       (setq posts   (nth 0 topo) beams (nth 1 topo) fills (nth 2 topo)
             windows (nth 3 topo) doors (nth 4 topo))
       (setq all-panels (append fills windows doors))
+      (setq *mk:step* "марки стоек")
       (setq posts (mk:annotate-posts posts (append all-panels beams)))
+      (setq *mk:step* "марки ригелей")
       (setq beams (mk:annotate-beams beams all-panels doors bounds posts))
       ;; 2D модель витража — своя группа
+      (setq *mk:step* "2D модель и группа")
       (mk:draw-model posts beams fills windows doors bounds)
+      (setq *mk:step* "итог по витражу")
       (prompt (strcat "\n  Дубликатов: " (itoa dup)
                       ", перекрытий: " (itoa overlap)
                       ", вне сетки: " (itoa outj))))
@@ -4935,6 +4958,7 @@
         (setq *mk:last-prefix* (nth 0 grp))
         (setq *mk:group-model* (mk:group-model-name (nth 0 grp)))
         (setq *mk:scope-mode*  *mk:last-mode*)
+        (setq *mk:step* nil)
         (prompt (strcat "\n\n--- Витраж " (nth 0 grp) " ---"))
         ;; один витраж не должен ронять весь прогон: сбой фиксируется и
         ;; прогон идёт дальше, остальные витражи обрабатываются
@@ -4944,7 +4968,10 @@
           (progn
             (setq err (vl-catch-all-error-message r))
             (prompt (strcat "\n  [ERROR] Витраж " (nth 0 grp)
-                            ": сбой обработки — " err))
+                            ": сбой обработки — " err
+                            (if *mk:step* (strcat " | шаг: " *mk:step*) "")))
+            (setq err (strcat err (if *mk:step*
+                                    (strcat " | шаг: " *mk:step*) "")))
             (prompt "\n  [INFO] Прогон продолжается со следующего витража."))
           (progn
             (setq data    (nth 0 r) posts   (nth 1 r) beams  (nth 2 r)
@@ -5183,11 +5210,17 @@
           (prompt "\n\n  Удаление сеток витражей перед вставкой таблицы...")
           (setq n (mk:erase-all-models))
           (prompt (strcat "\n  [OK] Сетка удалена, объектов: " (itoa n)))))
-      ;; точка вставки ведомости фиксируется один раз за пакет
-      (setq *mk:table-ins-pt* (mk:auto-table-point))
-      (prompt (strcat "\n\n  Ведомость: точка вставки X="
-                      (rtos (car *mk:table-ins-pt*) 2 1)
-                      ", Y=" (rtos (cadr *mk:table-ins-pt*) 2 1)))
+      ;; точка вставки ведомости фиксируется один раз за пакет:
+      ;; по умолчанию считается сама, при *mk:ask-table-pt* — спрашивается
+      (setq pt0 (mk:auto-table-point))
+      (if (and *mk:ask-table-pt* (null *mk:table-ins-pt*))
+        (setq pt0 (getpoint "\n  Точка вставки ведомости <Enter — под витражами>: ")))
+      (if pt0 (setq *mk:table-ins-pt* pt0))
+      (if *mk:table-ins-pt*
+        (prompt (strcat "\n\n  Ведомость: точка вставки X="
+                        (rtos (car *mk:table-ins-pt*) 2 1)
+                        ", Y=" (rtos (cadr *mk:table-ins-pt*) 2 1)))
+        (prompt "\n\n  [WARN] Точка вставки ведомости не задана — таблицы пропущены."))
       (mk:run-stage "ЭТАП 4/4" "МАРКАВТАБЛ" 'c:МАРКАВТАБЛ)
       (setq *mk:batch* nil *mk:batch-ss* nil *mk:run-scope* nil)
       (setq *mk:run-errors* (reverse *mk:run-errors*))
