@@ -86,24 +86,39 @@
       (setq out (findfile cand))))
   out)
 
+;; Основная программа (AutoExtraction) уже содержит проверку модулей:
+;; CHKFILE — один файл, CHKALL — все загруженные, CHKLOAD — поиск места сбоя.
+;; Свой тестер нужен только если AutoExtraction не загружен.
+(defun mk:ext-checker? ()
+  (or (= (type 'c:CHKFILE) 'SUBR) (= (type 'c:CHKFILE) 'USUBR)))
+
 (defun c:МАРКАВСКОБКИ (/ result path)
   (prompt "\n[МАРКАВСКОБКИ] Проверка баланса скобок MarkV.lsp...")
   (setq path (mk:find-source))
-  (if path
-    (prompt (strcat "\n  Файл: " path))
-    (prompt "\n  [WARN] Файл не найден среди кандидатов."))
-  (setq result (if path (mk:check-brackets path) nil))
-  (if result
-    (prompt "\n[OK] Файл корректен.")
-    (prompt "\n[ERROR] Обнаружены проблемы. См. сообщение выше."))
+  (cond
+    ((null path)
+     (prompt "\n  [WARN] Файл не найден среди кандидатов — проверять нечего."))
+    ((mk:ext-checker?)
+     (prompt (strcat "\n  Файл: " path))
+     (prompt "\n  Проверка штатным тестером AutoExtraction: CHKFILE.")
+     (setvar "CMDECHO" 0)
+     (vl-catch-all-apply 'c:CHKFILE (list path)))
+    (t
+     (prompt (strcat "\n  Файл: " path))
+     (prompt "\n  AutoExtraction не загружен — проверка встроенным сканером.")
+     (setq result (mk:check-brackets path))
+     (if result
+       (prompt "\n[OK] Файл корректен.")
+       (prompt "\n[ERROR] Обнаружены проблемы. См. сообщение выше."))))
   (princ))
 
 ;;;=====================================================================
 ;;; 1. КОНФИГУРАЦИЯ
 ;;;=====================================================================
-;; Ред. <версия>.<билд>:  версия — крупные задачи, билд — итерация правок
-(setq *mk:ver*            "Ред. 7.0")       ; схема как в MARKZ.lsp: «Ред. N.N»
-(setq *mk:build*          "33.3")         ; билд — итерация правок внутри редакции
+;; Схема одна, как в MARKZ.lsp: «Ред. N.N» + отдельно билд.
+;; Печать в логах: «Ред. 7.0 / build 33.3».
+(setq *mk:ver*            "Ред. 7.0")
+(setq *mk:build*          "33.4")
 
 (setq *mk:block-fill*     "Заполнение в витраж")
 (setq *mk:block-window*   "Окно КПТ60")
@@ -5373,7 +5388,7 @@
         ax (car (caddr a)) bx (car (caddr b)))
   (if (equal ay by 0.01) (< ax bx) (> ay by)))
 
-(prompt (strcat "\n[MarkV] Загружен " *mk:ver* " build " *mk:build*))
+(prompt (strcat "\n[MarkV] Загружен " *mk:ver* " / build " *mk:build*))
 (mk:help-border)
 (mk:help-header)
 (mk:help-border)
@@ -5384,7 +5399,7 @@
 (mk:help-row "МАРКАВТАБЛ" "Общая ведомость профилей + XLS")
 (mk:help-row "МАРКАВДИАГНОЗ" "Диагностика блока и атрибутов")
 (mk:help-row "МАРКАВБАЗЫ" "Список баз профильных систем")
-(mk:help-row "МАРКАВСКОБКИ" "Проверка баланса скобок")
+(mk:help-row "МАРКАВСКОБКИ" "Скобки: CHKFILE или свой сканер")
 (mk:help-border)
 (mk:load-bases)
 (princ)
