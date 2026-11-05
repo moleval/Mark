@@ -102,8 +102,11 @@
   (if (mk:ext-checker? "CHKALL")
     (progn
       (prompt "\n  Тестер AutoExtraction найден: CHKALL (все модули и плагины).")
-      (setq *mk:batch* nil *mk:run-scope* nil)
-      (c:CHKALL))
+      ;; пакетный прогон может быть прерван — состояние сбрасываем до вызова
+      (setq *mk:batch* nil *mk:batch-ss* nil *mk:batch-mode* nil
+            *mk:run-scope* nil *mk:in-group* nil)
+      (c:CHKALL)
+      (prompt "\n[МАРКАВСКОБКИ] Готово: отчёт CHKALL — выше."))
     (progn
       (setq path (mk:find-source))
       (cond
@@ -172,6 +175,7 @@
 (setq *mk:slope-tol*      0.0033)
 (setq *mk:out-file*       "D:/MARKZV_MODEL.txt")
 (setq *mk:diag-file*      "D:/MARKZV_DIAG.txt")
+(setq *mk:diag-all-file*  "D:/MARKZV_DIAG_ALL.txt")   ; МАРКАВДИАГНОЗОПТОМ
 (setq *mk:cached-data*    nil)
 (setq *mk:last-ss*        nil)   ; выборка последней МАРКАВГЕОМЕТРИЯ
 (setq *mk:dyn-cache*      nil)   ; кэш динамических свойств: ename -> alist
@@ -5531,7 +5535,7 @@
   (setq ss (ssget))
   (if ss
     (progn
-      (setq f (open "D:/MARKZV_DIAG_ALL.txt" "w")
+      (setq f (open *mk:diag-all-file* "w")
             i 0 counts nil styles nil blocks nil layers nil)
       (mk:diag-bulk-line f "=== MARKV BULK DIAGNOSTICS ===")
       (mk:diag-bulk-line f (strcat "Selected objects: " (itoa (sslength ss))))
@@ -5569,7 +5573,7 @@
         (mk:diag-bulk-line f (strcat "  " (car x) " = " (itoa (cdr x)))))
       (mk:diag-layout f ss)
       (if f (close f))
-      (prompt "\n[OK] Отчёт: D:/MARKZV_DIAG_ALL.txt"))
+      (prompt (strcat "\n[OK] Отчёт: " *mk:diag-all-file*)))
     (prompt "\n[INFO] Объекты не выбраны."))
   (princ))
 
