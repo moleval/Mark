@@ -132,9 +132,9 @@
 ;;; 1. КОНФИГУРАЦИЯ
 ;;;=====================================================================
 ;; Версия — как у заказчика: редакция и билд отдельными записями «Ред. N.N».
-;; В логах печатается «Ред. 7.0 / Ред. 33.11» — две редакции, без слова build.
+;; В логах печатается «Ред. 7.0 / Ред. 33.12» — две редакции, без слова build.
 (setq *mk:ver*            "Ред. 7.0")
-(setq *mk:build*          "Ред. 33.11")
+(setq *mk:build*          "Ред. 33.12")
 
 (setq *mk:block-fill*     "Заполнение в витраж")
 (setq *mk:block-vitrage*  "Атрибуты витража")
@@ -1834,7 +1834,7 @@
   ;; mk:emk нельзя: он складывает объекты в *mk:drawn* (это только графика
   ;; модели). Слой создаётся напрямую entmake — и, если слой уже есть,
   ;; ничего не делаем, чтобы не перебить цвета настройки заказчика.
-  ;; Ред. 33.11: пары DXF — ТОЛЬКО точечные: (70 . 0), а не (70 0).
+  ;; Ред. 33.12: пары DXF — ТОЛЬКО точечные: (70 . 0), а не (70 0).
   ;; Запись без точки даёт «неверная DXF-группа: (70 0)» и валит этап 1
   ;; (слой не создаётся, а ошибка всплывает позже, на entmake объектов).
   (if (null (tblsearch "LAYER" name))
@@ -3444,6 +3444,18 @@
 ;; Вся ведомость в чертёж: одна или несколько таблиц столбиком.
 ;; pt — точка вставки первой таблицы (nil допустим только вне пакета).
 ;; Возвращает (TBL PT) последней таблицы или nil.
+;; Суммарная ширина таблицы ведомости (мм) — по фактическим ширинам колонок
+(setq *mk:tab-col-w* '(14.0 42.0 42.0 32.0 32.0 32.0))
+
+(defun mk:tab-width (/ s)
+  (setq s 0.0)
+  (foreach w *mk:tab-col-w* (setq s (+ s w)))
+  s)
+
+;; Точка справа от таблицы: на уровне её верхней строки, с зазором
+(defun mk:tab-right-point (pt gap)
+  (list (+ (car pt) (mk:tab-width) gap) (cadr pt) 0.0))
+
 (defun mk:tab-draw-all (data pt / chunks total ci chunk
                                      tbl last-tbl last-pt
                                      nRows row rec cur cnt mp n-sec n-row
@@ -3493,12 +3505,18 @@
               (progn
                 (mk:tab-fast-begin tbl)
                 (mk:ax-put tbl "Layer" *mk:layer-table*)
-                (vl-catch-all-apply 'vla-SetColumnWidth (list tbl 0 14.0))
-                (vl-catch-all-apply 'vla-SetColumnWidth (list tbl 1 42.0))
-                (vl-catch-all-apply 'vla-SetColumnWidth (list tbl 2 42.0))
-                (vl-catch-all-apply 'vla-SetColumnWidth (list tbl 3 32.0))
-                (vl-catch-all-apply 'vla-SetColumnWidth (list tbl 4 32.0))
-                (vl-catch-all-apply 'vla-SetColumnWidth (list tbl 5 32.0))
+                (vl-catch-all-apply 'vla-SetColumnWidth
+                  (list tbl 0 (nth 0 *mk:tab-col-w*)))
+                (vl-catch-all-apply 'vla-SetColumnWidth
+                  (list tbl 1 (nth 1 *mk:tab-col-w*)))
+                (vl-catch-all-apply 'vla-SetColumnWidth
+                  (list tbl 2 (nth 2 *mk:tab-col-w*)))
+                (vl-catch-all-apply 'vla-SetColumnWidth
+                  (list tbl 3 (nth 3 *mk:tab-col-w*)))
+                (vl-catch-all-apply 'vla-SetColumnWidth
+                  (list tbl 4 (nth 4 *mk:tab-col-w*)))
+                (vl-catch-all-apply 'vla-SetColumnWidth
+                  (list tbl 5 (nth 5 *mk:tab-col-w*)))
                 (mk:tab-set tbl 0 0
                   (if (> total 1)
                     (strcat *mk:tab-title* "  (" (itoa ci) " из "
@@ -4197,6 +4215,23 @@
 (setq *mk:last-mode*     nil)   ; режим сбора каркаса прогона (nil — ещё не задан)
 (setq *mk:vitrage-none*  "<ВНЕ РАМОК>")
 
+;; Подробный разбор сбоя витража: печатать собранные координаты.
+(setq *mk:debug-stack* nil)
+
+;; Первые несколько X (и Y) из записей — чтобы видеть, что именно собралось
+(defun mk:first-coords (recs / out n pt)
+  (setq out "" n 0)
+  (foreach r recs
+    (if (< n 5)
+      (progn
+        (setq pt (cdr (assoc 'INS_PT r)))
+        (if pt
+          (setq out (strcat out " (" (rtos (car pt) 2 0) ","
+                            (rtos (cadr pt) 2 0) ")"))
+          (setq out (strcat out " ?")))
+        (setq n (1+ n)))))
+  out)
+
 ;; Этап обработки текущего витража — чтобы [ERROR] называл место сбоя,
 ;; а не только текст исключения («неверная DXF-группа: (70 0)»).
 (setq *mk:step* nil)
@@ -4534,10 +4569,11 @@
     (setq k (mk:obj-kind e))
     (if k
       (setq records (cons (mk:obj-record e k frames) records))
-      ;; вставка, не подошедшая ни под один тип, раньше терялась молча —
-      ;; именно так «пропадали» окна с незнакомым именем блока
-      (if (= (cdr (assoc 0 (entget e))) "INSERT")
-        (setq unknown (cons e unknown)))))
+      ;; объект, не подошедший ни под один тип, раньше терялся молча. Помним
+      ;; и вставки с незнакомым блоком (так «пропадали» окна), и подобъекты
+      ;; (ATTRIB/SEQEND/VERTEX), и прочие типы (SPDSPOLYMORPHMARK, POINT) —
+      ;; по ним печатается список вне типов и пишется дамп.
+      (setq unknown (cons e unknown))))
   (setq records (reverse records)
         *mk:last-unknown* (reverse unknown))
   ;; группы — только по рамкам, в которых есть что обрабатывать: рамка без
@@ -4584,6 +4620,36 @@
       (setq out (subst (cons key (1+ (cdr hit))) hit out))
       (setq out (cons (cons key 1) out))))
   (vl-sort out '(lambda (a b) (> (cdr a) (cdr b)))))
+
+;; Дамп объектов вне типов: DXF-тип, имя блока, слой, координаты, handle.
+;; Нужен, когда в выборке встречается незнакомый тип (SPDSPOLYMORPHMARK,
+;; POINT, «чужая» вставка): по дампу видно, что это и откуда.
+(defun mk:dump-unknown (lst / f i e d p)
+  (setq f (open *mk:out-file* "a"))
+  (if f
+    (progn
+      (write-line "" f)
+      (write-line "=== НЕ РАСПОЗНАННЫЕ ОБЪЕКТЫ (вне типов MarkV) ===" f)
+      (write-line (strcat "Всего: " (itoa (length lst))) f)
+      (setq i 0)
+      (foreach e lst
+        (if (< i 40)
+          (progn
+            (setq d (entget e) p (cdr (assoc 10 d)))
+            (write-line
+              (strcat "  " (mk:safe-str (cdr (assoc 0 d)))
+                      " | блок: " (mk:safe-str (cdr (assoc 2 d)))
+                      " | слой: " (mk:safe-str (cdr (assoc 8 d)))
+                      " | точка: "
+                      (if p (strcat (rtos (car p) 2 1) "," (rtos (cadr p) 2 1))
+                        "?")
+                      " | handle: " (mk:safe-str (cdr (assoc 5 d))))
+              f)
+            (setq i (1+ i)))))
+      (if (> (length lst) 40)
+        (write-line "  ... (остальные не печатаются)" f))
+      (close f)
+      (prompt (strcat "\n  [OK] Объекты вне типов записаны: " *mk:out-file*)))))
 
 ;; Вставки в выборке, не попавшие ни в один тип конвейера. Пакет МАРКАВ
 ;; разбирает выборку по рамкам витражей, поэтому *mk:last-unknown* там пуст;
@@ -4777,7 +4843,10 @@
             *mk:last-ss*     (mk:ss-of enames))
       (mk:print-kinds)
       (mk:print-groups *mk:last-groups* *mk:last-extra*)
-      (mk:print-unknown)          ; одиночный прогон: имена вне типов
+      (if *mk:last-unknown*
+        (progn
+          (mk:print-unknown)
+          (mk:dump-unknown *mk:last-unknown*)))
       (setq n (mk:count-unknown))
       (if (> n 0)
         (progn
@@ -5041,6 +5110,14 @@
                             (if *mk:step* (strcat " | шаг: " *mk:step*) "")))
             (setq err (strcat err (if *mk:step*
                                     (strcat " | шаг: " *mk:step*) "")))
+            (if (and *mk:debug-stack* posts)
+              (progn
+                (prompt "\n  [DEBUG] Собрано до сбоя:")
+                (prompt (strcat "\n    стойки " (itoa (length posts))
+                                ", ригели " (itoa (length beams))
+                                ", заполнения " (itoa (length fills))))
+                (prompt (strcat "\n    первые X-координаты стоек: "
+                                (mk:first-coords posts)))))
             (prompt "\n  [INFO] Прогон продолжается со следующего витража."))
           (progn
             (setq data    (nth 0 r) posts   (nth 1 r) beams  (nth 2 r)
@@ -5162,7 +5239,7 @@
 ;;;--- ЭТАП 4/4. МАРКАВТАБЛ (общая ведомость) -------------------------
 
 (defun c:МАРКАВТАБЛ (/ groups grp data rows agg acc all-posts all-beams
-                      doc do-tbl do-xls file res pt2 pt3 h h2 tbl2 suffix)
+                      doc do-tbl do-xls file res pt1 pt2 pt3 h h2 tbl2 suffix)
   (prompt "\n[МАРКАВТАБЛ] Ведомость профилей — общая по всем витражам...")
   (setq *mk:dyn-cache* nil *mk:vitrage-cache* nil)
   (if (null *mk:batch*) (setq *mk:allowance-unknown* nil))
@@ -5215,12 +5292,21 @@
           (mk:tab-xls agg file acc)))
       (if do-tbl
         (progn
-          (setq res (mk:tab-draw-all agg (if *mk:batch* *mk:table-ins-pt* nil)))
-          ;; res = (последняя таблица ведомости, её точка вставки);
-          ;; mk:tab-draw-all уже вернул точку НИЖЕ последней таблицы
+          (setq pt1 (if *mk:batch* *mk:table-ins-pt* nil))
+          (setq res (mk:tab-draw-all agg pt1))
+          ;; Закладные («пятки») и условные обозначения ставятся СБОКУ — справа
+          ;; от ведомости, столбиком (обозначения ниже закладных).
+          ;; Раньше они шли под ведомостью и при большом числе таблиц
+          ;; наезжали на неё.
           (if res
             (progn
-              (setq pt2 (cadr res))
+              ;; (cadr res) — верх последней таблицы ведомости, но нужна точка
+              ;; НАЧАЛА ведомости (там её верхний край): pt1, а если точку
+              ;; не задавали — (cadr res), как было раньше.
+              (setq pt2 (mk:tab-right-point (if pt1 pt1 (cadr res))
+                                            *mk:acc-gap*))
+              (prompt (strcat "\n  Закладные и обозначения: справа от ведомости, X="
+                              (rtos (car pt2) 2 1) ", Y=" (rtos (cadr pt2) 2 1)))
               (setq tbl2 (if acc (mk:acc-table-create acc pt2) nil))
               (setq pt3 pt2)
               (if tbl2
