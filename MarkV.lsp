@@ -132,9 +132,9 @@
 ;;; 1. КОНФИГУРАЦИЯ
 ;;;=====================================================================
 ;; Версия — как у заказчика: редакция и билд отдельными записями «Ред. N.N».
-;; В логах печатается «Ред. 7.0 / Ред. 33.16» — две редакции, без слова build.
+;; В логах печатается «Ред. 7.0 / Ред. 33.17» — две редакции, без слова build.
 (setq *mk:ver*            "Ред. 7.0")
-(setq *mk:build*          "Ред. 33.16")
+(setq *mk:build*          "Ред. 33.17")
 
 (setq *mk:block-fill*     "Заполнение в витраж")
 (setq *mk:block-vitrage*  "Атрибуты витража")
@@ -1167,7 +1167,7 @@
       (setq posts (cons (list
         (cons 'TYPE "СТОЙКА") (cons 'ENAME (nth 0 tr))
         (cons 'INS_PT (list ax s0 0.0))
-        (cons 'LENGTH (- s1 s0)) (cons 'SIZE_SRC "GEOM")
+        (cons 'LENGTH (- s1 s0)) (cons 'SIZE_SRC "GEOM") (cons 'GEOM t)
         (cons 'CROSS cross) (cons 'ARTICLE (mk:ent-article (nth 0 tr)))
         (cons 'VISIBILITY nil)
         (cons 'LEFT_CONN nil) (cons 'RIGHT_CONN nil) (cons 'PROTRUDING nil)
@@ -1179,7 +1179,7 @@
       (setq beams (cons (list
         (cons 'TYPE "РИГЕЛЬ") (cons 'ENAME (nth 0 tr))
         (cons 'INS_PT (list s0 ax 0.0))
-        (cons 'LENGTH (- s1 s0)) (cons 'SIZE_SRC "GEOM")
+        (cons 'LENGTH (- s1 s0)) (cons 'SIZE_SRC "GEOM") (cons 'GEOM t)
         (cons 'CROSS cross) (cons 'ARTICLE (mk:ent-article (nth 0 tr)))
         (cons 'VISIBILITY nil)
         (cons 'TOP_ELEM nil) (cons 'BOT_ELEM nil) (cons 'SUFFIX nil)
@@ -1845,7 +1845,7 @@
   ;; mk:emk нельзя: он складывает объекты в *mk:drawn* (это только графика
   ;; модели). Слой создаётся напрямую entmake — и, если слой уже есть,
   ;; ничего не делаем, чтобы не перебить цвета настройки заказчика.
-  ;; Ред. 33.16: пары DXF — ТОЛЬКО точечные: (70 . 0), а не (70 0).
+  ;; Ред. 33.17: пары DXF — ТОЛЬКО точечные: (70 . 0), а не (70 0).
   ;; Запись без точки даёт «неверная DXF-группа: (70 0)» и валит этап 1
   ;; (слой не создаётся, а ошибка всплывает позже, на entmake объектов).
   (if (null (tblsearch "LAYER" name))
@@ -2899,18 +2899,24 @@
       (mk:make-group (strcat "Маркировка_" prefix) (reverse lst))))
   (if lst (length lst) 0))
 
-(defun mk:write-marks (elements mark-str / count skip-count lab-count e)
+;; Запись марки. Атрибут «Марка» есть — пишем в атрибут; иначе подпись
+;; выноской. Мультилинии и геометрические элементы («Все-типы», «Мультилинии»)
+;; атрибута не имеют в принципе, поэтому получают подпись ВСЕГДА — даже если
+;; у соседнего блока атрибут есть.
+
+(defun mk:write-marks (elements mark-str / count skip-count lab-count e geom)
   (setq count 0 skip-count 0 lab-count 0)
   (foreach el elements
-    (setq e (mk:rec-get el 'ENAME))
-    (if (and e (mk:has-attr? e *mk:attr-mark*))
+    (setq e    (mk:rec-get el 'ENAME)
+          geom (or (mk:rec-get el 'GEOM)
+                   (and e (= (cdr (assoc 0 (entget e))) "MLINE"))))
+    (if (and e (null geom) (mk:has-attr? e *mk:attr-mark*))
       (progn
         (mk:set-attr e *mk:attr-mark* mark-str)
         (setq count (1+ count)))
-      (progn
-        (if (mk:label-mark el mark-str)
-          (setq lab-count (1+ lab-count))
-          (setq skip-count (1+ skip-count))))))
+      (if (mk:label-mark el mark-str)
+        (setq lab-count (1+ lab-count))
+        (setq skip-count (1+ skip-count)))))
   (list count skip-count lab-count))
 
 ;; Сбор всех типов элементов из выборки
@@ -3720,7 +3726,7 @@
   (write-line "   </Borders>" f)
   (write-line "  </Style>" f))
 
-(defun mk:tab-xls (data file acc / f rec sect art mark len cnt mp cur
+(defun mk:tab-xls (data file acc / f rec sect art mark len cnt mp cur sz
                      xl-row grp-start sub-rows n-no cnt-sub mp-sub
                      total-cnt total-mp hdr w0)
   (setq f (open file "w"))
@@ -3814,8 +3820,18 @@
       (mk:leg-xls *mk:leg-sfx* *mk:leg-arts* f)
       (write-line "</Workbook>" f)
       (close f)
-      (prompt (strcat "\n  [OK] XLS: " file))
-      t)))
+      ;; Excel держит файл открытым: open/close проходят, а данные не
+      ;; доходят. Проверяем то, что видно: файл есть и он не пустой.
+      (setq sz (vl-file-size file))
+      (if (and (numberp sz) (> sz 0))
+        (progn
+          (prompt (strcat "\n  [OK] XLS: " file
+                          " (" (itoa sz) " байт)"))
+          t)
+        (progn
+          (prompt (strcat "\n  [WARN] XLS не записан (файл занят другой"
+                          " программой или пуст): " file))
+          nil)))))
 
 ;;;=====================================================================
 ;;; 20c. ЗАКЛАДНЫЕ: атрибуты «Пятка*» и «Кронштейн*» динамических блоков
@@ -5358,7 +5374,8 @@
                              (vl-filename-base (getvar "dwgname"))
                              " Стойки ригели витража "
                              (mk:slug suffix) ".xls"))
-          (mk:tab-xls agg file acc)))
+          (if (null (mk:tab-xls agg file acc))
+            (prompt (strcat "\n  [WARN] Ведомость XLS не сохранена: " file)))))
       (if do-tbl
         (progn
           (setq pt1 (if *mk:batch* *mk:table-ins-pt* nil))
