@@ -124,12 +124,21 @@
 ;; Версия — как у заказчика: редакция и билд отдельными записями «Ред. N.N».
 ;; В логах печатается «Ред. 7.0 / Ред. 33.4», то есть РЕД.7.0 и РЕД.33.4.
 (setq *mk:ver*            "Ред. 7.0")
-(setq *mk:build*          "Ред. 33.4")
+(setq *mk:build*          "Ред. 33.5")
 
 (setq *mk:block-fill*     "Заполнение в витраж")
-(setq *mk:block-window*   "Окно КПТ60")
-(setq *mk:block-door*     "Дверной блок КПТ74 двухстворчатый")
 (setq *mk:block-vitrage*  "Атрибуты витража")
+;; Окна и двери — по маскам: точное имя блока зависит от системы и проекта,
+;; а поиск идёт через wcmatch, поэтому достаточно имени-маски.
+;; Переопределить можно одной строкой, например:
+;;   (setq *mk:block-door* "Дверной блок КПТ74*")
+(setq *mk:block-window*   "Окно КПТ60")
+(setq *mk:block-door*     "Дверной блок*")
+;; Дополнительные маски (проверяются раньше основного имени):
+;;   (setq *mk:door-masks*   (list "Двер*" "*ДВЕР*" "*Дверной*"))
+;;   (setq *mk:window-masks* (list "Окно*"  "*ОКН*"))
+(setq *mk:door-masks*     (list "*Двер*" "*ДВЕР*" "*двер*"))
+(setq *mk:window-masks*   (list "*Окно*" "*ОКНО*" "*окно*"))
 (setq *mk:block-post*     "стойка")
 (setq *mk:block-beam*     "ригель")
 
@@ -1350,6 +1359,21 @@
         (setq i (1+ i)))))
   lst)
 
+;; Блоки выборки по списку имён/масок — без дублей (один блок, подходящий под
+;; две маски, попадает в список один раз)
+(defun mk:find-blocks-any (ss masks / i e lst hit)
+  (setq lst nil)
+  (if ss
+    (progn
+      (setq i 0)
+      (repeat (sslength ss)
+        (setq e (ssname ss i) hit nil)
+        (foreach m masks
+          (if (and (null hit) m (mk:blk-match? e m)) (setq hit t)))
+        (if hit (setq lst (cons e lst)))
+        (setq i (1+ i)))))
+  lst)
+
 (defun mk:find-mlines-in-ss (ss / i e lst)
   (setq lst nil)
   (if ss
@@ -1415,9 +1439,14 @@
       (if (< ysc 0.0)
         (progn (setq new-y (+ new-y h))
                (prompt (strcat "\n  [WARN] Панель скорректирована по Y: " (rtos new-y 2 1)))))
+      ;; Панель у самого края витража — НЕ зеркалим: раньше здесь вычиталась
+      ;; ширина, и панель уезжала через весь витраж (так появлялись «панель за
+      ;; правой границей» и перекрытия на ровном месте). Сдвиг — только если
+      ;; панель действительно выступает за габарит, и не дальше допуска.
       (if (> (+ new-x w) (+ max-x *mk:tol-skew*))
         (progn (setq new-x (- new-x w))
-               (prompt (strcat "\n  [WARN] Панель за правой границей: " (rtos new-x 2 1)))))
+               (prompt (strcat "\n  [WARN] Панель выступает за правую границу витража,"
+                               " сдвинута на ширину: " (rtos new-x 2 1)))))
       (if (> (+ new-y h) (+ max-y *mk:tol-skew*))
         (progn (setq new-y (- new-y h))
                (prompt (strcat "\n  [WARN] Панель за верхней границей: " (rtos new-y 2 1)))))
@@ -1451,14 +1480,24 @@
 
 ;; Пара «заполнение + окно/дверь» одного проёма — не ошибка: это один
 ;; световой проём, на который поставлены два блока (заполнение и дверь/окно).
-(defun mk:same-cell? (p1 p2 / t1 t2 w1 h1 w2 h2)
+;; Пара «заполнение + окно/дверь» одного проёма — не ошибка: это один световой
+;; проём с двумя блоками (заполнение и дверь/окно). Габариты у блоков могут
+;; отличаться (дверь шире/ниже), поэтому сравниваем не точное равенство, а
+;; соизмеримость: размеры различаются не более чем в *mk:same-cell-ratio* раз.
+(setq *mk:same-cell-ratio* 1.6)
+
+(defun mk:same-cell-dim? (a b tol / mx mn)
+  (and (numberp a) (numberp b) (> a 0.0) (> b 0.0)
+       (progn (setq mx (max a b) mn (min a b))
+              (or (>= mx (- mn tol))
+                  (<= (/ mx mn) *mk:same-cell-ratio*)))))
+
+(defun mk:same-cell? (p1 p2 / t1 t2)
   (setq t1 (cdr (assoc 'TYPE p1)) t2 (cdr (assoc 'TYPE p2)))
-  (setq w1 (cdr (assoc 'WIDTH p1)) h1 (cdr (assoc 'HEIGHT p1))
-        w2 (cdr (assoc 'WIDTH p2)) h2 (cdr (assoc 'HEIGHT p2)))
-  (and (or (and (= t1 "ЗАПОЛНЕНИЕ") (/= t2 "ЗАПОЛНЕНИЕ"))
-           (and (= t2 "ЗАПОЛНЕНИЕ") (/= t1 "ЗАПОЛНЕНИЕ")))
-       (numberp w1) (numberp h1) (numberp w2) (numberp h2)
-       (equal w1 w2 1.0) (equal h1 h2 1.0)))
+  (and (or (and (= t1 "ЗАПОЛНЕНИЕ") (member t2 '("ОКНО" "ДВЕРЬ")))
+           (and (= t2 "ЗАПОЛНЕНИЕ") (member t1 '("ОКНО" "ДВЕРЬ"))))
+       (mk:same-cell-dim? (cdr (assoc 'WIDTH p1))  (cdr (assoc 'WIDTH p2))  200.0)
+       (mk:same-cell-dim? (cdr (assoc 'HEIGHT p1)) (cdr (assoc 'HEIGHT p2)) 200.0)))
 
 (defun mk:check-overlaps (panels / i j count x1 y1 w1 h1 x2 y2 w2 h2)
   (setq count 0 i 0)
@@ -3006,10 +3045,12 @@
                   (mapcar 'mk:collect-fill (mk:find-blocks-in-ss ss (strcat "*" *mk:block-fill* "*")))
                   "Заполнения"))
   (setq windows (mk:sanitize-panels
-                  (mapcar 'mk:collect-window (mk:find-blocks-in-ss ss (strcat "*" *mk:block-window* "*")))
+                  (mapcar 'mk:collect-window
+                    (mk:find-blocks-any ss (append *mk:window-masks* (list *mk:block-window*))))
                   "Окна"))
   (setq doors   (mk:sanitize-panels
-                  (mapcar 'mk:collect-door (mk:find-blocks-in-ss ss (strcat "*" *mk:block-door* "*")))
+                  (mapcar 'mk:collect-door
+                    (mk:find-blocks-any ss (append *mk:door-masks* (list *mk:block-door*))))
                   "Двери"))
   (setq res   (mk:split-tjoints posts beams (append fills windows doors))
         posts (nth 0 res)
@@ -4041,6 +4082,26 @@
             h (mk:get-dyn o "*Высота рамки*"))
       (and (numberp w) (numberp h) (> w 0.0) (> h 0.0)))))
 
+;; ---------------------------------------------------------------- защита логов
+;; В лог попадают значения из записей, которых может не быть (нет ключа, блок
+;; без динамики, размер не определён). Любая такая строка раньше роняла прогон
+;; на strcat/rtos с «неверный тип аргумента». Здесь все подстановки безопасны.
+(defun mk:safe-str (v)
+  (cond ((mk:strp v) v)
+        ((numberp v) (rtos v 2 2))
+        (t "—")))
+
+(defun mk:safe-num (v / s)
+  (setq s (vl-catch-all-apply 'rtos (list v 2 1)))
+  (if (or (vl-catch-all-error-p s) (null s) (not (mk:strp s))) "—" s))
+
+;; Совпадает ли объект хотя бы с одной маской списка
+(defun mk:blk-match-any? (ename masks / hit)
+  (setq hit nil)
+  (foreach m masks
+    (if (and (null hit) (mk:blk-match? ename m)) (setq hit t)))
+  hit)
+
 ;; Тип объекта конвейера; nil — объект в конвейер не входит.
 ;; КАРКАС — геометрия, из которой в режиме «Все-типы»/«Мультилинии»
 ;; собираются стойки и ригели (MLINE и прочие типы *mk:seg-types*).
@@ -4051,6 +4112,8 @@
     nil
     (cond
       ((mk:blk-match? ename (strcat "*" *mk:block-fill* "*"))   "ЗАПОЛНЕНИЕ")
+      ((mk:blk-match-any? ename *mk:door-masks*)                "ДВЕРЬ")
+      ((mk:blk-match-any? ename *mk:window-masks*)              "ОКНО")
       ((mk:blk-match? ename (strcat "*" *mk:block-window* "*")) "ОКНО")
       ((mk:blk-match? ename (strcat "*" *mk:block-door* "*"))   "ДВЕРЬ")
       ((mk:blk-match? ename (strcat "*" *mk:block-post* "*"))   "СТОЙКА")
@@ -4344,6 +4407,7 @@
 ;; в геометрии, стойках, ригелях и ведомости — поэтому кэшируется по витражу
 ;; на время прогона (кэш чистит mk:prepare-run).
 (setq *mk:group-cache* nil)
+(setq *mk:run-errors* nil)   ; ((витраж . сообщение) ...) за прогон
 ;; t — идёт сбор внутри витража: префикс витража задан группой
 (setq *mk:in-group* nil)
 
@@ -4451,12 +4515,41 @@
       (if res (car res) nil))))
 
 ;; Имя группы на чертеже: только буквы/цифры, остальное — «_»
-(defun mk:slug (s / i c out)
+(defun mk:alnum-char? (c / n)
+  ;; Только по коду символа: wcmatch с набором "А-Яа-я" внутри класса ненадёжен
+  ;; (на кириллице давал совпадение и на буквы, и на цифры — имя группы
+  ;; превращалось в «___-_»). Коды — CP1251: 168 Ё, 184 ё, 192..255 А..я.
+  (setq n (if c (ascii c) nil))
+  (and (numberp n)
+       (or (and (>= n 48) (<= n 57))     ; 0-9
+           (and (>= n 65) (<= n 90))     ; A-Z
+           (and (>= n 97) (<= n 122))    ; a-z
+           (= n 95)                      ; _
+           (= n 168) (= n 184)           ; Ё ё
+           (and (>= n 192) (<= n 255))))) ; А..я
+
+;; Имя группы на чертеже: буквы/цифры/«_», остальное — «_».
+;; Если после чистки не осталось ни одной буквы или цифры (нестандартная
+;; кодировка, необычное имя), берём исходную строку и меняем только символы,
+;; недопустимые в имени группы.
+(defun mk:slug (s / i c out solid)
   (setq s (if (mk:strp s) s "") out "" i 1)
   (while (<= i (strlen s))
     (setq c (substr s i 1))
-    (setq out (strcat out (if (wcmatch c "~*[~A-Za-zА-Яа-яЁё0-9]*") "_" c)))
+    (setq out (strcat out (if (mk:alnum-char? c) c "_")))
     (setq i (1+ i)))
+  (setq solid nil i 1)
+  (while (<= i (strlen out))
+    (setq c (substr out i 1))
+    (if (/= c "_") (setq solid t))
+    (setq i (1+ i)))
+  (if (null solid)
+    (progn
+      (setq out "" i 1)
+      (while (<= i (strlen s))
+        (setq c (substr s i 1))
+        (setq out (strcat out (if (wcmatch c "[\\/:*?\"<>|,; ]") "_" c)))
+        (setq i (1+ i)))))
   (if (> (strlen out) 0) out "ВИТРАЖ"))
 
 ;; Базовое имя группы сетки — не меняется в течение прогона
@@ -4472,6 +4565,17 @@
 (defun mk:vitrage-rec-from-frame (grp / e)
   (setq e (car (nth 1 grp)))
   (if e (mk:vitrage-rec e) nil))
+
+;; HANDLE записи: у объектов конвейера он берётся из ENAME (в записях
+;; mk:collect-post/beam ключа HANDLE нет — из-за этого дамп падал с
+;; «неверный тип аргумента: stringp nil» в strcat).
+(defun mk:rec-handle (rec / e)
+  (setq e (if (mk:strp (mk:rec-get rec 'HANDLE))
+            (mk:rec-get rec 'HANDLE)
+            (if (mk:rec-get rec 'ENAME)
+              (cdr (assoc 5 (entget (mk:rec-get rec 'ENAME))))
+              nil)))
+  (if (mk:strp e) e "—"))
 
 ;;;--- Дамп по витражам ----------------------------------------------
 
@@ -4504,26 +4608,26 @@
                             "  Окна: " (itoa (length windows))
                             "  Двери: " (itoa (length doors))) f)
         (foreach post posts
-          (write-line (strcat "  СТОЙКА HANDLE=" (mk:rec-get post 'HANDLE)
+          (write-line (strcat "  СТОЙКА HANDLE=" (mk:rec-handle post)
                               " X=" (rtos (car (cdr (assoc 'INS_PT post))) 2 1)
                               " Y=" (rtos (cadr (cdr (assoc 'INS_PT post))) 2 1)
-                              " L=" (rtos (mk:rec-get post 'LENGTH) 2 1)
+                              " L=" (mk:safe-num (mk:rec-get post 'LENGTH))
                               " АРТ=" (if (mk:rec-get post 'ARTICLE)
                                         (mk:rec-get post 'ARTICLE) "—")) f))
         (foreach beam beams
-          (write-line (strcat "  РИГЕЛЬ HANDLE=" (mk:rec-get beam 'HANDLE)
+          (write-line (strcat "  РИГЕЛЬ HANDLE=" (mk:rec-handle beam)
                               " X=" (rtos (car (cdr (assoc 'INS_PT beam))) 2 1)
                               " Y=" (rtos (cadr (cdr (assoc 'INS_PT beam))) 2 1)
-                              " L=" (rtos (mk:rec-get beam 'LENGTH) 2 1)
+                              " L=" (mk:safe-num (mk:rec-get beam 'LENGTH))
                               " АРТ=" (if (mk:rec-get beam 'ARTICLE)
                                         (mk:rec-get beam 'ARTICLE) "—")) f))
         (foreach pn (append fills windows doors)
           (write-line (strcat "  " (mk:rec-get pn 'TYPE)
-                              " HANDLE=" (mk:rec-get pn 'HANDLE)
+                              " HANDLE=" (mk:rec-handle pn)
                               " X=" (rtos (car (cdr (assoc 'INS_PT pn))) 2 1)
                               " Y=" (rtos (cadr (cdr (assoc 'INS_PT pn))) 2 1)
-                              " W=" (rtos (mk:rec-get pn 'WIDTH) 2 1)
-                              " H=" (rtos (mk:rec-get pn 'HEIGHT) 2 1)) f))
+                              " W=" (mk:safe-num (mk:rec-get pn 'WIDTH))
+                              " H=" (mk:safe-num (mk:rec-get pn 'HEIGHT))) f))
         (write-line "" f))
       (write-line "--- ВНЕ РАМОК ---" f)
       (foreach r *mk:last-extra*
@@ -4534,63 +4638,105 @@
 
 ;;;--- ЭТАП 1/4. МАРКАВГЕОМЕТРИЯ ------------------------------------
 
+;; Один витраж: сбор -> проверки -> топология -> разметка -> 2D модель.
+;; Возвращает (DATA POSTS BEAMS FILLS WINDOWS DOORS BOUNDS DUP OVERLAP OUTJ).
+;; Вынесено отдельной функцией, чтобы сбой одного витража не прерывал прогон
+;; (МАРКАВГЕОМЕТРИЯ вызывает её через vl-catch-all-apply).
+(defun mk:process-group (grp / data posts beams fills windows doors bounds
+                             all-panels dup overlap outj topo res2)
+  (setq data (mk:group-data grp))
+  (setq posts   (cdr (assoc 'POSTS data))
+        beams   (cdr (assoc 'BEAMS data))
+        fills   (cdr (assoc 'FILLS data))
+        windows (cdr (assoc 'WINDOWS data))
+        doors   (cdr (assoc 'DOORS data)))
+  (prompt (strcat "\n  Стойки: " (itoa (length posts))
+                  ", ригели: " (itoa (length beams))
+                  ", заполнения: " (itoa (length fills))
+                  ", окна: " (itoa (length windows))
+                  ", двери: " (itoa (length doors))))
+  (if (or posts beams fills)
+    (progn
+      (setq bounds (mk:find-vitrage-bounds posts beams))
+      (prompt (strcat "\n  Границы: X=" (mk:safe-num (cdr (assoc 'MIN_X bounds)))
+                      ".." (mk:safe-num (cdr (assoc 'MAX_X bounds)))
+                      ", Y=" (mk:safe-num (cdr (assoc 'MIN_Y bounds)))
+                      ".." (mk:safe-num (cdr (assoc 'MAX_Y bounds)))))
+      ;; проверки — тоже внутри витража, чтобы не ловить соседей
+      (setq all-panels (append fills windows doors))
+      (setq dup (mk:check-duplicates (append posts beams all-panels)))
+      (setq overlap (mk:check-overlaps all-panels))
+      (setq outj (mk:check-out-of-grid (append posts beams all-panels) bounds))
+      (setq res2 (mk:identify-protruding-posts posts bounds))
+      (setq posts (nth 0 res2))
+      ;; топология и разметка внутри витража
+      (setq topo (mk:build-topology posts beams fills windows doors bounds))
+      (setq posts   (nth 0 topo) beams (nth 1 topo) fills (nth 2 topo)
+            windows (nth 3 topo) doors (nth 4 topo))
+      (setq all-panels (append fills windows doors))
+      (setq posts (mk:annotate-posts posts (append all-panels beams)))
+      (setq beams (mk:annotate-beams beams all-panels doors bounds posts))
+      ;; 2D модель витража — своя группа
+      (mk:draw-model posts beams fills windows doors bounds)
+      (prompt (strcat "\n  Дубликатов: " (itoa dup)
+                      ", перекрытий: " (itoa overlap)
+                      ", вне сетки: " (itoa outj))))
+    (progn
+      (setq bounds (list (cons 'MIN_X nil) (cons 'MAX_X nil)
+                         (cons 'MIN_Y nil) (cons 'MAX_Y nil))
+            dup 0 overlap 0 outj 0)
+      (prompt "\n  [WARN] В витраже нет элементов каркаса и заполнений.")))
+  (list data posts beams fills windows doors bounds dup overlap outj))
+
+;; Итог по сбоям витражей за прогон (нет сбоев — молчит)
+(defun mk:print-run-errors (/ n e)
+  (setq n 0)
+  (foreach e *mk:run-errors* (if (cadr e) (setq n (1+ n))))
+  (if (> n 0)
+    (progn
+      (prompt (strcat "\n[WARN] Витражей со сбоем: " (itoa n) " из "
+                      (itoa (length *mk:run-errors*))))
+      (foreach e *mk:run-errors*
+        (if (cadr e)
+          (prompt (strcat "\n   " (car e) ": " (cadr e))))))))
+
 (defun c:МАРКАВГЕОМЕТРИЯ (/ res groups grp data posts beams fills windows doors
-                            bounds all-panels dup overlap outj topo res2)
-  (prompt "\n[МАРКАВГЕОМЕТРИЯ] Сбор данных и 2D модель — по каждому витраже отдельно...")
+                            dup overlap outj r err)
+  (prompt "\n[МАРКАВГЕОМЕТРИЯ] Сбор данных и 2D модель — по каждому витражу отдельно...")
   (setq *mk:dyn-cache* nil *mk:vitrage-cache* nil)
-  (setq *mk:cached-data* nil *mk:geo-summary* nil)
+  (setq *mk:cached-data* nil *mk:geo-summary* nil *mk:run-errors* nil)
   (if (setq res (mk:prepare-run))
     (progn
       (setq groups (car res))
       (foreach grp groups
-        (setq *mk:last-prefix*   (nth 0 grp))
-        (setq *mk:group-model*   (mk:group-model-name (nth 0 grp)))
-        (setq *mk:scope-mode*    *mk:last-mode*)   ; режим сбора — из прогона
+        (setq *mk:last-prefix* (nth 0 grp))
+        (setq *mk:group-model* (mk:group-model-name (nth 0 grp)))
+        (setq *mk:scope-mode*  *mk:last-mode*)
         (prompt (strcat "\n\n--- Витраж " (nth 0 grp) " ---"))
-        (setq data (mk:group-data grp))
-        (setq posts   (cdr (assoc 'POSTS data))
-              beams   (cdr (assoc 'BEAMS data))
-              fills   (cdr (assoc 'FILLS data))
-              windows (cdr (assoc 'WINDOWS data))
-              doors   (cdr (assoc 'DOORS data)))
-        (prompt (strcat "\n  Стойки: " (itoa (length posts))
-                        ", ригели: " (itoa (length beams))
-                        ", заполнения: " (itoa (length fills))
-                        ", окна: " (itoa (length windows))
-                        ", двери: " (itoa (length doors))))
-        (if (or posts beams fills)
+        ;; один витраж не должен ронять весь прогон: сбой фиксируется и
+        ;; прогон идёт дальше, остальные витражи обрабатываются
+        (setq err nil)
+        (setq r (vl-catch-all-apply 'mk:process-group (list grp)))
+        (if (vl-catch-all-error-p r)
           (progn
-            (setq bounds (mk:find-vitrage-bounds posts beams))
-            (prompt (strcat "\n  Границы: X=" (rtos (cdr (assoc 'MIN_X bounds)) 2 1)
-                            ".." (rtos (cdr (assoc 'MAX_X bounds)) 2 1)
-                            ", Y=" (rtos (cdr (assoc 'MIN_Y bounds)) 2 1)
-                            ".." (rtos (cdr (assoc 'MAX_Y bounds)) 2 1)))
-            ;; проверки — тоже внутри витража, чтобы не ловить соседей
-            (setq all-panels (append fills windows doors))
-            (setq dup (mk:check-duplicates (append posts beams all-panels)))
-            (setq overlap (mk:check-overlaps all-panels))
-            (setq outj (mk:check-out-of-grid (append posts beams all-panels) bounds))
-            (setq res2 (mk:identify-protruding-posts posts bounds))
-            (setq posts (nth 0 res2))
-            ;; топология и разметка внутри витража
-            (setq topo (mk:build-topology posts beams fills windows doors bounds))
-            (setq posts   (nth 0 topo) beams (nth 1 topo) fills (nth 2 topo)
-                  windows (nth 3 topo) doors (nth 4 topo))
-            (setq all-panels (append fills windows doors))
-            (setq posts (mk:annotate-posts posts (append all-panels beams)))
-            (setq beams (mk:annotate-beams beams all-panels doors bounds posts))
-            ;; 2D модель витража — своя группа
-            (mk:draw-model posts beams fills windows doors bounds)
-            (prompt (strcat "\n  Дубликатов: " (itoa dup)
-                            ", перекрытий: " (itoa overlap)
-                            ", вне сетки: " (itoa outj)))
+            (setq err (vl-catch-all-error-message r))
+            (prompt (strcat "\n  [ERROR] Витраж " (nth 0 grp)
+                            ": сбой обработки — " err))
+            (prompt "\n  [INFO] Прогон продолжается со следующего витража."))
+          (progn
+            (setq data    (nth 0 r) posts   (nth 1 r) beams  (nth 2 r)
+                  fills   (nth 3 r) windows (nth 4 r) doors  (nth 5 r)
+                  bounds  (nth 6 r) dup     (nth 7 r) overlap (nth 8 r)
+                  outj    (nth 9 r))
             (setq *mk:geo-summary*
               (cons (list (nth 0 grp) (length posts) (length beams)
                           (length fills) (length windows) (length doors)
                           dup overlap outj)
-                    *mk:geo-summary*)))
-          (prompt "\n  [WARN] В витраже нет элементов каркаса и заполнений.")))
+                    *mk:geo-summary*))))
+        (setq *mk:run-errors* (cons (list (nth 0 grp) err) *mk:run-errors*)))
       (mk:dump-groups)
+      (setq *mk:run-errors* (reverse *mk:run-errors*))
+      (mk:print-run-errors)
       (prompt (strcat "\n[ГОТОВО] Витражей обработано: "
                       (itoa (length groups))
                       ". Модели: слой «" *mk:layer-model* "», группы «"
