@@ -125,9 +125,9 @@
 ;;; 1. КОНФИГУРАЦИЯ
 ;;;=====================================================================
 ;; Версия — как у заказчика: редакция и билд отдельными записями «Ред. N.N».
-;; В логах печатается «Ред. 7.0 / Ред. 33.5» — редакция и билд.
+;; В логах печатается «Ред. 7.0 / Ред. 33.6» — две редакции, без слова build.
 (setq *mk:ver*            "Ред. 7.0")
-(setq *mk:build*          "Ред. 33.5")
+(setq *mk:build*          "Ред. 33.6")
 
 (setq *mk:block-fill*     "Заполнение в витраж")
 (setq *mk:block-vitrage*  "Атрибуты витража")
@@ -208,6 +208,7 @@
 (setq *mk:allowance-kp50k*      25.0)   ; КП50К
 ;; Припуск для ригелей с нераспознанным артикулом (неименованные мультилинии).
 ;; nil — спросить один раз за прогон; число — использовать молча.
+(setq *mk:quiet-edges*           nil)   ; t — не предупреждать о выходе панели за границы
 (setq *mk:allowance-unknown*    nil)
 (setq *mk:ask-unknown-allowance* t)     ; задавать ли вопрос
 ;; Припуск по артикулу профиля: ((маска . припуск) ...), маска — wcmatch,
@@ -1463,17 +1464,23 @@
       (if (< ysc 0.0)
         (progn (setq new-y (+ new-y h))
                (prompt (strcat "\n  [WARN] Панель скорректирована по Y: " (rtos new-y 2 1)))))
-      ;; Панель у самого края витража — НЕ зеркалим: раньше здесь вычиталась
-      ;; ширина, и панель уезжала через весь витраж (так появлялись «панель за
-      ;; правой границей» и перекрытия на ровном месте). Сдвиг — только если
-      ;; панель действительно выступает за габарит, и не дальше допуска.
-      (if (> (+ new-x w) (+ max-x *mk:tol-skew*))
-        (progn (setq new-x (- new-x w))
-               (prompt (strcat "\n  [WARN] Панель выступает за правую границу витража,"
-                               " сдвинута на ширину: " (rtos new-x 2 1)))))
-      (if (> (+ new-y h) (+ max-y *mk:tol-skew*))
-        (progn (setq new-y (- new-y h))
-               (prompt (strcat "\n  [WARN] Панель за верхней границей: " (rtos new-y 2 1)))))
+      ;; Панель у самого края витража — НЕ зеркалим и НЕ сдвигаем.
+      ;; Раньше здесь вычиталась ширина: панель, стоящая вплотную к правой
+      ;; границе, уезжала на свой размер влево — отсюда были и «панель за
+      ;; правой границей», и двойные перекрытия ЗАПОЛНЕНИЕ + ДВЕРЬ.
+      ;; Границы витража — справочные: INS_PT панели правится только по
+      ;; отражению блока (XSCALE/YSCALE < 0), этого достаточно.
+      ;; Предупреждаем, но НЕ двигаем панель: сдвиг «на ширину» был ошибкой.
+      (if (and (> (+ new-x w) (+ max-x *mk:tol-skew*))
+               (null *mk:quiet-edges*))
+        (prompt (strcat "\n  [WARN] Панель за правой границей витража: "
+                        (rtos (+ new-x w) 2 1) " > " (rtos max-x 2 1)
+                        " — положение не меняется")))
+      (if (and (> (+ new-y h) (+ max-y *mk:tol-skew*))
+               (null *mk:quiet-edges*))
+        (prompt (strcat "\n  [WARN] Панель за верхней границей витража: "
+                        (rtos (+ new-y h) 2 1) " > " (rtos max-y 2 1)
+                        " — положение не меняется")))
       (setq panel (mk:rec-put panel 'INS_PT (list new-x new-y 0.0)))))
   panel)
 
@@ -1516,12 +1523,17 @@
               (or (>= mx (- mn tol))
                   (<= (/ mx mn) *mk:same-cell-ratio*)))))
 
-(defun mk:same-cell? (p1 p2 / t1 t2)
+;; Пара «заполнение + проём» (окно/дверь) — это один и тот же световой проём:
+;; проём рисуется поверх заполнений и обычно занимает несколько ячеек, поэтому
+;; сравнивать габариты бессмысленно. Такая пара перекрытием не считается.
+(defun mk:opening-pair? (p1 p2 / t1 t2)
   (setq t1 (cdr (assoc 'TYPE p1)) t2 (cdr (assoc 'TYPE p2)))
-  (and (or (and (= t1 "ЗАПОЛНЕНИЕ") (member t2 '("ОКНО" "ДВЕРЬ")))
-           (and (= t2 "ЗАПОЛНЕНИЕ") (member t1 '("ОКНО" "ДВЕРЬ"))))
-       (mk:same-cell-dim? (cdr (assoc 'WIDTH p1))  (cdr (assoc 'WIDTH p2))  200.0)
-       (mk:same-cell-dim? (cdr (assoc 'HEIGHT p1)) (cdr (assoc 'HEIGHT p2)) 200.0)))
+  (or (and (= t1 "ЗАПОЛНЕНИЕ") (member t2 '("ОКНО" "ДВЕРЬ")))
+      (and (= t2 "ЗАПОЛНЕНИЕ") (member t1 '("ОКНО" "ДВЕРЬ")))))
+
+;; Совместимость: пара «в одной ячейке» — тот же признак
+(defun mk:same-cell? (p1 p2)
+  (mk:opening-pair? p1 p2))
 
 (defun mk:check-overlaps (panels / i j count x1 y1 w1 h1 x2 y2 w2 h2)
   (setq count 0 i 0)
@@ -1538,13 +1550,13 @@
                 y2 (cadr (cdr (assoc 'INS_PT p2)))
                 w2 (if (cdr (assoc 'WIDTH p2)) (cdr (assoc 'WIDTH p2)) 0.0)
                 h2 (if (cdr (assoc 'HEIGHT p2)) (cdr (assoc 'HEIGHT p2)) 0.0))
-          (if (and (not (mk:same-cell? p1 p2))
+          (if (and (not (mk:opening-pair? p1 p2))
                    (< x1 (+ x2 w2)) (> (+ x1 w1) x2)
                    (< y1 (+ y2 h2)) (> (+ y1 h1) y2))
             (progn
               (prompt (strcat "\n  [ERROR] Перекрытие: " (cdr (assoc 'TYPE p1))
                               " и " (cdr (assoc 'TYPE p2))
-                              " в области " (rtos x1 2 1) "," (rtos y1 2 1)))
+                              " в области " (mk:safe-num x1) "," (mk:safe-num y1)))
               (setq count (1+ count))))))
       (setq j (1+ j)))
     (setq i (1+ i)))
@@ -1823,12 +1835,15 @@
 ;; Создание слоя через таблицу символов: имя может содержать пробелы,
 ;; поэтому (command "_.LAYER" ...) не годится — пробел там = Enter.
 (defun mk:ensure-layer (name color)
+  ;; mk:emk нельзя: он складывает объекты в *mk:drawn* (это только графика
+  ;; модели). Слой создаётся напрямую entmake — и, если слой уже есть,
+  ;; ничего не делаем, чтобы не перебить цвета настройки заказчика.
   (if (null (tblsearch "LAYER" name))
     (entmake (list '(0 . "LAYER")
                    '(100 . "AcDbSymbolTableRecord")
                    '(100 . "AcDbLayerTableRecord")
                    (cons 2 name)
-                   (cons 70 0)
+                   '(70 0)
                    (cons 62 color)
                    '(6 . "Continuous"))))
   name)
@@ -4043,18 +4058,32 @@
         (vl-catch-all-apply 'vlax-invoke-method (list g "Delete")))))
   nil)
 
-;; Удалить всю отрисовку модели: объекты слоя + одноимённую группу
+;; Удалить всю отрисовку модели: объекты слоя + одноимённую группу.
+;; Раньше вызывалось по каждой группе витража и каждый раз сносило ВЕСЬ слой —
+;; счётчик «объектов» при этом показывал остаток после первого прохода, а при
+;; сбое прогона удаление не выполнялось вовсе и сетка оставалась в чертеже.
+;; Теперь: сначала группа (если задана), затем весь слой — один раз.
 (defun mk:erase-model (layer group / ss i n)
-  (mk:group-delete group)
-  (setq ss (ssget "_X" (list (cons 8 layer))))
+  (if (mk:strp group) (mk:group-delete group))
   (setq n 0)
-  (if ss
+  (if (mk:strp layer)
     (progn
-      (setq i (sslength ss))
-      (repeat i
-        (setq i (1- i))
-        (if (entdel (ssname ss i)) (setq n (1+ n))))))
-  (prompt (strcat "\n  [OK] Сетка удалена, объектов: " (itoa n)))
+      (setq ss (ssget "_X" (list (cons 8 layer))))
+      (if ss
+        (progn
+          (setq i (sslength ss))
+          (repeat i
+            (setq i (1- i))
+            (if (entdel (ssname ss i)) (setq n (1+ n))))))))
+  n)
+
+;; Снести сетки всех витражей прогона (слой — целиком, группы — по именам)
+(defun mk:erase-all-models (/ n)
+  (setq n 0)
+  (foreach grp *mk:last-groups*
+    (mk:group-delete (mk:group-model-name (nth 0 grp))))
+  (setq n (mk:erase-model *mk:layer-model* nil))
+  (mk:erase-model *mk:layer-test* *mk:group-test*)
   n)
 
 ;;;=====================================================================
@@ -4070,6 +4099,8 @@
 ;;;   Выбор: выбраны объекты — только они; выбор отменён — весь чертёж.
 ;;;   Рамки всегда ищутся по всему чертежу, даже если не попали в выборку.
 ;;;=====================================================================
+(setq *mk:batch-keep-grid* nil)  ; t — оставить сетки моделей в чертеже
+(setq *mk:scope-source*    nil)  ; «выборка» / «весь чертёж» — для дампа
 (setq *mk:last-groups*   nil)   ; группы прогона: (TAG FRAME ENANES RECORDS COUNTS)
 (setq *mk:last-extra*    nil)   ; объекты вне рамок — не маркируются
 (setq *mk:last-scope*    nil)   ; полная выборка прогона (список ename)
@@ -4596,12 +4627,14 @@
   ;; превращалось в «___-_»). Коды — CP1251: 168 Ё, 184 ё, 192..255 А..я.
   (setq n (if c (ascii c) nil))
   (and (numberp n)
-       (or (and (>= n 48) (<= n 57))     ; 0-9
-           (and (>= n 65) (<= n 90))     ; A-Z
-           (and (>= n 97) (<= n 122))    ; a-z
-           (= n 45) (= n 95)             ; - _
-           (= n 168) (= n 184)           ; Ё ё
-           (and (>= n 192) (<= n 255))))) ; А..я
+       (or (and (>= n 48) (<= n 57))      ; 0-9
+           (and (>= n 65) (<= n 90))      ; A-Z
+           (and (>= n 97) (<= n 122))     ; a-z
+           (= n 45) (= n 95)              ; - _
+           (= n 168) (= n 184)            ; Ё ё (CP1251)
+           (and (>= n 192) (<= n 255))    ; А..я (CP1251)
+           (= n 1025) (= n 1105)          ; Ё ё (Unicode)
+           (and (>= n 1040) (<= n 1103))))) ; А..я (Unicode)
 
 ;; Имя группы на чертеже: буквы/цифры/«_», остальное — «_».
 ;; Если после чистки не осталось ни одной буквы или цифры (нестандартная
@@ -4613,12 +4646,20 @@
     (setq c (substr s i 1))
     (setq out (strcat out (if (mk:alnum-char? c) c "_")))
     (setq i (1+ i)))
+  ;; Если «твёрдых» символов не осталось (всё превратилось в «_»), значит
+  ;; код-тест не сработал: в AutoCAD ascii отдаёт код системной кодовой
+  ;; страницы, и кириллица может не попасть в ожидаемый диапазон.
+  ;; В этом случае имя собираем из исходной строки, экранируя только
+  ;; символы, запрещённые в имени группы. Лучше рабочее имя без кириллицы,
+  ;; чем «___-_».
   (setq solid nil i 1)
-  (while (<= i (strlen out))
-    (setq c (substr out i 1))
-    (if (/= c "_") (setq solid t))
-    (setq i (1+ i)))
-  (if (null solid)
+  (if (> (strlen out) 0)
+    (progn
+      (while (<= i (strlen out))
+        (setq c (substr out i 1))
+        (if (/= c "_") (setq solid t))
+        (setq i (1+ i)))))
+  (if (or (null solid) (= out ""))
     (progn
       (setq out "" i 1)
       (while (<= i (strlen s))
@@ -4627,7 +4668,6 @@
         (setq i (1+ i)))))
   (if (> (strlen out) 0) out "ВИТРАЖ"))
 
-;; Базовое имя группы сетки — не меняется в течение прогона
 (setq *mk:group-model-base* "Сетка_витража")
 
 ;; Имя группы сетки/модели текущего витража
@@ -4761,19 +4801,35 @@
                       ", перекрытий: " (itoa overlap)
                       ", вне сетки: " (itoa outj))))
     (progn
+      ;; витраж без каркаса не должен ронять своё имя в лог как «сбой»
       (setq bounds (list (cons 'MIN_X nil) (cons 'MAX_X nil)
                          (cons 'MIN_Y nil) (cons 'MAX_Y nil))
             dup 0 overlap 0 outj 0)
       (prompt "\n  [WARN] В витраже нет элементов каркаса и заполнений.")))
   (list data posts beams fills windows doors bounds dup overlap outj))
 
-;; Итог по сбоям витражей за прогон (нет сбоев — молчит)
+;; Этап пакета под защитой: сбой фиксируется в *mk:run-errors* и печатается,
+;; следующие этапы при этом выполняются (уборка сетки и ведомость — тоже).
+(defun mk:run-stage (no name sym / r)
+  (prompt (strcat "\n\n===== [" no "] " name " ====="))
+  (setq r (vl-catch-all-apply sym nil))
+  (if (vl-catch-all-error-p r)
+    (progn
+      (prompt (strcat "\n[ERROR] " name ": сбой — "
+                      (vl-catch-all-error-message r)))
+      (prompt "\n[INFO] Переход к следующему этапу.")
+      (setq *mk:run-errors* (cons (list name (vl-catch-all-error-message r))
+                                 *mk:run-errors*))
+      nil)
+    r))
+
+;; Итог по сбоям прогона: витражи и этапы пакета (нет сбоев — молчит)
 (defun mk:print-run-errors (/ n e)
   (setq n 0)
   (foreach e *mk:run-errors* (if (cadr e) (setq n (1+ n))))
   (if (> n 0)
     (progn
-      (prompt (strcat "\n[WARN] Витражей со сбоем: " (itoa n) " из "
+      (prompt (strcat "\n[WARN] Сбоев в прогоне: " (itoa n) " из "
                       (itoa (length *mk:run-errors*))))
       (foreach e *mk:run-errors*
         (if (cadr e)
@@ -4993,7 +5049,7 @@
 ;;   Одна выборка -> по каждому витражу: сбор и модель, стойки, ригели ->
 ;;   удаление сеток -> одна общая ведомость. Один UNDO на весь пакет.
 
-(defun c:МАРКАВ (/ ss keep doc n grp)
+(defun c:МАРКАВ (/ ss keep doc n grp r)
   (prompt (strcat "\n[МАРКАВ] Пакетный прогон, " *mk:ver* " / " *mk:build*))
   (prompt "\n  Порядок: выборка -> витражи -> (сбор, стойки, ригели) по каждому -> ведомость.")
   (setq *mk:batch* nil *mk:batch-ss* nil *mk:batch-mode* nil
@@ -5018,26 +5074,25 @@
       ;; единая транзакция отката
       (setq doc (mk:ax-get (vlax-get-acad-object) "ActiveDocument"))
       (if doc (vl-catch-all-apply 'vlax-invoke-method (list doc "StartUndoMark")))
-      (setq *mk:batch* t)
-      (prompt "\n\n===== [ЭТАП 1/4] МАРКАВГЕОМЕТРИЯ =====")
-      (c:МАРКАВГЕОМЕТРИЯ)
-      (prompt "\n\n===== [ЭТАП 2/4] МАРКАВСТ =====")
-      (c:МАРКАВСТ)
-      (prompt "\n\n===== [ЭТАП 3/4] МАРКАВРГ =====")
-      (c:МАРКАВРГ)
+      (setq *mk:batch* t *mk:run-errors* nil)
+      ;; каждый этап под vl-catch-all-apply: раньше сбой на этапе 1 обрывал
+      ;; МАРКАВ целиком — сетки моделей оставались в чертеже, ведомость
+      ;; не строилась, а UNDO-транзакция не закрывалась
+      (setq r (mk:run-stage "ЭТАП 1/4" "МАРКАВГЕОМЕТРИЯ" 'c:МАРКАВГЕОМЕТРИЯ))
+      (setq r (mk:run-stage "ЭТАП 2/4" "МАРКАВСТ" 'c:МАРКАВСТ))
+      (setq r (mk:run-stage "ЭТАП 3/4" "МАРКАВРГ" 'c:МАРКАВРГ))
       (if *mk:batch-keep-grid*
         (prompt (strcat "\n\n  [INFO] Сетки витражей оставлены на слое «"
                         *mk:layer-model* "» (группы «" *mk:group-model-base*
                         "_<витраж>»)."))
         (progn
           (prompt "\n\n  Удаление сеток витражей перед вставкой таблицы...")
-          (foreach grp *mk:last-groups*
-            (mk:erase-model *mk:layer-model*
-                            (mk:group-model-name (nth 0 grp))))
-          (mk:erase-model *mk:layer-test* *mk:group-test*)))
-      (prompt "\n\n===== [ЭТАП 4/4] МАРКАВТАБЛ =====")
-      (c:МАРКАВТАБЛ)
+          (setq n (mk:erase-all-models))
+          (prompt (strcat "\n  [OK] Сетка удалена, объектов: " (itoa n)))))
+      (mk:run-stage "ЭТАП 4/4" "МАРКАВТАБЛ" 'c:МАРКАВТАБЛ)
       (setq *mk:batch* nil *mk:batch-ss* nil *mk:run-scope* nil)
+      (setq *mk:run-errors* (reverse *mk:run-errors*))
+      (mk:print-run-errors)
       (if doc (vl-catch-all-apply 'vlax-invoke-method (list doc "EndUndoMark")))
       (setq n (length *mk:last-groups*))
       (prompt (strcat "\n\n[ГОТОВО] Пакет МАРКАВ завершён: витражей "

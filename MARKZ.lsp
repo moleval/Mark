@@ -119,7 +119,7 @@
 
 ;; Редакция модуля — видно в консоли при загрузке и в баннерах
 (setq *mark:rev*    "Ред. 48.35")
-(setq *mark:build*  "36.1")
+(setq *mark:build*  "Ред. 36.2")
 
 ;; МАРКАЗАП: один выбор; один UNDO на весь пакет
 (setq *mark:reuse-sel* nil)
@@ -8832,7 +8832,7 @@
   (princ (strcat "\n  | " (mark:ljust "КОМАНДА" 25) "| " (mark:ljust "ЧТО ДЕЛАЕТ" 34) " |")))
 (mark:test-parens)
 (princ (strcat "\n[MARKZ] " (if (mark:strp *mark:rev*) *mark:rev* "Ред. неизвестна")
-  " / build " (if (mark:strp *mark:build*) *mark:build* "неизвестная") " загружена."))
+  " / " (if (mark:strp *mark:build*) *mark:build* "Ред. неизвестна") " загружена."))
 (mark:help-border)
 (mark:help-header)
 (mark:help-border)
