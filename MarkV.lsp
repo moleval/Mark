@@ -3391,6 +3391,9 @@
                 space    (vla-get-ModelSpace doc)
                 pt       (trans pt 1 0)
                 nCols    6
+                ;; nRows = 2 строки шапки (заголовок + шапка колонок)
+                ;; + строки данных + строка «Итого» + по строке «ВСЕГО»
+                ;; на каждую секцию — ровно столько строк и заполняется
                 nRows    (+ 3 (length data) n-sec)
                 old-echo (getvar "CMDECHO"))
           (vl-catch-all-apply 'setvar (list "CMDECHO" 0))
