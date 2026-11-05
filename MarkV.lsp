@@ -1500,7 +1500,7 @@
                    (< (abs (- (car pt1) (car pt2))) tol)
                    (< (abs (- (cadr pt1) (cadr pt2))) tol))
             (progn
-              (prompt (strcat "\n  [ERROR] Дубликат: " (cdr (assoc 'TYPE el1))
+              (prompt (strcat "\n  [ERROR] Дубликат: " (mk:safe-str (cdr (assoc 'TYPE el1)))
                               " в точке " (rtos (car pt1) 2 1) "," (rtos (cadr pt1) 2 1)))
               (setq count (1+ count))))))
       (setq j (1+ j)))
@@ -1540,8 +1540,8 @@
                    (< x1 (+ x2 w2)) (> (+ x1 w1) x2)
                    (< y1 (+ y2 h2)) (> (+ y1 h1) y2))
             (progn
-              (prompt (strcat "\n  [ERROR] Перекрытие: " (cdr (assoc 'TYPE p1))
-                              " и " (cdr (assoc 'TYPE p2))
+              (prompt (strcat "\n  [ERROR] Перекрытие: " (mk:safe-str (cdr (assoc 'TYPE p1)))
+                              " и " (mk:safe-str (cdr (assoc 'TYPE p2)))
                               " в области " (mk:safe-num x1) "," (mk:safe-num y1)))
               (setq count (1+ count))))))
       (setq j (1+ j)))
@@ -1564,7 +1564,7 @@
         (if (or (< x (- min-x *mk:tol-skew*)) (> x (+ max-x *mk:tol-skew*))
                 (< y (- min-y *mk:tol-skew*)) (> y (+ max-y *mk:tol-skew*)))
           (progn
-            (prompt (strcat "\n  [WARN] Вне сетки: " (cdr (assoc 'TYPE el))
+            (prompt (strcat "\n  [WARN] Вне сетки: " (mk:safe-str (cdr (assoc 'TYPE el)))
                             " в точке " (rtos x 2 1) "," (rtos y 2 1)))
             (setq count (1+ count)))))))
   (if (> count 0)
@@ -2121,8 +2121,8 @@
                                            (cdr (assoc 'SIZE_MARK beam)) "нет")) f)
         (if (mk:rec-get beam 'SUBCELL_PAIR)
           (progn
-            (write-line (strcat "  SUBCELL_1: " (mk:rec-get beam 'SUBCELL_1)) f)
-            (write-line (strcat "  SUBCELL_2: " (mk:rec-get beam 'SUBCELL_2)) f)))
+            (write-line (strcat "  SUBCELL_1: " (mk:safe-str (mk:rec-get beam 'SUBCELL_1))) f)
+            (write-line (strcat "  SUBCELL_2: " (mk:safe-str (mk:rec-get beam 'SUBCELL_2))) f)))
         (write-line "" f))
       (write-line "--- ЗАПОЛНЕНИЯ ---" f)
       (foreach fill fills
