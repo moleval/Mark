@@ -4339,12 +4339,18 @@
 ;; Делит выборку по витражам: (GROUPS EXTRA).
 ;; Группа: (TAG FRAME ENANES RECORDS COUNTS), COUNTS =
 ;; (стойки ригели заполнения окна двери всего)
-(defun mk:split-by-vitrage (enames frames / records idxs out extra i sub tag k c)
-  (setq records nil)
+(defun mk:split-by-vitrage (enames frames / records idxs out extra i sub tag k c unknown)
+  (setq records nil unknown nil)
   (foreach e enames
     (setq k (mk:obj-kind e))
-    (if k (setq records (cons (mk:obj-record e k frames) records))))
-  (setq records (reverse records))
+    (if k
+      (setq records (cons (mk:obj-record e k frames) records))
+      ;; вставка, не подошедшая ни под один тип, раньше терялась молча —
+      ;; именно так «пропадали» окна с незнакомым именем блока
+      (if (= (cdr (assoc 0 (entget e))) "INSERT")
+        (setq unknown (cons e unknown)))))
+  (setq records (reverse records)
+        *mk:last-unknown* (reverse unknown))
   ;; группы — только по рамкам, в которых есть что обрабатывать: рамка без
   ;; единого объекта (или пустой «Атрибуты витража» в стороне) группу не создаёт
   (setq idxs (mk:uniq-nums
@@ -4374,6 +4380,36 @@
                               sub c)
                         out)))))
   (list (reverse out) extra))
+
+;;;--- Нераспознанные вставки ------------------------------------------
+
+;; Сводка «имя блока -> сколько раз встретилось» по вставкам, которые не
+;; попали ни в стойки/ригели, ни в заполнения/окна/двери, ни в рамки.
+;; Нужна для разбора «окна = 0»: в логе сразу видно настоящее имя семейства.
+(defun mk:unknown-table (/ out hit key)
+  (setq out nil)
+  (foreach e *mk:last-unknown*
+    (setq key (mk:ent-name e))
+    (setq key (if (mk:strp key) key "?"))
+    (if (setq hit (assoc key out))
+      (setq out (subst (cons key (1+ (cdr hit))) hit out))
+      (setq out (cons (cons key 1) out))))
+  (vl-sort out '(lambda (a b) (> (cdr a) (cdr b)))))
+
+(defun mk:print-unknown (/ tb n shown tail)
+  (setq tb (mk:unknown-table) n (length *mk:last-unknown*))
+  (if (> n 0)
+    (progn
+      (prompt (strcat "\n  [INFO] Вставок вне типов MarkV: " (itoa n)
+                      " — имена блоков ниже, полный список в MARKZV_MODEL.txt"))
+      (setq shown 0 tail nil)
+      (foreach pr tb
+        (if (< shown 10)
+          (progn
+            (prompt (strcat "\n    " (mk:safe-str (car pr)) " x" (itoa (cdr pr))))
+            (setq shown (1+ shown)))
+          (setq tail t)))
+      (if tail (prompt "\n    ... (остальные — в MARKZV_MODEL.txt)")))))
 
 ;;;--- Печать групп ----------------------------------------------------
 
@@ -4408,6 +4444,7 @@
 ;; на время прогона (кэш чистит mk:prepare-run).
 (setq *mk:group-cache* nil)
 (setq *mk:run-errors* nil)   ; ((витраж . сообщение) ...) за прогон
+(setq *mk:last-unknown* nil) ; вставки, не подошедшие ни под один тип MarkV
 ;; t — идёт сбор внутри витража: префикс витража задан группой
 (setq *mk:in-group* nil)
 
@@ -4502,6 +4539,7 @@
             *mk:last-extra*  (cadr res)
             *mk:last-ss*     (mk:ss-of enames))
       (mk:print-groups *mk:last-groups* *mk:last-extra*)
+      (mk:print-unknown)
       (if (null (car res))
         (progn (prompt "\n[WARN] Ни один объект не попал в рамки витражей.") nil)
         res))))
@@ -4524,7 +4562,7 @@
        (or (and (>= n 48) (<= n 57))     ; 0-9
            (and (>= n 65) (<= n 90))     ; A-Z
            (and (>= n 97) (<= n 122))    ; a-z
-           (= n 95)                      ; _
+           (= n 45) (= n 95)             ; - _
            (= n 168) (= n 184)           ; Ё ё
            (and (>= n 192) (<= n 255))))) ; А..я
 
@@ -4598,10 +4636,10 @@
               doors (cdr (assoc 'DOORS data)))
         (setq bounds (mk:find-vitrage-bounds posts beams))
         (write-line (strcat "=== ВИТРАЖ " (nth 0 grp) " ===") f)
-        (write-line (strcat "  Границы: X=" (rtos (cdr (assoc 'MIN_X bounds)) 2 1)
-                            ".." (rtos (cdr (assoc 'MAX_X bounds)) 2 1)
-                            "  Y=" (rtos (cdr (assoc 'MIN_Y bounds)) 2 1)
-                            ".." (rtos (cdr (assoc 'MAX_Y bounds)) 2 1)) f)
+        (write-line (strcat "  Границы: X=" (mk:safe-num (cdr (assoc 'MIN_X bounds)))
+                            ".." (mk:safe-num (cdr (assoc 'MAX_X bounds)))
+                            "  Y=" (mk:safe-num (cdr (assoc 'MIN_Y bounds)))
+                            ".." (mk:safe-num (cdr (assoc 'MAX_Y bounds)))) f)
         (write-line (strcat "  Стойки: " (itoa (length posts))
                             "  Ригели: " (itoa (length beams))
                             "  Заполнения: " (itoa (length fills))
@@ -4609,30 +4647,34 @@
                             "  Двери: " (itoa (length doors))) f)
         (foreach post posts
           (write-line (strcat "  СТОЙКА HANDLE=" (mk:rec-handle post)
-                              " X=" (rtos (car (cdr (assoc 'INS_PT post))) 2 1)
-                              " Y=" (rtos (cadr (cdr (assoc 'INS_PT post))) 2 1)
+                              " X=" (mk:safe-num (car (cdr (assoc 'INS_PT post))))
+                              " Y=" (mk:safe-num (cadr (cdr (assoc 'INS_PT post))))
                               " L=" (mk:safe-num (mk:rec-get post 'LENGTH))
                               " АРТ=" (if (mk:rec-get post 'ARTICLE)
                                         (mk:rec-get post 'ARTICLE) "—")) f))
         (foreach beam beams
           (write-line (strcat "  РИГЕЛЬ HANDLE=" (mk:rec-handle beam)
-                              " X=" (rtos (car (cdr (assoc 'INS_PT beam))) 2 1)
-                              " Y=" (rtos (cadr (cdr (assoc 'INS_PT beam))) 2 1)
+                              " X=" (mk:safe-num (car (cdr (assoc 'INS_PT beam))))
+                              " Y=" (mk:safe-num (cadr (cdr (assoc 'INS_PT beam))))
                               " L=" (mk:safe-num (mk:rec-get beam 'LENGTH))
                               " АРТ=" (if (mk:rec-get beam 'ARTICLE)
                                         (mk:rec-get beam 'ARTICLE) "—")) f))
         (foreach pn (append fills windows doors)
-          (write-line (strcat "  " (mk:rec-get pn 'TYPE)
+          (write-line (strcat "  " (mk:safe-str (mk:rec-get pn 'TYPE))
                               " HANDLE=" (mk:rec-handle pn)
-                              " X=" (rtos (car (cdr (assoc 'INS_PT pn))) 2 1)
-                              " Y=" (rtos (cadr (cdr (assoc 'INS_PT pn))) 2 1)
+                              " X=" (mk:safe-num (car (cdr (assoc 'INS_PT pn))))
+                              " Y=" (mk:safe-num (cadr (cdr (assoc 'INS_PT pn))))
                               " W=" (mk:safe-num (mk:rec-get pn 'WIDTH))
                               " H=" (mk:safe-num (mk:rec-get pn 'HEIGHT))) f))
         (write-line "" f))
+      (write-line "--- НЕ РАСПОЗНАННЫЕ ВСТАВКИ (имя блока x количество) ---" f)
+      (foreach pr (mk:unknown-table)
+        (write-line (strcat "  " (car pr) " x" (itoa (cdr pr))) f))
+      (write-line "" f)
       (write-line "--- ВНЕ РАМОК ---" f)
       (foreach r *mk:last-extra*
-        (write-line (strcat "  " (cdr (assoc 'TYPE r))
-                            " HANDLE=" (cdr (assoc 'HANDLE r))) f))
+        (write-line (strcat "  " (mk:safe-str (cdr (assoc 'TYPE r)))
+                            " HANDLE=" (mk:safe-str (cdr (assoc 'HANDLE r)))) f))
       (close f)
       (prompt (strcat "\n  [OK] Дамп по витражам: " fn)))))
 
