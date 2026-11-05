@@ -118,8 +118,8 @@
 ;;;--------------------- Состояние сеанса -----------------------------
 
 ;; Редакция модуля — видно в консоли при загрузке и в баннерах
-(setq *mark:rev*    "Ред. 48.35")
-(setq *mark:build*  "Ред. 36.2")
+(setq *mark:rev*    "Ред. 48.36")
+(setq *mark:build*  "Ред. 36.3")
 
 ;; МАРКАЗАП: один выбор; один UNDO на весь пакет
 (setq *mark:reuse-sel* nil)
@@ -875,11 +875,38 @@
                        ", закрытых ): " (itoa n-close)
                        ", строк: " (itoa line))))))))
 
+;; Есть ли загруженная команда (тестер AutoExtraction): CHKALL/CHKFILE.
+;; В AutoLISP нет способа «спросить тип команды»: (type 'c:CHKALL) возвращает
+;; SUBR всегда, а прямое обращение к незагруженной c:CHKALL — ошибка.
+;; Правильный способ — atoms-family: список имён определённых символов.
+(defun mark:has-command? (cmd / lst hit)
+  (setq lst (vl-catch-all-apply 'atoms-family (list 1)))
+  (if (or (null lst) (vl-catch-all-error-p lst))
+    nil
+    (progn
+      (foreach nm lst
+        (if (and (null hit) (mark:strp nm)
+                 (= (strcase nm) (strcase (strcat "C:" cmd))))
+          (setq hit t)))
+      hit)))
+
 (defun mark:test-parens (/ path res)
   (mark:out "")
-  (setq path (mark:find-source))
   (cond
-    ((null path)
+    ;; Ред. 48.36: синтаксис проверяет CHKALL — он один на весь проект
+    ;; (все модули и плагины), встроенный сканер только дублировал его.
+    ((mark:has-command? "CHKALL")
+     (progn
+       (mark:out "[TEST 00] Прогон скобок — CHKALL (AutoExtraction)")
+       (setq res (vl-catch-all-apply 'c:CHKALL nil))
+       (if (vl-catch-all-error-p res)
+         (progn
+           (mark:out (strcat "       CHKALL: " (vl-catch-all-error-message res)))
+           (mark:note-warning))
+         (mark:out "[TEST 00] Отчёт CHKALL — выше в логе."))
+       nil))
+    ;; CHKALL не загружен — встроенный сканер (файл исходника по кандидатам)
+    ((null (setq path (mark:find-source)))
      (progn
        (mark:out "[TEST 00] Прогон скобок — WARNING")
        (mark:out "Файл исходника для прогона скобок не найден.")

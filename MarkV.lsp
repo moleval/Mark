@@ -88,14 +88,21 @@
 
 ;; Проверка синтаксиса. Основной тестер — в AutoExtraction: CHKALL (все модули
 ;; и плагины), CHKFILE (один файл), CHKLOAD (поиск места сбоя загрузки).
-;; CHKALL вызывается как команда AutoCAD: имена команд в AutoLISP не видны как
-;; функции, поэтому наличие тестера ловится через getc: no-arg (не трогает
-;; CMDECHO и не печатает «Неизвестная команда»). Если AutoExtraction загружен —
-;; он и проверяет; иначе работает встроенный сканер по исходнику MarkV.lsp.
-(defun mk:ext-checker? (cmd)
-  (if (and (mk:strp cmd) (getc: cmd))
-    (progn (getc: nil) t)
-    (progn (getc: nil) nil)))
+;; CHKALL — команда AutoCAD, а не функция: наличие тестера определяется по
+;; atoms-family (список определённых символов). Если AutoExtraction загружен —
+;; проверяет он; иначе работает встроенный сканер по исходнику MarkV.lsp.
+;; Есть ли загруженная команда (CHKALL/CHKFILE из AutoExtraction). Сам символ
+;; c:CHKALL не трогаем: обращение к незагруженной команде даёт ошибку.
+(defun mk:ext-checker? (cmd / lst hit)
+  (setq lst (vl-catch-all-apply 'atoms-family (list 1)))
+  (if (or (null lst) (vl-catch-all-error-p lst) (null (mk:strp cmd)))
+    nil
+    (progn
+      (foreach nm lst
+        (if (and (null hit) (mk:strp nm)
+                 (= (strcase nm) (strcase (strcat "C:" cmd))))
+          (setq hit t)))
+      hit)))
 
 (defun c:МАРКАВСКОБКИ (/ result path)
   (prompt "\n[МАРКАВСКОБКИ] Проверка MarkV.lsp...")
@@ -125,9 +132,9 @@
 ;;; 1. КОНФИГУРАЦИЯ
 ;;;=====================================================================
 ;; Версия — как у заказчика: редакция и билд отдельными записями «Ред. N.N».
-;; В логах печатается «Ред. 7.0 / Ред. 33.10» — две редакции, без слова build.
+;; В логах печатается «Ред. 7.0 / Ред. 33.11» — две редакции, без слова build.
 (setq *mk:ver*            "Ред. 7.0")
-(setq *mk:build*          "Ред. 33.10")
+(setq *mk:build*          "Ред. 33.11")
 
 (setq *mk:block-fill*     "Заполнение в витраж")
 (setq *mk:block-vitrage*  "Атрибуты витража")
@@ -1827,7 +1834,7 @@
   ;; mk:emk нельзя: он складывает объекты в *mk:drawn* (это только графика
   ;; модели). Слой создаётся напрямую entmake — и, если слой уже есть,
   ;; ничего не делаем, чтобы не перебить цвета настройки заказчика.
-  ;; Ред. 33.10: пары DXF — ТОЛЬКО точечные: (70 . 0), а не (70 0).
+  ;; Ред. 33.11: пары DXF — ТОЛЬКО точечные: (70 . 0), а не (70 0).
   ;; Запись без точки даёт «неверная DXF-группа: (70 0)» и валит этап 1
   ;; (слой не создаётся, а ошибка всплывает позже, на entmake объектов).
   (if (null (tblsearch "LAYER" name))
@@ -4195,9 +4202,10 @@
 (setq *mk:step* nil)
 
 ;; Спрашивать точку вставки ведомости в пакете МАРКАВ.
-;; nil — как было: точка считается сама и команда ничего не спрашивает;
-;; t   — после уборки сеток МАРКАВ спрашивает точку вставки таблицы.
-(setq *mk:ask-table-pt* nil)
+;; t   — после уборки сеток МАРКАВ спрашивает точку вставки таблицы
+;;       (Enter — прежнее автоматическое место, под витражами);
+;; nil — не спрашивать вовсе, точка всегда считается автоматически.
+(setq *mk:ask-table-pt* t)
 
 ;;;--- Точка вставки таблицы в пакете ----------------------------------
 
@@ -4586,6 +4594,23 @@
     (if (and e (null (mk:obj-kind e))) (setq n (1+ n))))
   n)
 
+;; Имена объектов, не попавших ни в один тип, — по убыванию количества,
+;; с DXF-типом (INSERT / ATTRIB / MLINE…). Без имён счётчик бесполезен:
+;; «30 вне типов» ничего не говорит о том, что это за блоки.
+(defun mk:unknown-names (/ out nm typ hit)
+  (setq out nil)
+  (foreach e *mk:last-scope*
+    (if (and e (null (mk:obj-kind e)))
+      (progn
+        (setq typ (cdr (assoc 0 (entget e))))
+        (setq nm  (mk:ent-name e))
+        (if (not (mk:strp nm)) (setq nm (strcat "<" (mk:safe-str typ) ">")))
+        (setq nm (strcat nm "  [" (mk:safe-str typ) "]"))
+        (if (setq hit (assoc nm out))
+          (setq out (subst (cons nm (1+ (cdr hit))) hit out))
+          (setq out (cons (cons nm 1) out))))))
+  (vl-sort out '(lambda (a b) (> (cdr a) (cdr b)))))
+
 (defun mk:print-unknown (/ tb n shown tail)
   (setq tb (mk:unknown-table) n (length *mk:last-unknown*))
   (if (> n 0)
@@ -4723,7 +4748,7 @@
     (mk:select-scope)))
 
 ;; Выборка (или весь чертёж) + рамки всего чертежа + группы по витражам
-(defun mk:prepare-run (/ enames frames res mode n)
+(defun mk:prepare-run (/ enames frames res mode n shown)
   (mk:group-cache-clear)
   (setq *mk:in-group* nil)   ; состояние предыдущего прогона не наследуем
   ;; режим сбора спрашивается один раз на прогон: в пакете его задаёт МАРКАВ,
@@ -4755,9 +4780,17 @@
       (mk:print-unknown)          ; одиночный прогон: имена вне типов
       (setq n (mk:count-unknown))
       (if (> n 0)
-        (prompt (strcat "\n  [INFO] Вставок вне типов MarkV: " (itoa n)
-                        " — что это за блоки, покажет МАРКАВДИАГНОЗОПТОМ"
-                        " (в файл " *mk:diag-all-file* ")")))
+        (progn
+          (prompt (strcat "\n  [INFO] Вне типов MarkV: " (itoa n)
+                          " — что это за объекты (до 10 имён):"))
+          (setq shown 0)
+          (foreach pr (mk:unknown-names)
+            (if (< shown 10)
+              (progn
+                (prompt (strcat "\n    " (car pr) " x" (itoa (cdr pr))))
+                (setq shown (1+ shown)))))
+          (prompt (strcat "\n    полный список — МАРКАВДИАГНОЗОПТОМ, файл "
+                          *mk:diag-all-file*))))
       (if (null (car res))
         (progn (prompt "\n[WARN] Ни один объект не попал в рамки витражей.") nil)
         res))))
@@ -5247,10 +5280,15 @@
           (setq n (mk:erase-all-models))
           (prompt (strcat "\n  [OK] Сетка удалена, объектов: " (itoa n)))))
       ;; точка вставки ведомости фиксируется один раз за пакет:
-      ;; по умолчанию считается сама, при *mk:ask-table-pt* — спрашивается
+      ;; по умолчанию спрашивается, при *mk:ask-table-pt* = nil — считается сама
       (setq pt0 (mk:auto-table-point))
-      (if (and *mk:ask-table-pt* (null *mk:table-ins-pt*))
-        (setq pt0 (getpoint "\n  Точка вставки ведомости <Enter — под витражами>: ")))
+      (if *mk:ask-table-pt*
+        (progn
+          (setq *mk:table-ins-pt* nil)   ; точку прошлого прогона не берём
+          (setq r (getpoint (strcat "\n  Точка вставки ведомости <Enter — X="
+                                    (if pt0 (rtos (car pt0) 2 1) "?") ", Y="
+                                    (if pt0 (rtos (cadr pt0) 2 1) "?") ">: ")))
+          (if r (setq pt0 r))))
       (if pt0 (setq *mk:table-ins-pt* pt0))
       (if *mk:table-ins-pt*
         (prompt (strcat "\n\n  Ведомость: точка вставки X="
