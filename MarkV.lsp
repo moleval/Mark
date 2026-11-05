@@ -4143,33 +4143,43 @@
 ;;;--- Этап 3. Принадлежность -----------------------------------------
 
 ;; Индекс рамки с максимальным пересечением BBOX; 0 — вне рамок.
-;; Блок «Атрибуты витража» рамкой не считается: его BBOX равен рамке, и сам
-;; витраж остался бы без владельца. Поэтому такой блок привязывается к своей
-;; рамке отдельно (mk:frame-owner), а в разбиении он всё равно отбрасывается.
-(defun mk:frame-of (bb frames / i best besta a)
-  (setq i 1 best nil besta 0.0)
+;; Рамка витража — это либо отдельный объект рамки, либо, если отдельных рамок
+;; в чертеже нет, сам блок «Атрибуты витража» (у него те же динамические
+;; «Ширина/Высота рамки»). Поэтому сначала ищем среди «настоящих» рамок, и
+;; только если ни одна не подошла — среди блоков атрибутов. Иначе в чертеже,
+;; где рамка одна и это и есть блок атрибутов, все объекты остались бы
+;; «вне рамок».
+(defun mk:frame-of (bb frames / i best besta a best2 besta2)
+  (setq i 1 best nil besta 0.0 best2 nil besta2 0.0)
   (foreach fr frames
-    (if (not (nth 7 fr))
-      (progn
-        (setq a (mk:bb-overlap-area bb (nth 3 fr)))
-        (if (> a besta) (setq besta a best i))))
+    (setq a (mk:bb-overlap-area bb (nth 3 fr)))
+    (if (nth 7 fr)
+      (if (> a besta2) (setq besta2 a best2 i))
+      (if (> a besta) (setq besta a best i)))
     (setq i (1+ i)))
-  (if best best 0))
+  (cond (best best)
+        (best2 best2)
+        (t 0)))
 
 ;; Рамка, внутри которой стоит блок «Атрибуты витража» (по точке вставки).
-;; Из нескольких вложенных рамок берём минимальную — она и есть «своя».
-(defun mk:frame-owner (pt frames / i best besta a cap)
-  (setq i 1 best nil besta nil)
+;; Из нескольких вложенных рамок берём минимальную — она и есть «своя»;
+;; если настоящих рамок нет, годится и рамка-блок атрибутов.
+(defun mk:frame-owner (pt frames / i best besta a cap best2 besta2)
+  (setq i 1 best nil besta nil best2 nil besta2 nil)
   (foreach fr frames
     (setq cap (nth 3 fr))
-    (if (and (not (nth 7 fr)) pt cap
+    (if (and pt cap
              (>= (car pt) (nth 0 cap)) (<= (car pt) (nth 2 cap))
              (>= (cadr pt) (nth 1 cap)) (<= (cadr pt) (nth 3 cap)))
       (progn
         (setq a (* (- (nth 2 cap) (nth 0 cap)) (- (nth 3 cap) (nth 1 cap))))
-        (if (or (null besta) (< a besta)) (setq besta a best i))))
+        (if (nth 7 fr)
+          (if (or (null besta2) (< a besta2)) (setq besta2 a best2 i))
+          (if (or (null besta) (< a besta)) (setq besta a best i)))))
     (setq i (1+ i)))
-  (if best best 0))
+  (cond (best best)
+        (best2 best2)
+        (t 0)))
 
 ;; Имя витража из блока «Атрибуты витража», стоящего внутри рамки FR.
 ;; Нужно, когда у самой рамки атрибут «Витраж» пуст.
@@ -4251,8 +4261,15 @@
     (setq k (mk:obj-kind e))
     (if k (setq records (cons (mk:obj-record e k frames) records))))
   (setq records (reverse records))
+  ;; группы — только по рамкам, в которых есть что обрабатывать: рамка без
+  ;; единого объекта (или пустой «Атрибуты витража» в стороне) группу не создаёт
   (setq idxs (mk:uniq-nums
-               (vl-sort (mapcar '(lambda (r) (cdr (assoc 'FRAME r))) records) '<)))
+               (vl-sort
+                 (mapcar '(lambda (r)
+                            (if (member (cdr (assoc 'TYPE r)) '("АТРИБУТЫ_ВИТРАЖА" "РАМКА"))
+                              0
+                              (cdr (assoc 'FRAME r))))
+                         records) '<)))
   (setq out nil extra nil)
   (foreach i idxs
     (setq sub (mk:filter-frame records i))
