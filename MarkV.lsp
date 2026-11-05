@@ -132,9 +132,9 @@
 ;;; 1. КОНФИГУРАЦИЯ
 ;;;=====================================================================
 ;; Версия — как у заказчика: редакция и билд отдельными записями «Ред. N.N».
-;; В логах печатается «Ред. 7.0 / Ред. 33.13» — две редакции, без слова build.
+;; В логах печатается «Ред. 7.0 / Ред. 33.14» — две редакции, без слова build.
 (setq *mk:ver*            "Ред. 7.0")
-(setq *mk:build*          "Ред. 33.13")
+(setq *mk:build*          "Ред. 33.14")
 
 (setq *mk:block-fill*     "Заполнение в витраж")
 (setq *mk:block-vitrage*  "Атрибуты витража")
@@ -186,6 +186,8 @@
 (setq *mk:cached-data*    nil)
 (setq *mk:last-ss*        nil)   ; выборка последней МАРКАВГЕОМЕТРИЯ
 (setq *mk:dyn-cache*      nil)   ; кэш динамических свойств: ename -> alist
+(setq *mk:diag-said*      nil)   ; уже напечатанные диагностики прогона
+(setq *mk:said-collect*   nil)   ; строка «Все-типы: отрезков …» — один раз за прогон
 
 (setq *mk:suffix-window-one*    "ок")
 (setq *mk:suffix-window-both*   "окх2")
@@ -1182,11 +1184,20 @@
         (cons 'VISIBILITY nil)
         (cons 'TOP_ELEM nil) (cons 'BOT_ELEM nil) (cons 'SUFFIX nil)
       ) beams))))
-  (prompt (strcat "\n  Все-типы: отрезков " (itoa (length segs))
-                  ", из геометрии стоек " (itoa (length posts))
-                  ", ригелей " (itoa (length beams))
-                  "; из блоков " (itoa (length bposts))
-                  "/" (itoa (length bbeams))))
+  ;; Этапы 1 и 3 собирают одни и те же витражи, поэтому строка про отрезки
+  ;; печаталась 18 раз подряд с одинаковыми числами. Она полезна только
+  ;; тогда, когда в выборке есть геометрия: при «отрезков 0» она ничего не
+  ;; сообщает, а «из блоков N/M» дублирует строку витража.
+  (if (and (or (> (length segs) 0) (> (length posts) 0) (> (length beams) 0))
+           (null *mk:said-collect*))
+    (progn
+      (setq *mk:said-collect* t)
+      (prompt (strcat "\n  Все-типы: отрезков " (itoa (length segs))
+                      ", из геометрии стоек " (itoa (length posts))
+                      ", ригелей " (itoa (length beams))
+                      "; из блоков " (itoa (length bposts))
+                      "/" (itoa (length bbeams))
+                      " (дальше по витражам не печатается)"))))
   (list (append bposts (reverse posts))
         (append bbeams (reverse beams))))
 
@@ -1834,7 +1845,7 @@
   ;; mk:emk нельзя: он складывает объекты в *mk:drawn* (это только графика
   ;; модели). Слой создаётся напрямую entmake — и, если слой уже есть,
   ;; ничего не делаем, чтобы не перебить цвета настройки заказчика.
-  ;; Ред. 33.13: пары DXF — ТОЛЬКО точечные: (70 . 0), а не (70 0).
+  ;; Ред. 33.14: пары DXF — ТОЛЬКО точечные: (70 . 0), а не (70 0).
   ;; Запись без точки даёт «неверная DXF-группа: (70 0)» и валит этап 1
   ;; (слой не создаётся, а ошибка всплывает позже, на entmake объектов).
   (if (null (tblsearch "LAYER" name))
@@ -2249,6 +2260,18 @@
   (while (< (strlen s) n) (setq s (strcat s " ")))
   s)
 
+;; Диагностика прогона — один раз: этапы 1 и 3 обходят одни и те же витражи,
+;; и одинаковые строки («Шкала размеров в свету: 7», «Артикулов ригелей: 2»)
+;; печатались дважды на витраж. Ключ — сам текст: разные значения видны,
+;; повторы молчат.
+(defun mk:say-once (msg)
+  (if (not (member msg *mk:diag-said*))
+    (progn (setq *mk:diag-said* (cons msg *mk:diag-said*))
+           (prompt msg))))
+
+(defun mk:diag-reset ()
+  (setq *mk:diag-said* nil *mk:said-collect* nil))
+
 (defun mk:padl (s n)
   (if (not (mk:strp s)) (setq s ""))
   (while (< (strlen s) n) (setq s (strcat " " s)))
@@ -2466,15 +2489,19 @@
   (foreach v (vl-sort pvals '<)
     (if (not (member v extra)) (setq extra (cons v extra))))
   (setq extra (reverse extra))
-  (prompt (strcat "\n  [INFO] Шкала размеров в свету: " (itoa (length out))
-                  " (по ригелям)"))
+  (mk:say-once (strcat "\n  [INFO] Шкала размеров в свету: " (itoa (length out))
+                       " (по ригелям): "
+                       (mk:join (mapcar '(lambda (v) (rtos v 2 0)) out) " ")))
+  ;; Не дефект: в MarkZ заполнение шириной, которой нет среди длин ригелей,
+  ;; получает подындекс .1/.2 у Т-узла. Печатается один раз за прогон и с
+  ;; самой шкалой — по ней сразу видно, что 895 (например) в шкалу 195/395/…
+  ;; не входит и подындекс ожидаем.
   (if extra
-    (progn
-      (prompt (strcat "\n  [WARN] Ширин заполнений без ригеля: "
-                      (itoa (length extra))
-                      " — в MarkZ это подъячейки Т-узла (подындекс .1/.2):"))
-      (foreach v extra
-        (prompt (strcat "\n           " (rtos v 2 0))))))
+    (mk:say-once
+      (strcat "\n  [INFO] Ширин заполнений вне шкалы ригелей: "
+              (itoa (length extra))
+              " — в MarkZ это подъячейки Т-узла (подындекс .1/.2): "
+              (mk:join (mapcar '(lambda (v) (rtos v 2 0)) extra) " "))))
   out)
 
 (defun mk:vert-scale (beams / vals v out)
@@ -2549,7 +2576,7 @@
 ;; Таблица «артикул -> маркер» по габариту сечения.
 ;; Артикул один — таблица пустая (маркер не нужен); средний массовый
 ;; артикул маркера не получает.
-(defun mk:size-mark-table (elements / pairs sorted out labels info)
+(defun mk:size-mark-table (elements / pairs sorted out labels)
   (setq pairs (mk:article-cross-pairs elements) out nil)
   (if (> (length pairs) 1)
     (progn
@@ -2558,15 +2585,12 @@
         (prompt (strcat "\n  [WARN] Габариты сечений артикулов ригелей одинаковы"
                         " — маркеры размера не присвоены. Задайте *mk:article-size*."))
         (progn
-          (setq labels (mk:size-labels (length sorted)) info "")
+          (setq labels (mk:size-labels (length sorted)))
           (foreach pr sorted
             (if (> (strlen (car labels)) 0)
               (setq out (cons (cons (car pr) (car labels)) out)))
-            (setq info (strcat (if (> (strlen (car labels)) 0) (car labels) "«»")
-                               (if (= (strlen info) 0) "" " < ") info))
             (setq labels (cdr labels)))
-          (prompt (strcat "\n  [INFO] Артикулов ригелей: " (itoa (length pairs))
-                          " — маркеры по убыванию: " info))))))
+          nil))))
   out)
 
 (defun mk:size-mark (art table)
@@ -3452,7 +3476,23 @@
   (foreach w *mk:tab-col-w* (setq s (+ s w)))
   s)
 
-;; Точка справа от таблицы: на уровне её верхней строки, с зазором
+;; Убрать таблицы прошлого прогона (слой ведомости). Возвращает число
+;; удалённых; 0 — значит, слой пуст или это первый прогон.
+(defun mk:clear-old-tables (/ ss i e n)
+  (setq n 0)
+  (if (and *mk:reuse-table-layer* (tblsearch "LAYER" *mk:layer-table*))
+    (progn
+      (setq ss (ssget "_X" (list (cons 8 *mk:layer-table*) (cons 0 "ACAD_TABLE"))))
+      (if ss
+        (repeat (setq i (sslength ss))
+          (setq e (ssname ss (setq i (1- i))))
+          (if (not (vl-catch-all-error-p (vl-catch-all-apply 'entdel (list e))))
+            (setq n (1+ n)))))))
+  n)
+
+;; Точка справа от ведомости. pt — левый НИЖНИЙ угол (так его понимает
+;; vla-AddTable), поэтому по Y сдвига нет: таблица закладных встаёт на одной
+;; линии низа с ведомостью, а не на её верх.
 (defun mk:tab-right-point (pt gap)
   (list (+ (car pt) (mk:tab-width) gap) (cadr pt) 0.0))
 
@@ -3783,6 +3823,11 @@
 ;;;=====================================================================
 (setq *mk:acc-masks*    '("Пятка*" "Кронштейн*"))
 (setq *mk:acc-gap*      30.0)   ; отступ второй таблицы от первой
+;; Повторный прогон в том же чертеже: ведомость прошлого прогона лежит на
+;; слое *mk:layer-table* и стоит там же (точка считается по витражам) — новая
+;; таблица легла бы ровно поверх старой. Перед вставкой таблицы прошлого
+;; прогона убираются; на слое MarkV рисует только их.
+(setq *mk:reuse-table-layer* t)
 (setq *mk:acc-title*    "Ведомость закладных")
 
 ;; Приведение тега атрибута к наименованию закладной: (маска . наименование).
@@ -4026,7 +4071,9 @@
       (setq sorted (vl-sort pairs '(lambda (a b) (< (cdr a) (cdr b))))
             labels (mk:size-labels (length sorted)))
       (foreach pr sorted
-        (setq out (cons (cons (car labels) (car pr)) out))
+        ;; значение — «артикул (сечение)»: по сечению видно, почему маркер
+        ;; именно такой, и таблица перестаёт быть повтором списка артикулов
+        (setq out (cons (list (car labels) (car pr) (cdr pr)) out))
         (setq labels (cdr labels)))))     ; из возрастания -> убывание
   out)
 
@@ -4037,13 +4084,16 @@
       (prompt (strcat "\n  " *mk:leg-h1*))
       (foreach p sfx
         (prompt (strcat "\n    " (mk:pad (car p) 6) " - " (cdr p))))))
+  ;; Таблица «маркер -> артикул (сечение)»: единственный полный список
+  ;; артикулов всего прогона — остальные строки про артикулы убраны.
   (if arts
     (progn
       (prompt (strcat "\n  " *mk:leg-h2*))
       (foreach p arts
         (prompt (strcat "\n    "
                         (mk:pad (if (> (strlen (car p)) 0) (car p) *mk:leg-none*) 16)
-                        " - " (cdr p))))))
+                        " - " (nth 1 p)
+                        " (" (rtos (nth 2 p) 2 0) " мм)")))))
   nil)
 
 ;;;--- Таблица обозначений в чертеже ------------------------------------
@@ -4101,7 +4151,9 @@
               (foreach p arts
                 (mk:tab-set tbl row 0
                   (if (> (strlen (car p)) 0) (car p) *mk:leg-none*))
-                (mk:tab-set tbl row 1 (cdr p))
+                ;; arts — список (маркер артикул сечение)
+                (mk:tab-set tbl row 1
+                  (strcat (nth 1 p) " (" (rtos (nth 2 p) 2 0) " мм)"))
                 (mk:tab-align tbl row 0 5)
                 (mk:tab-align tbl row 1 4)
                 (vl-catch-all-apply 'vla-SetRowHeight (list tbl row 8.0))
@@ -4142,7 +4194,8 @@
             (write-line "   <Row>" f)
             (mk:xcell f "H" nil "String"
               (if (> (strlen (car p)) 0) (car p) *mk:leg-none*))
-            (mk:xcell f "D" nil "String" (cdr p))
+            (mk:xcell f "D" nil "String"
+              (strcat (nth 1 p) " (" (rtos (nth 2 p) 2 0) " мм)"))
             (write-line "   </Row>" f))))
       (write-line "  </Table>" f)
       (write-line " </Worksheet>" f)))
@@ -4685,21 +4738,6 @@
           (setq out (cons (cons nm 1) out))))))
   (vl-sort out '(lambda (a b) (> (cdr a) (cdr b)))))
 
-(defun mk:print-unknown (/ tb n shown tail)
-  (setq tb (mk:unknown-table) n (length *mk:last-unknown*))
-  (if (> n 0)
-    (progn
-      (prompt (strcat "\n  [INFO] Вставок вне типов MarkV: " (itoa n)
-                      " — имена блоков ниже, полный список в MARKZV_MODEL.txt"))
-      (setq shown 0 tail nil)
-      (foreach pr tb
-        (if (< shown 10)
-          (progn
-            (prompt (strcat "\n    " (mk:safe-str (car pr)) " x" (itoa (cdr pr))))
-            (setq shown (1+ shown)))
-          (setq tail t)))
-      (if tail (prompt "\n    ... (остальные — в MARKZV_MODEL.txt)")))))
-
 ;;;--- Печать групп ----------------------------------------------------
 
 ;; Сводка «видов объектов» выборки — одна строка на тип. В пакете МАРКАВ
@@ -4824,6 +4862,7 @@
 ;; Выборка (или весь чертёж) + рамки всего чертежа + группы по витражам
 (defun mk:prepare-run (/ enames frames res mode n shown)
   (mk:group-cache-clear)
+  (mk:diag-reset)
   (setq *mk:in-group* nil)   ; состояние предыдущего прогона не наследуем
   ;; режим сбора спрашивается один раз на прогон: в пакете его задаёт МАРКАВ,
   ;; при одиночном запуске этапа — сам mk:prepare-run
@@ -4851,10 +4890,12 @@
             *mk:last-ss*     (mk:ss-of enames))
       (mk:print-kinds)
       (mk:print-groups *mk:last-groups* *mk:last-extra*)
-      (if *mk:last-unknown*
-        (progn
-          (mk:print-unknown)
-          (mk:dump-unknown *mk:last-unknown*)))
+      ;; «Вне типов MarkV» печатается один раз и ОДНИМ списком: подробный
+      ;; список (<имя> [DXF-тип]) уже содержит имена вставок, а прежний
+      ;; второй список («Вставок вне типов MarkV: N — имена блоков ниже»)
+      ;; дублировал его строка в строку. Объекты без блока (SPDSPOLYMORPHMARK,
+      ;; POINT) видны в нём как <DXF-тип>.
+      (if *mk:last-unknown* (mk:dump-unknown *mk:last-unknown*))
       (setq n (mk:count-unknown))
       (if (> n 0)
         (progn
@@ -4866,8 +4907,11 @@
               (progn
                 (prompt (strcat "\n    " (car pr) " x" (itoa (cdr pr))))
                 (setq shown (1+ shown)))))
-          (prompt (strcat "\n    полный список — МАРКАВДИАГНОЗОПТОМ, файл "
-                          *mk:diag-all-file*))))
+          (if (> (length (mk:unknown-names)) shown)
+            (prompt "\n    ... (остальные — в файле дампа)"))
+          (prompt (strcat "\n    дамп: " *mk:out-file*
+                          "; подробная диагностика — МАРКАВДИАГНОЗОПТОМ ("
+                          *mk:diag-all-file* ")"))))
       (if (null (car res))
         (progn (prompt "\n[WARN] Ни один объект не попал в рамки витражей.") nil)
         res))))
@@ -4953,6 +4997,7 @@
     (progn
       (write-line "=== ДАННЫЕ ВИТРАЖЕЙ (MarkV, многовитражный прогон) ===" f)
       (write-line (strcat "  " *mk:ver* " / " *mk:build*) f)
+      (write-line (strcat "  Черновик: " (getvar "DWGNAME")) f)
       (write-line (strcat "  Область: " (if *mk:scope-source* *mk:scope-source* "?")) f)
       (write-line (strcat "  Рамок: " (itoa (length *mk:last-frames*))) f)
       (write-line "" f)
@@ -5299,6 +5344,12 @@
                      (nth 0 (car groups))
                      (strcat (itoa (length groups)) " витражей")))
       (setq doc (mk:undo-begin))
+      ;; таблицы прошлого прогона — до вставки: иначе ведомость ляжет поверх
+      (if do-tbl
+        (progn
+          (setq res (mk:clear-old-tables))
+          (if (> res 0)
+            (prompt (strcat "\n  [INFO] Таблиц прошлого прогона убрано: " (itoa res))))))
       (if do-xls
         (progn
           (setq file (strcat (getvar "dwgprefix")
@@ -5346,6 +5397,7 @@
   (prompt "\n  Порядок: выборка -> витражи -> (сбор, стойки, ригели) по каждому -> ведомость.")
   (setq *mk:batch* nil *mk:batch-ss* nil *mk:batch-mode* nil
         *mk:last-groups* nil *mk:last-extra* nil *mk:last-frames* nil)
+  (mk:diag-reset)
   (setq *mk:dyn-cache* nil *mk:vitrage-cache* nil *mk:no-vitrage-prompted* nil
         *mk:manual-vitrage-prefix* nil *mk:allowance-unknown* nil)
   (setq ss (mk:select-scope))
