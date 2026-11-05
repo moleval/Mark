@@ -125,9 +125,9 @@
 ;;; 1. КОНФИГУРАЦИЯ
 ;;;=====================================================================
 ;; Версия — как у заказчика: редакция и билд отдельными записями «Ред. N.N».
-;; В логах печатается «Ред. 7.0 / Ред. 33.6» — две редакции, без слова build.
+;; В логах печатается «Ред. 7.0 / Ред. 33.7» — две редакции, без слова build.
 (setq *mk:ver*            "Ред. 7.0")
-(setq *mk:build*          "Ред. 33.6")
+(setq *mk:build*          "Ред. 33.7")
 
 (setq *mk:block-fill*     "Заполнение в витраж")
 (setq *mk:block-vitrage*  "Атрибуты витража")
@@ -3374,123 +3374,207 @@
 (defun mk:tab-align (tbl r c a)
   (vl-catch-all-apply 'vlax-invoke-method (list tbl "SetCellAlignment" r c a)))
 
-(defun mk:tab-create (data / pt doc space tbl nRows nCols row n-row i hdr
-                        cur cnt-sub mp-sub n-sec rec sect art mark len cnt mp
-                        total-cnt total-mp old-echo)
+;;;--- Быстрые таблицы (FAST_TABLES) ----------------------------------
+;;  Метод из AutoExtraction (common/table-utils.lsp, docs/fast-tables.md):
+;;  объект AcDbTable пересобирается целиком при КАЖДОМ изменении, поэтому
+;;  заполнение «ячейка за ячейкой» на 160 строк = тысячи полных пересборок
+;;  (таблица появлялась через минуты). Правильный порядок:
+;;    1) одна вставка сразу конечного размера — vla-AddTable;
+;;    2) сразу подавить пересборку — vla-put-RegenerateTableSuppressed T;
+;;    3) заполнить всё (ширины, тексты, выравнивания, объединения) —
+;;       под подавлением каждый вызов дешёвый;
+;;    4) снять подавление (:vlax-false) — единственная полная пересборка.
+;;       vla-Update после этого НЕ вызывать — это была бы вторая пересборка.
+;;  Длинная ведомость дополнительно режется на таблицы по
+;;  *mk:tab-ideal-rows* строк: несколько небольших таблиц пересобираются
+;;  заметно быстрее одной очень длинной, а читать их удобнее.
+
+(setq *mk:tab-ideal-rows* 50)   ; целевое число строк данных на таблицу
+(setq *mk:tab-row-h* 8.0)       ; высота строки данных, мм
+(setq *mk:tab-gap* 40.0)        ; зазор между таблицами по вертикали, мм
+
+(defun mk:tab-fast-begin (tbl)
+  (vl-catch-all-apply 'vla-put-RegenerateTableSuppressed (list tbl :vlax-true))
+  tbl)
+
+(defun mk:tab-fast-end (tbl)
+  (vl-catch-all-apply 'vla-put-RegenerateTableSuppressed (list tbl :vlax-false))
+  tbl)
+
+;; Точка следующей таблицы: вниз по Y от предыдущей (столбиком)
+(defun mk:tab-next-point (pt h gap)
+  (list (car pt) (- (cadr pt) (+ h gap)) 0.0))
+
+;; Раскладка позиций по кускам: кусок закрывается, когда набрано не меньше
+;; per строк И начинается новый раздел (витраж) — раздел никогда не
+;; разрывается между таблицами, иначе подытог остался бы не на месте.
+(defun mk:tab-chunks (data per / out cur n prev rec)
+  (setq out nil cur nil n 0 prev nil)
+  (foreach rec data
+    (if (and cur (>= n per) (not (and prev (= (nth 1 rec) prev))))
+      (progn (setq out (cons (reverse cur) out) cur nil n 0)))
+    (setq cur  (cons rec cur)
+          n    (1+ n)
+          prev (nth 1 rec)))
+  (if cur (setq out (cons (reverse cur) out)))
+  (reverse out))
+
+;; Число разделов (витражей) подряд внутри куска
+(defun mk:tab-nsect (chunk / n cur)
+  (setq n 0 cur nil)
+  (foreach rec chunk
+    (if (not (and cur (= (nth 1 rec) cur)))
+      (progn (setq n (1+ n)) (setq cur (nth 1 rec)))))
+  n)
+
+;; Вся ведомость в чертёж: одна или несколько таблиц столбиком.
+;; pt — точка вставки первой таблицы (nil допустим только вне пакета).
+;; Возвращает (TBL PT) последней таблицы или nil.
+(defun mk:tab-draw-all (data pt / chunks total ci chunk
+                                     tbl last-tbl last-pt
+                                     nRows row rec cur cnt mp n-sec n-row
+                                     cnt-all mp-all grp-cnt grp-mp
+                                     doc space old-echo t0 ms h)
   (if (null data)
     (progn (prompt "\n  [INFO] Нет данных для таблицы.") nil)
     (progn
-      (setq pt (getpoint "\nУкажите точку вставки таблицы: "))
+      (if (and (null pt) (null *mk:batch*))
+        (setq pt (getpoint "\nУкажите точку вставки таблицы: ")))
       (if (null pt)
-        (progn (prompt "\n  [INFO] Таблица пропущена.") nil)
+        (progn (prompt "\n  [INFO] Таблица пропущена (нет точки вставки).") nil)
         (progn
-          (setq n-sec 0 cur nil)
-          (foreach rec data
-            (if (not (and cur (= (nth 1 rec) cur)))
-              (progn (setq n-sec (1+ n-sec)) (setq cur (nth 1 rec)))))
+          (mk:ensure-layer *mk:layer-table* 7)
           (setq doc      (vla-get-ActiveDocument (vlax-get-acad-object))
                 space    (vla-get-ModelSpace doc)
-                pt       (trans pt 1 0)
-                nCols    6
-                ;; nRows = 2 строки шапки (заголовок + шапка колонок)
-                ;; + строки данных + строка «Итого» + по строке «ВСЕГО»
-                ;; на каждую секцию — ровно столько строк и заполняется
-                nRows    (+ 3 (length data) n-sec)
-                old-echo (getvar "CMDECHO"))
+                old-echo (getvar "CMDECHO")
+                chunks   (mk:tab-chunks data *mk:tab-ideal-rows*)
+                total    (length chunks)
+                ci       0
+                last-tbl nil
+                last-pt  pt
+                t0       (getvar "MILLISECS")
+                n-row    0
+                cnt-all  0
+                mp-all   0.0)
           (vl-catch-all-apply 'setvar (list "CMDECHO" 0))
-          (mk:ensure-layer *mk:layer-table* 7)
-          (setq tbl (vl-catch-all-apply 'vla-AddTable
-                      (list space (vlax-3d-point pt) nRows nCols 10.0 35.0)))
-          (if (not (vl-catch-all-error-p tbl))
-            (mk:ax-put tbl "Layer" *mk:layer-table*))
-          (if (vl-catch-all-error-p tbl)
-            (progn
-              (prompt (strcat "\n  [ERROR] AddTable: "
-                              (vl-catch-all-error-message tbl)))
-              (vl-catch-all-apply 'setvar (list "CMDECHO" old-echo))
-              nil)
-            (progn
-              (vl-catch-all-apply 'vla-SetColumnWidth (list tbl 0 14.0))
-              (vl-catch-all-apply 'vla-SetColumnWidth (list tbl 1 42.0))
-              (vl-catch-all-apply 'vla-SetColumnWidth (list tbl 2 42.0))
-              (vl-catch-all-apply 'vla-SetColumnWidth (list tbl 3 32.0))
-              (vl-catch-all-apply 'vla-SetColumnWidth (list tbl 4 32.0))
-              (vl-catch-all-apply 'vla-SetColumnWidth (list tbl 5 32.0))
-              (mk:tab-set tbl 0 0 *mk:tab-title*)
-              (vl-catch-all-apply 'vla-SetRowHeight (list tbl 0 8.0))
-              (setq i 0)
-              (foreach hdr '("№" "Артикул" "Марка" "Длина, мм"
-                             "Кол-во, шт." "Всего, м.п.")
-                (mk:tab-set tbl 1 i hdr)
-                (mk:tab-align tbl 1 i 5)
-                (setq i (1+ i)))
-              (vl-catch-all-apply 'vla-SetRowHeight (list tbl 1 8.0))
-              (setq row 2 n-row 1 cur nil cnt-sub 0 mp-sub 0.0
-                    total-cnt 0 total-mp 0.0)
-              (foreach rec data
-                (setq sect (nth 1 rec)
-                      art  (nth 2 rec)
-                      mark (nth 3 rec)
-                      len  (nth 4 rec)
-                      cnt  (nth 5 rec)
-                      mp   (mk:tab-mp len cnt))
-                (if (and cur (/= sect cur))
+          (foreach rec data
+            (setq cnt-all (+ cnt-all (nth 5 rec))
+                  mp-all  (+ mp-all (mk:tab-mp (nth 4 rec) (nth 5 rec)))))
+          (foreach chunk chunks
+            (setq ci    (1+ ci)
+                  n-sec (mk:tab-nsect chunk)
+                  ;; 2 строки шапки + строки данных + подытог каждого раздела
+                  ;; (+ строка «Итого» в последней таблице)
+                  ;; формула точная: последняя записанная строка = nRows-1
+                  nRows (+ 2 (length chunk) n-sec
+                           (if (= ci total) 1 0)))
+            (setq tbl (vl-catch-all-apply 'vla-AddTable
+                        (list space (vlax-3d-point pt) nRows 6 10.0 30.0)))
+            (if (vl-catch-all-error-p tbl)
+              (progn
+                (prompt (strcat "\n  [ERROR] AddTable (таблица " (itoa ci)
+                                " из " (itoa total) "): "
+                                (vl-catch-all-error-message tbl)))
+                (setq tbl nil))
+              (progn
+                (mk:tab-fast-begin tbl)
+                (mk:ax-put tbl "Layer" *mk:layer-table*)
+                (vl-catch-all-apply 'vla-SetColumnWidth (list tbl 0 14.0))
+                (vl-catch-all-apply 'vla-SetColumnWidth (list tbl 1 42.0))
+                (vl-catch-all-apply 'vla-SetColumnWidth (list tbl 2 42.0))
+                (vl-catch-all-apply 'vla-SetColumnWidth (list tbl 3 32.0))
+                (vl-catch-all-apply 'vla-SetColumnWidth (list tbl 4 32.0))
+                (vl-catch-all-apply 'vla-SetColumnWidth (list tbl 5 32.0))
+                (mk:tab-set tbl 0 0
+                  (if (> total 1)
+                    (strcat *mk:tab-title* "  (" (itoa ci) " из "
+                            (itoa total) ")")
+                    *mk:tab-title*))
+                (vl-catch-all-apply 'vla-SetRowHeight (list tbl 0 10.0))
+                (setq row 0)
+                (foreach hdr '("№" "Артикул" "Марка" "Длина, мм"
+                               "Кол-во, шт." "Всего, м.п.")
+                  (setq row (1+ row))
+                  (mk:tab-set tbl 1 row hdr)
+                  (mk:tab-align tbl 1 row 5))
+                (vl-catch-all-apply 'vla-SetRowHeight (list tbl 1 10.0))
+                (setq row 2 cur nil grp-cnt 0 grp-mp 0.0)
+                (foreach rec chunk
+                  (if (and cur (/= (nth 1 rec) cur))
+                    (progn
+                      ;; подытог по разделу
+                      (mk:tab-set tbl row 0 "")
+                      (mk:tab-set tbl row 1 (strcat "   {\\L" cur "}"))
+                      (mk:tab-merge tbl row)
+                      (mk:tab-align tbl row 1 4)
+                      (mk:tab-set tbl row 4 (itoa grp-cnt))
+                      (mk:tab-set tbl row 5 (mk:tab-num grp-mp))
+                      (mk:tab-align tbl row 4 5)
+                      (mk:tab-align tbl row 5 5)
+                      (vl-catch-all-apply 'vla-SetRowHeight
+                        (list tbl row *mk:tab-row-h*))
+                      (setq row (1+ row) grp-cnt 0 grp-mp 0.0)))
+                  (setq cur     (nth 1 rec)
+                        n-row   (1+ n-row)
+                        cnt     (nth 5 rec)
+                        mp      (mk:tab-mp (nth 4 rec) cnt)
+                        grp-cnt (+ grp-cnt cnt)
+                        grp-mp  (+ grp-mp mp))
+                  (mk:tab-set tbl row 0 (itoa n-row))
+                  (mk:tab-set tbl row 1 (nth 2 rec))
+                  (mk:tab-set tbl row 2 (nth 3 rec))
+                  (mk:tab-set tbl row 3 (mk:tab-int (nth 4 rec)))
+                  (mk:tab-set tbl row 4 (itoa cnt))
+                  (mk:tab-set tbl row 5 (mk:tab-num mp))
+                  (mk:tab-align tbl row 0 5)
+                  (mk:tab-align tbl row 1 4)
+                  (mk:tab-align tbl row 2 4)
+                  (mk:tab-align tbl row 3 5)
+                  (mk:tab-align tbl row 4 5)
+                  (mk:tab-align tbl row 5 5)
+                  (vl-catch-all-apply 'vla-SetRowHeight
+                    (list tbl row *mk:tab-row-h*))
+                  (setq row (1+ row)))
+                (if cur
                   (progn
                     (mk:tab-set tbl row 0 "")
                     (mk:tab-set tbl row 1 (strcat "   {\\L" cur "}"))
                     (mk:tab-merge tbl row)
                     (mk:tab-align tbl row 1 4)
-                    (mk:tab-set tbl row 4 (itoa cnt-sub))
-                    (mk:tab-set tbl row 5 (mk:tab-num mp-sub))
+                    (mk:tab-set tbl row 4 (itoa grp-cnt))
+                    (mk:tab-set tbl row 5 (mk:tab-num grp-mp))
                     (mk:tab-align tbl row 4 5)
                     (mk:tab-align tbl row 5 5)
-                    (vl-catch-all-apply 'vla-SetRowHeight (list tbl row 8.0))
-                    (setq row (1+ row) cnt-sub 0 mp-sub 0.0)))
-                (setq cur sect
-                      cnt-sub (+ cnt-sub cnt)
-                      mp-sub  (+ mp-sub mp)
-                      total-cnt (+ total-cnt cnt)
-                      total-mp  (+ total-mp mp))
-                (mk:tab-set tbl row 0 (itoa n-row))
-                (mk:tab-set tbl row 1 art)
-                (mk:tab-set tbl row 2 mark)
-                (mk:tab-set tbl row 3 (mk:tab-int len))
-                (mk:tab-set tbl row 4 (itoa cnt))
-                (mk:tab-set tbl row 5 (mk:tab-num mp))
-                (mk:tab-align tbl row 0 5)
-                (mk:tab-align tbl row 1 4)
-                (mk:tab-align tbl row 2 4)
-                (mk:tab-align tbl row 3 5)
-                (mk:tab-align tbl row 4 5)
-                (mk:tab-align tbl row 5 5)
-                (vl-catch-all-apply 'vla-SetRowHeight (list tbl row 8.0))
-                (setq row (1+ row) n-row (1+ n-row)))
-              (if cur
-                (progn
-                  (mk:tab-set tbl row 0 "")
-                  (mk:tab-set tbl row 1 (strcat "   {\\L" cur "}"))
-                  (mk:tab-merge tbl row)
-                  (mk:tab-align tbl row 1 4)
-                  (mk:tab-set tbl row 4 (itoa cnt-sub))
-                  (mk:tab-set tbl row 5 (mk:tab-num mp-sub))
-                  (mk:tab-align tbl row 4 5)
-                  (mk:tab-align tbl row 5 5)
-                  (vl-catch-all-apply 'vla-SetRowHeight (list tbl row 8.0))
-                  (setq row (1+ row))))
-              (mk:tab-set tbl row 0 "")
-              (mk:tab-set tbl row 1 "   {\\LИтого:}")
-              (mk:tab-merge tbl row)
-              (mk:tab-align tbl row 1 4)
-              (mk:tab-set tbl row 4 (itoa total-cnt))
-              (mk:tab-set tbl row 5 (mk:tab-num total-mp))
-              (mk:tab-align tbl row 4 5)
-              (mk:tab-align tbl row 5 5)
-              (vl-catch-all-apply 'vla-SetRowHeight (list tbl row 8.0))
-              (vl-catch-all-apply 'vla-Update (list tbl))
-              (vl-catch-all-apply 'setvar (list "CMDECHO" old-echo))
-              (prompt (strcat "\n  [OK] Таблица создана, строк данных: "
-                              (itoa (length data))))
-              (list tbl pt))))))))
+                    (vl-catch-all-apply 'vla-SetRowHeight
+                      (list tbl row *mk:tab-row-h*))
+                    (setq row (1+ row))))
+                (if (= ci total)
+                  (progn
+                    (mk:tab-set tbl row 0 "")
+                    (mk:tab-set tbl row 1 "   {\\LИтого:}")
+                    (mk:tab-merge tbl row)
+                    (mk:tab-align tbl row 1 4)
+                    (mk:tab-set tbl row 4 (itoa cnt-all))
+                    (mk:tab-set tbl row 5 (mk:tab-num mp-all))
+                    (mk:tab-align tbl row 4 5)
+                    (mk:tab-align tbl row 5 5)
+                    (vl-catch-all-apply 'vla-SetRowHeight
+                      (list tbl row *mk:tab-row-h*))
+                    (setq row (1+ row))))
+                (mk:tab-fast-end tbl)
+                (setq last-tbl tbl last-pt pt)
+                (setq h (vl-catch-all-apply 'vlax-get-property (list tbl 'Height)))
+                (if (vl-catch-all-error-p h)
+                  (setq h (* 10.0 nRows)))
+                (setq pt (mk:tab-next-point pt h *mk:tab-gap*))))))
+          (setq ms (- (getvar "MILLISECS") t0))
+          (prompt (strcat "\n  [OK] Ведомость в чертеже: таблиц " (itoa total)
+                          ", позиций " (itoa (length data))
+                          ", всего шт. " (itoa cnt-all)
+                          ", м.п. " (mk:tab-num mp-all)
+                          ", время " (rtos (/ ms 1000.0) 2 2) " с"))
+          (vl-catch-all-apply 'setvar (list "CMDECHO" old-echo))
+          (if last-tbl (list last-tbl last-pt) nil)))))
 
 ;;;--- XLS (SpreadsheetML 2003) -----------------------------------------
 (defun mk:xml-esc (str / out ch)
@@ -3772,6 +3856,7 @@
           (vl-catch-all-apply 'setvar (list "CMDECHO" old-echo))
           nil)
         (progn
+          (mk:tab-fast-begin tbl)
           (mk:ax-put tbl "Layer" *mk:layer-table*)
           (vl-catch-all-apply 'vla-SetColumnWidth (list tbl 0 14.0))
           (vl-catch-all-apply 'vla-SetColumnWidth (list tbl 1 60.0))
@@ -3804,7 +3889,7 @@
           (mk:tab-align tbl row 1 4)
           (mk:tab-align tbl row 3 5)
           (vl-catch-all-apply 'vla-SetRowHeight (list tbl row 8.0))
-          (vl-catch-all-apply 'vla-Update (list tbl))
+          (mk:tab-fast-end tbl)
           (vl-catch-all-apply 'setvar (list "CMDECHO" old-echo))
           (prompt (strcat "\n  [OK] Таблица закладных, строк: " (itoa (length data))))
           tbl)))))
@@ -3953,6 +4038,7 @@
           (vl-catch-all-apply 'setvar (list "CMDECHO" old-echo))
           nil)
         (progn
+          (mk:tab-fast-begin tbl)
           (mk:ax-put tbl "Layer" *mk:layer-table*)
           (vl-catch-all-apply 'vla-SetColumnWidth (list tbl 0 40.0))
           (vl-catch-all-apply 'vla-SetColumnWidth (list tbl 1 120.0))
@@ -3988,7 +4074,7 @@
                 (mk:tab-align tbl row 1 4)
                 (vl-catch-all-apply 'vla-SetRowHeight (list tbl row 8.0))
                 (setq row (1+ row)))))
-          (vl-catch-all-apply 'vla-Update (list tbl))
+          (mk:tab-fast-end tbl)
           (vl-catch-all-apply 'setvar (list "CMDECHO" old-echo))
           (prompt (strcat "\n  [OK] Таблица обозначений, строк: "
                           (itoa (+ (length sfx) (length arts)))))
@@ -4096,6 +4182,32 @@
 (setq *mk:run-scope*     nil)   ; выборка пакета МАРКАВ (список ename)
 (setq *mk:last-mode*     nil)   ; режим сбора каркаса прогона (nil — ещё не задан)
 (setq *mk:vitrage-none*  "<ВНЕ РАМОК>")
+
+;;;--- Точка вставки таблицы в пакете ----------------------------------
+
+;; В пакете МАРКАВ getpoint недоступен (этап идёт через vl-catch-all-apply),
+;; поэтому точка вставки ведомости считается сама: под самым нижним витражом,
+;; по левому краю. *mk:table-ins-pt* можно задать заранее, тогда берётся он.
+(setq *mk:table-ins-pt* nil)
+
+(defun mk:auto-table-point (/ b min-x min-y)
+  (if (> (length *mk:last-groups*) 0)
+    (progn
+      (setq min-x nil min-y nil)
+      (foreach grp *mk:last-groups*
+        (setq b (mk:find-vitrage-bounds
+                  (cdr (assoc 'POSTS (mk:group-data grp)))
+                  (cdr (assoc 'BEAMS (mk:group-data grp)))))
+        (if (numberp (cdr (assoc 'MIN_X b)))
+          (if (or (null min-x) (< (cdr (assoc 'MIN_X b)) min-x))
+            (setq min-x (cdr (assoc 'MIN_X b)))))
+        (if (numberp (cdr (assoc 'MIN_Y b)))
+          (if (or (null min-y) (< (cdr (assoc 'MIN_Y b)) min-y))
+            (setq min-y (cdr (assoc 'MIN_Y b))))))
+      (if min-x
+        (list min-x (- min-y (* 2.0 *mk:acc-gap*)) 0.0)
+        (list 0.0 0.0 0.0)))
+    (list 0.0 0.0 0.0)))
 
 ;;;--- Служебное -------------------------------------------------------
 
@@ -4980,12 +5092,20 @@
       (setq *mk:leg-sfx*  (mk:leg-suffixes agg)
             *mk:leg-arts* (mk:leg-articles all-beams))
       (mk:leg-print *mk:leg-sfx* *mk:leg-arts*)
-      (initget "Да Нет")
-      (setq do-tbl (getkword "\nТаблица в чертеже? [Да/Нет] <Да>: "))
-      (setq do-tbl (if (= do-tbl "Нет") nil t))
-      (initget "Да Нет")
-      (setq do-xls (getkword "\nЭкспорт в XLS? [Да/Нет] <Да>: "))
-      (setq do-xls (if (= do-xls "Нет") nil t))
+      ;; В пакете МАРКАВ этап 4 идёт через vl-catch-all-apply: getkword/getpoint
+      ;; в этот момент ввод не принимают, и команда выглядит «зависшей».
+      ;; Поэтому в пакете обе таблицы и XLS строятся без вопросов, а точка
+      ;; вставки берётся из *mk:table-ins-pt* (её посчитал МАРКАВ).
+      ;; Одиночная МАРКАВТАБЛ по-прежнему спрашивает.
+      (if *mk:batch*
+        (setq do-tbl t do-xls t)
+        (progn
+          (initget "Да Нет")
+          (setq do-tbl (getkword "\nТаблица в чертеже? [Да/Нет] <Да>: "))
+          (setq do-tbl (if (= do-tbl "Нет") nil t))
+          (initget "Да Нет")
+          (setq do-xls (getkword "\nЭкспорт в XLS? [Да/Нет] <Да>: "))
+          (setq do-xls (if (= do-xls "Нет") nil t))))
       (setq suffix (if (= (length groups) 1)
                      (nth 0 (car groups))
                      (strcat (itoa (length groups)) " витражей")))
@@ -4999,14 +5119,12 @@
           (mk:tab-xls agg file acc)))
       (if do-tbl
         (progn
-          (setq res (mk:tab-create agg))
+          (setq res (mk:tab-draw-all agg (if *mk:batch* *mk:table-ins-pt* nil)))
+          ;; res = (последняя таблица ведомости, её точка вставки);
+          ;; mk:tab-draw-all уже вернул точку НИЖЕ последней таблицы
           (if res
             (progn
-              (setq h (vl-catch-all-apply 'vlax-get-property (list (car res) 'Height)))
-              (if (vl-catch-all-error-p h) (setq h (* 12.0 (+ 3 (length agg)))))
-              (setq pt2 (list (car (cadr res))
-                              (- (cadr (cadr res)) h *mk:acc-gap*)
-                              0.0))
+              (setq pt2 (cadr res))
               (setq tbl2 (if acc (mk:acc-table-create acc pt2) nil))
               (setq pt3 pt2)
               (if tbl2
@@ -5025,7 +5143,7 @@
 ;;   Одна выборка -> по каждому витражу: сбор и модель, стойки, ригели ->
 ;;   удаление сеток -> одна общая ведомость. Один UNDO на весь пакет.
 
-(defun c:МАРКАВ (/ ss keep doc n r)
+(defun c:МАРКАВ (/ ss keep doc n r pt0)
   (prompt (strcat "\n[МАРКАВ] Пакетный прогон, " *mk:ver* " / " *mk:build*))
   (prompt "\n  Порядок: выборка -> витражи -> (сбор, стойки, ригели) по каждому -> ведомость.")
   (setq *mk:batch* nil *mk:batch-ss* nil *mk:batch-mode* nil
@@ -5065,6 +5183,11 @@
           (prompt "\n\n  Удаление сеток витражей перед вставкой таблицы...")
           (setq n (mk:erase-all-models))
           (prompt (strcat "\n  [OK] Сетка удалена, объектов: " (itoa n)))))
+      ;; точка вставки ведомости фиксируется один раз за пакет
+      (setq *mk:table-ins-pt* (mk:auto-table-point))
+      (prompt (strcat "\n\n  Ведомость: точка вставки X="
+                      (rtos (car *mk:table-ins-pt*) 2 1)
+                      ", Y=" (rtos (cadr *mk:table-ins-pt*) 2 1)))
       (mk:run-stage "ЭТАП 4/4" "МАРКАВТАБЛ" 'c:МАРКАВТАБЛ)
       (setq *mk:batch* nil *mk:batch-ss* nil *mk:run-scope* nil)
       (setq *mk:run-errors* (reverse *mk:run-errors*))
