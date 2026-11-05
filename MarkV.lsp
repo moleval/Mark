@@ -125,9 +125,9 @@
 ;;; 1. КОНФИГУРАЦИЯ
 ;;;=====================================================================
 ;; Версия — как у заказчика: редакция и билд отдельными записями «Ред. N.N».
-;; В логах печатается «Ред. 7.0 / Ред. 33.7» — две редакции, без слова build.
+;; В логах печатается «Ред. 7.0 / Ред. 33.8» — две редакции, без слова build.
 (setq *mk:ver*            "Ред. 7.0")
-(setq *mk:build*          "Ред. 33.7")
+(setq *mk:build*          "Ред. 33.8")
 
 (setq *mk:block-fill*     "Заполнение в витраж")
 (setq *mk:block-vitrage*  "Атрибуты витража")
@@ -3566,7 +3566,7 @@
                 (setq h (vl-catch-all-apply 'vlax-get-property (list tbl 'Height)))
                 (if (vl-catch-all-error-p h)
                   (setq h (* 10.0 nRows)))
-                (setq pt (mk:tab-next-point pt h *mk:tab-gap*))))))
+                (setq pt (mk:tab-next-point pt h *mk:tab-gap*)))))))
           (setq ms (- (getvar "MILLISECS") t0))
           (prompt (strcat "\n  [OK] Ведомость в чертеже: таблиц " (itoa total)
                           ", позиций " (itoa (length data))
@@ -3574,7 +3574,7 @@
                           ", м.п. " (mk:tab-num mp-all)
                           ", время " (rtos (/ ms 1000.0) 2 2) " с"))
           (vl-catch-all-apply 'setvar (list "CMDECHO" old-echo))
-          (if last-tbl (list last-tbl last-pt) nil)))))
+          (if last-tbl (list last-tbl last-pt) nil))))
 
 ;;;--- XLS (SpreadsheetML 2003) -----------------------------------------
 (defun mk:xml-esc (str / out ch)
