@@ -5593,18 +5593,9 @@
 (defun mk:help-header ()
   (prompt (strcat "\n  | " (mk:ljust "КОМАНДА" 25) "| " (mk:ljust "ЧТО ДЕЛАЕТ" 34) " |")))
 
-(defun mk:local-kind (n)
-  (cond
-    ((wcmatch n "*Стойка*") "СТОЙКА")
-    ((wcmatch n "*Ригель*") "РИГЕЛЬ")
-    ((wcmatch n "*Дверной блок*") "ДВЕРЬ")
-    ((wcmatch n "*Заполнение*") "ЗАПОЛНЕНИЕ")
-    (T "ДРУГОЕ")))
-
-(defun mk:local-less (a b / ay by ax bx)
-  (setq ay (cadr (caddr a)) by (cadr (caddr b))
-        ax (car (caddr a)) bx (car (caddr b)))
-  (if (equal ay by 0.01) (< ax bx) (> ay by)))
+;; (прежние mk:local-kind / mk:local-less удалены: не вызывались ниоткуда,
+;;  а mk:local-kind к тому же опирался на кириллические маски в wcmatch —
+;;  такой разбор ненадёжен, тип объекта даёт mk:obj-kind)
 
 (prompt (strcat "\n[MarkV] Загружен " *mk:ver* " / " *mk:build*))
 (mk:help-border)
@@ -5616,6 +5607,7 @@
 (mk:help-row "МАРКАВРГ" "Марки ригелей (своя шкала в каждом витраже)")
 (mk:help-row "МАРКАВТАБЛ" "Общая ведомость профилей + XLS")
 (mk:help-row "МАРКАВДИАГНОЗ" "Диагностика блока и атрибутов")
+(mk:help-row "МАРКАВДИАГНОЗОПТОМ" "Сводка по выбранным объектам в файл")
 (mk:help-row "МАРКАВБАЗЫ" "Список баз профильных систем")
 (mk:help-row "МАРКАВСКОБКИ" "Скобки: CHKALL или свой сканер")
 (mk:help-border)
