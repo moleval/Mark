@@ -441,6 +441,11 @@
   (setq r (vl-catch-all-apply 'vlax-get-property (list obj prop)))
   (if (vl-catch-all-error-p r) nil r))
 
+;; Симметричная запись свойства — через vlax-put-property, как и чтение
+(defun mk:ax-put (obj prop val / r)
+  (setq r (vl-catch-all-apply 'vlax-put-property (list obj prop val)))
+  (if (vl-catch-all-error-p r) nil t))
+
 (defun mk:trim (s)
   (if (mk:strp s) (vl-string-trim " \t\n\r" s) s))
 
@@ -3393,7 +3398,7 @@
           (setq tbl (vl-catch-all-apply 'vla-AddTable
                       (list space (vlax-3d-point pt) nRows nCols 10.0 35.0)))
           (if (not (vl-catch-all-error-p tbl))
-            (vl-catch-all-apply 'vla-put-Layer (list tbl *mk:layer-table*)))
+            (mk:ax-put tbl "Layer" *mk:layer-table*))
           (if (vl-catch-all-error-p tbl)
             (progn
               (prompt (strcat "\n  [ERROR] AddTable: "
@@ -3763,7 +3768,7 @@
           (vl-catch-all-apply 'setvar (list "CMDECHO" old-echo))
           nil)
         (progn
-          (vl-catch-all-apply 'vla-put-Layer (list tbl *mk:layer-table*))
+          (mk:ax-put tbl "Layer" *mk:layer-table*)
           (vl-catch-all-apply 'vla-SetColumnWidth (list tbl 0 14.0))
           (vl-catch-all-apply 'vla-SetColumnWidth (list tbl 1 60.0))
           (vl-catch-all-apply 'vla-SetColumnWidth (list tbl 2 60.0))
@@ -3944,7 +3949,7 @@
           (vl-catch-all-apply 'setvar (list "CMDECHO" old-echo))
           nil)
         (progn
-          (vl-catch-all-apply 'vla-put-Layer (list tbl *mk:layer-table*))
+          (mk:ax-put tbl "Layer" *mk:layer-table*)
           (vl-catch-all-apply 'vla-SetColumnWidth (list tbl 0 40.0))
           (vl-catch-all-apply 'vla-SetColumnWidth (list tbl 1 120.0))
           (mk:tab-set tbl 0 0 *mk:leg-title*)
