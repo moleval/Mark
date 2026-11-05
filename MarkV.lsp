@@ -134,11 +134,15 @@
 ;;   (setq *mk:block-door* "Дверной блок КПТ74*")
 (setq *mk:block-window*   "Окно КПТ60")
 (setq *mk:block-door*     "Дверной блок*")
-;; Дополнительные маски (проверяются раньше основного имени):
-;;   (setq *mk:door-masks*   (list "Двер*" "*ДВЕР*" "*Дверной*"))
-;;   (setq *mk:window-masks* (list "Окно*"  "*ОКН*"))
-(setq *mk:door-masks*     (list "*Двер*" "*ДВЕР*" "*двер*"))
-(setq *mk:window-masks*   (list "*Окно*" "*ОКНО*" "*окно*"))
+;; Маски проверяются раньше основного имени; сравнение идёт через strcase,
+;; поэтому регистр в маске роли не играет. Набор согласован с MarkZ
+;; (*mark:opening-masks* = "*ОКН*" "*СТВОР*" "*ДВЕР*"): там окна — это и
+;; «Окно …», и «Створка …», иначе часть проёмов не попадала в окна.
+;; Дополнить под проект — одной строкой в чертеже:
+;;   (setq *mk:window-masks* (append *mk:window-masks* (list "*КПТ*")))
+(setq *mk:door-masks*     (list "*ДВЕР*"))
+(setq *mk:window-masks*   (list "*ОКН*" "*СТВОР*"))
+(setq *mk:opening-skip-masks* (list "*КАССЕТ*"))  ; глухие заполнения — не проём
 (setq *mk:block-post*     "стойка")
 (setq *mk:block-beam*     "ригель")
 
@@ -1371,6 +1375,22 @@
         (foreach m masks
           (if (and (null hit) m (mk:blk-match? e m)) (setq hit t)))
         (if hit (setq lst (cons e lst)))
+        (setq i (1+ i)))))
+  lst)
+
+;; Проёмы выборки по маскам с учётом масок-исключений («Кассета» и т.п.):
+;; глухое заполнение, случайно совпавшее с "*ОКН*", окном не становится.
+(defun mk:find-proems (ss masks / i e lst hit skip)
+  (setq lst nil)
+  (if ss
+    (progn
+      (setq i 0)
+      (repeat (sslength ss)
+        (setq e (ssname ss i) hit nil)
+        (foreach m masks
+          (if (and (null hit) m (mk:blk-match? e m)) (setq hit t)))
+        (if (and hit (not (mk:opening-skipped? e)))
+          (setq lst (cons e lst)))
         (setq i (1+ i)))))
   lst)
 
@@ -3046,11 +3066,11 @@
                   "Заполнения"))
   (setq windows (mk:sanitize-panels
                   (mapcar 'mk:collect-window
-                    (mk:find-blocks-any ss (append *mk:window-masks* (list *mk:block-window*))))
+                    (mk:find-proems ss (append *mk:window-masks* (list *mk:block-window*))))
                   "Окна"))
   (setq doors   (mk:sanitize-panels
                   (mapcar 'mk:collect-door
-                    (mk:find-blocks-any ss (append *mk:door-masks* (list *mk:block-door*))))
+                    (mk:find-proems ss (append *mk:door-masks* (list *mk:block-door*))))
                   "Двери"))
   (setq res   (mk:split-tjoints posts beams (append fills windows doors))
         posts (nth 0 res)
@@ -4102,6 +4122,14 @@
     (if (and (null hit) (mk:blk-match? ename m)) (setq hit t)))
   hit)
 
+;; Маски-исключения: имя совпало с маской проёма, но это не проём
+;; (глухое заполнение «Кассета» и т.п.) — как *mark:opening-skip-masks* в MarkZ.
+(defun mk:opening-skipped? (ename / hit)
+  (setq hit nil)
+  (foreach m *mk:opening-skip-masks*
+    (if (and (null hit) (mk:blk-match? ename m)) (setq hit t)))
+  hit)
+
 ;; Тип объекта конвейера; nil — объект в конвейер не входит.
 ;; КАРКАС — геометрия, из которой в режиме «Все-типы»/«Мультилинии»
 ;; собираются стойки и ригели (MLINE и прочие типы *mk:seg-types*).
@@ -4112,6 +4140,7 @@
     nil
     (cond
       ((mk:blk-match? ename (strcat "*" *mk:block-fill* "*"))   "ЗАПОЛНЕНИЕ")
+      ((mk:opening-skipped? ename) nil)   ; «Кассета» — не проём
       ((mk:blk-match-any? ename *mk:door-masks*)                "ДВЕРЬ")
       ((mk:blk-match-any? ename *mk:window-masks*)              "ОКНО")
       ((mk:blk-match? ename (strcat "*" *mk:block-window* "*")) "ОКНО")
