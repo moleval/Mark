@@ -118,8 +118,8 @@
 ;;;--------------------- Состояние сеанса -----------------------------
 
 ;; Редакция модуля — видно в консоли при загрузке и в баннерах
-(setq *mark:rev*    "Ред. 48.36")
-(setq *mark:build*  "Ред. 36.3")
+(setq *mark:rev*    "Ред. 48.37")
+(setq *mark:build*  "Ред. 36.4")
 
 ;; МАРКАЗАП: один выбор; один UNDO на весь пакет
 (setq *mark:reuse-sel* nil)
@@ -160,7 +160,10 @@
           *mark:heights*       nil
           *mark:fill-geo*      nil
           *mark:scale1*        nil
-          *mark:scale-final*   nil))
+          *mark:scale-final*   nil
+          *mark:beam-scale*    nil
+          *mark:scale-shift*   0
+          *mark:num-was*       nil))
   ;; Ред. 48.23: кэш проёмов сбрасывается здесь, а не только в
   ;; fill-main — МАРКАЗАП (a-all) вызывает режимную функцию
   ;; напрямую, и после переноса чертежа в той же сессии кэш
@@ -1172,18 +1175,17 @@
       ;; Ред. 48.20: номера — только фактические столбцы,
       ;; буквы — только фактические строки заполнений.
       (setq *mark:scale-final* (mark:sec-scale-full))
-      ;; Ред. 48.20: шкала номеров — secw из геометрии заполнений;
-      ;; Р-длины шкалы осей номера не резервируют: пропусков
-      ;; номеров нет (отмена зеркала MarkZV; ТБ-1: 450 больше не
-      ;; занимает №1, столбцы нумеруются 550=№1 … 1450=№5; В-7:
-      ;; 9 столбцов №1…№9). scale-final остаётся для источника
-      ;; Р/РЗ/З и файла Шкала.txt.
+      ;; Ред. 48.37: номера секций — шкала ригелей (mark:num-scale),
+      ;; как «Рг N» в MarkZV: цифра марки заполнения и цифра
+      ;; горизонтальной рядовки совпадают с номером ригеля.
+      ;; На Т-1/В-7 результат прежний (1430 = №10, 9 столбцов =
+      ;; 9 Рг); шкала столбцов wlist остаётся только для сверки и
+      ;; для столбцов без ригеля (продолжение нумерации, «З»).
       (setq wlist nil)
       (foreach geo *mark:fill-geo*
         (if (and (cdr geo) (numberp (cadr geo)))
           (setq wlist (cons (float (mark:sec-key (cadr geo))) wlist))))
-      (setq wlist (mark:sort-unique (mark:positives wlist))
-            th    nil)
+      (setq th nil)
       (foreach geo *mark:fill-geo*
         (if (and (cdr geo) (numberp (caddr geo)))
           (setq th (cons (caddr geo) th))))
@@ -1195,8 +1197,17 @@
       ;; Высоты подъячеек (750/1015) в шкалу не входят — они
       ;; получают литеры .а/.б внутри строки-родителя.
       (setq hlist (mark:sort-unique (mark:positives th)))
-      (setq *mark:widths*  wlist
-            *mark:heights* hlist))
+      ;; Ред. 48.37: scale1 (длины ригелей) собирается на этапе сетки 1
+      ;; ещё до этой шкалы — он и задаёт номера секций.
+      (if (and (null *mark:scale1*) *mark:fills*)
+        (mark:out
+          (strcat "[INFO] Длины ригелей не найдены (нет мультилиний и блоков "
+                  "«ригель») — номера секций по порядку столбцов, как в 48.20.")))
+      (setq *mark:num-was* (mark:sort-unique (mark:positives wlist)))
+      (mark:num-scale)
+      (if (and *mark:scale1* *mark:num-was*)
+        (mark:num-shift-out))
+      (setq *mark:heights* hlist))
     (progn
       (setq wlist
         (mark:sort-unique
@@ -1204,8 +1215,11 @@
       (setq hlist
         (mark:sort-unique
           (mark:positives (mark:recs-heights))))
-      (setq *mark:widths*  wlist
-            *mark:heights* hlist)))
+      (setq *mark:num-was* wlist)
+      (mark:num-scale)
+      (if (and *mark:scale1* *mark:num-was*)
+        (mark:num-shift-out))
+      (setq *mark:heights* hlist)))
 
   ;; TEST 09
   (mark:out "")
@@ -1215,11 +1229,14 @@
        (mark:out "[TEST 09] Уникальные размеры — OK")
        (mark:out "")
        (mark:out (strcat "Размеров шкалы (в свету): " (itoa (length wlist))))
+       (mark:out (strcat "Шкала номеров (ригели MarkZV): "
+                          (itoa (length *mark:beam-scale*))
+                          ", столбцов: " (itoa (length *mark:widths*))))
        (mark:out (strcat "Строк (буквы): " (itoa (length hlist))))
        (mark:out "")
        (mark:out
-         (strcat "Шкала: " (mark:fmt-raw (car wlist))
-                 " ... " (mark:fmt-raw (car (reverse wlist)))))
+         (strcat "Шкала: " (mark:fmt-raw (car *mark:widths*))
+                 " ... " (mark:fmt-raw (car (reverse *mark:widths*)))))
        (mark:out
          (strcat "Строка: " (mark:fmt-raw (car hlist))
                  " ... " (mark:fmt-raw (car (reverse hlist)))))))
@@ -1397,6 +1414,162 @@
           out    (cons r out)))
   (setq *mark:records* (reverse out))
   *mark:records*)
+
+;;;=====================================================================
+;;; ШКАЛА НОМЕРОВ ПО РИГЕЛЯМ (Ред. 48.37)
+;;; Цифра марки заполнения = номер ригеля «Рг N» в MarkZV.
+;;; Правило (решение заказчика 2026-11-05): цифра ригеля и цифра
+;;; горизонтальной рядовки заполнений должны совпадать, поэтому номер
+;;; заполнения берётся из шкалы длин ригелей, а не из порядка столбцов.
+;;;   *mark:beam-scale*     — номера ригелей: ((длина . N) ...) по возрастанию
+;;;   *mark:widths*         — шкала номеров секций: длины ригелей, затем
+;;;                           ширины столбцов без ригеля (Блок 2, «З»)
+;;;   *mark:scale-shift*    — сдвиг сквозной нумерации (Блок 2 продолжает Блок 1)
+;;;   *mark:num-was*        — номер при нумерации по столбцам (48.20), для сверки
+;;;=====================================================================
+(setq *mark:beam-scale*  nil)
+(setq *mark:scale-shift* 0)
+(setq *mark:num-was*     nil)
+
+;; Длины ригелей, отсечённые порогом элемента каркаса (50 мм, как MarkZV)
+(defun mark:scale-beam-keys (/ out k)
+  (setq out nil)
+  (foreach k *mark:scale1*
+    (if (and (numberp k) (> k 50))
+      (setq out (cons k out))))
+  (reverse out))
+
+;; Столбцы (ширины секций) из геометрии заполнений — по возрастанию.
+;; Чистая функция: не зависит от *mark:widths* (её перезаписывает рядовка).
+(defun mark:sec-ws (/ ws geo)
+  (setq ws nil)
+  (foreach geo *mark:fill-geo*
+    (if (and (cdr geo) (numberp (cadr geo)))
+      (setq ws (cons (float (mark:sec-key (cadr geo))) ws))))
+  (mark:sort-unique (mark:positives ws)))
+
+;; Шкала номеров секций, чистая: длины ригелей (как «Рг N» в MarkZV),
+;; затем ширины столбцов, которым ригеля той же длины не нашлось (Блок 2).
+(defun mark:num-keys (/ rk ws out hit)
+  (setq rk  (mark:scale-beam-keys)
+        ws  (mark:sec-ws)
+        out rk)
+  (foreach k ws
+    (setq hit nil)
+    (foreach ln rk
+      (if (mark:same-num? ln k)
+        (setq hit t)))
+    (if (null hit)
+      (setq out (cons k out))))
+  ;; rk уже по возрастанию; добавленные столбцы — тоже, но хвост надо
+  ;; отсортировать отдельно, поэтому сортируем целиком
+  (mark:sort-unique out))
+
+;; Шкала номеров: заполняет *mark:beam-scale* (длина . номер) и сдвиг,
+;; *mark:widths* — итоговая шкала номеров (номера = позиция + 1).
+(defun mark:num-scale (/ rk ws out k n)
+  (setq ws (mark:num-keys)
+        rk (mark:scale-beam-keys))
+  (setq out nil
+        n   0)
+  (foreach k rk
+    (setq n   (1+ n)
+          out (cons (cons k n) out)))
+  (setq *mark:beam-scale*  (reverse out)
+        *mark:scale-shift* n
+        *mark:widths*      ws)
+  ws)
+
+;; Номер по ширине — из той же шкалы, что у марок (ригели, затем Блок 2).
+;; Нужен рядовке (блок без атрибута «Марка»): цифра заполнения и цифра
+;; горизонтальной рядовки обязаны совпадать.
+(defun mark:num-of-width (w / i)
+  (setq i nil)
+  (if (numberp w)
+    (setq i (mark:index-of (mark:num-keys) w)))
+  (if i (itoa (1+ i)) nil))
+
+;; Совпадает ли номер секции (n) с номером ригеля той же ширины
+(defun mark:num-match? (n w / i)
+  (setq i nil)
+  (if (and (numberp n) (numberp w))
+    (setq i (mark:index-of (mark:num-keys) w)))
+  (and i (= n (1+ i))))
+
+;; Сдвиг номеров относительно нумерации по столбцам (Ред. 48.20).
+;; Заказчику важно видеть, какие секции сменили номер при переходе на
+;; шкалу ригелей: «550: №1 -> №2». Много строк — режем по лимиту.
+(defun mark:num-shift-out (/ i old new lst cnt keys)
+  (setq lst  nil
+        keys (mark:num-keys)
+        i    0)
+  (foreach old *mark:num-was*
+    (setq i   (1+ i)
+          new (mark:index-of keys old))
+    (if new
+      (if (/= (1+ new) i)
+        (setq lst (cons (strcat (rtos old 2 0) ": №" (itoa i)
+                                " -> №" (itoa (1+ new)))
+                        lst)))))
+  (setq lst (reverse lst)
+        cnt (length lst))
+  (if (> cnt 0)
+    (progn
+      (mark:out "")
+      (mark:out
+        (strcat "[INFO] Смена номеров против нумерации по столбцам (48.20): "
+                (itoa cnt)
+                (if (> *mark:scale-shift* 0)
+                  (strcat ", ригелей в шкале " (itoa *mark:scale-shift*))
+                  "")))
+      (setq i 0)
+      (foreach k lst
+        (setq i (1+ i))
+        (if (<= i *mark:max-err-lines*)
+          (mark:out (strcat "       " k))))
+      (if (> cnt *mark:max-err-lines*)
+        (mark:out (strcat "       ... далее "
+                          (itoa (- cnt *mark:max-err-lines*)) " строк")))))
+  cnt)
+
+;; Таблица соответствия для лога: «Рг N = размер -> №N» по ригелям и
+;; «№N = размер (З)» по столбцам без ригеля. Строк много — режем по
+;; *mark:max-err-lines*, как TEST 13/16.
+(defun mark:num-table-out (/ rows i cnt k beam)
+  (setq rows nil
+        i    0)
+  (foreach k (mark:num-keys)
+    (setq i    (1+ i)
+          beam nil)
+    (foreach e *mark:beam-scale*
+      (if (mark:same-num? (car e) k)
+        (setq beam (cdr e))))
+    (setq rows
+      (cons
+        (if beam
+          (strcat "       Рг" (itoa beam) " = " (rtos (float k) 2 0)
+                  "  ->  №" (itoa i))
+          (strcat "       №" (itoa i) " = " (rtos (float k) 2 0)
+                  "  (З: столбец без ригеля)"))
+        rows)))
+  (setq rows (reverse rows)
+        cnt  (length rows))
+  (if (> cnt 0)
+    (progn
+      (mark:out "")
+      (mark:out
+        (strcat "[INFO] Соответствие номеров (MarkZV Рг  и  марка заполнения): "
+                (itoa cnt)))
+      (setq i 0)
+      (foreach k rows
+        (setq i (1+ i))
+        (if (or (<= cnt *mark:max-err-lines*)
+                (<= i *mark:max-err-lines*))
+          (mark:out k)))
+      (if (> cnt *mark:max-err-lines*)
+        (mark:out (strcat "       ... далее "
+                          (itoa (- cnt *mark:max-err-lines*)) " строк")))))
+  rows)
 
 ;;;--------------------- TEST 13 — марки в памяти ----------------------
 
@@ -2091,6 +2264,9 @@
     (mark:pad-line "Шкала секций (номера):"
                    (itoa (length *mark:widths*))))
   (mark:out
+    (mark:pad-line "Номера по ригелям (Рг):"
+                   (itoa (length *mark:beam-scale*))))
+  (mark:out
     (mark:pad-line "Шкала строк (буквы):"
                    (itoa (length *mark:heights*))))
   (mark:out (mark:pad-line "Стемалит:" (itoa *mark:cnt-stem*)))
@@ -2166,6 +2342,10 @@
       ;; A3a. TEST 16 — секции и ярусы (Ред. 48.0)
       (if (and (= *mark:errors* 0) *mark:fill-geo* *mark:records*)
         (mark:safe 'mark:test-16 "TEST 16"))
+
+      ;; A3a2. Ред. 48.37: соответствие «номер марки = номер ригеля»
+      (if (and (= *mark:errors* 0) *mark:beam-scale*)
+        (mark:safe 'mark:num-table-out "соответствие номеров"))
 
       ;; A3b. диагностика стм/снд vs обычное
       (if (and (= *mark:errors* 0) *mark:records*)
@@ -3151,7 +3331,9 @@
         (setq letter (nth 0 pa)
               num    (nth 1 pa)))
       (t
-        ;; запас: индекс от размера (как в Ред. 47.8)
+        ;; запас: размер от блока — как в Ред. 47.8, но цифра из ТОЙ ЖЕ
+        ;; шкалы, что у марок (Ред. 48.37: номер ригеля, затем Блок 2),
+        ;; иначе рядовка блока без атрибута «Марка» разойдётся с маркировкой
         (setq w      (nth 9 r)
               h      (nth 10 r)
               iw     (mark:index-of ws w)
@@ -3162,7 +3344,8 @@
           (setq letter (mark:letter-at ih)))
         (if (mark:strp letter)
           (setq letter (strcase letter)))
-        (if iw
+        (setq num (mark:num-of-width w))
+        (if (and (null num) iw)
           (setq num (itoa (1+ iw))))))
     (setq out (cons (list letter
                           num
@@ -3575,11 +3758,16 @@
                  (strcat "[INFO] Пригодных заполнений: "
                          (itoa (length recs))))
                (mark:out
-                 (strcat "[INFO] Индексы рядовки: номер=секция ("
+                 (strcat "[INFO] Индексы рядовки: номер=секция/ригель ("
                          (itoa (length *mark:widths*))
                          "), буква=строка ("
                          (itoa (length *mark:heights*))
                          ")."))
+               (if *mark:beam-scale*
+                 (mark:out
+                   (strcat "       Цифра ряда = номер ригеля MarkZV (Рг): "
+                           (itoa (length *mark:beam-scale*))
+                           " поз.")))
 
                ;; ключи dynamic-свойств ряда: сначала как у заполнения,
                ;; затем универсальные
@@ -8106,7 +8294,7 @@
 ;; TEST 16: таблицы секций и ярусов (ТЗ 3.0, §7.1)
 (defun mark:test-16 (/ rows lines r n row q size src subs cnt div k sw-cnt
                         lrows llines letter lsize lsubs lhidx sh-cnt ln
-                        wkeys wk sw hkeys hk sl)
+                        wkeys wk sw hkeys hk sl beam-rows bad was nbeam)
   (mark:out "")
   (mark:out "[TEST 16] Секции и строки")
   (setq rows nil)
@@ -8124,6 +8312,8 @@
   (setq rows (mark:sec-sort-rows rows))
   (setq div    0
         sw-cnt 0
+        bad    0
+        nbeam  0
         lines  nil)
   (foreach row rows
     (setq n    (nth 0 row)
@@ -8158,8 +8348,18 @@
     (setq subs (reverse subs))
     (if subs
       (setq div (1+ div)))
+    ;; Ред. 48.37: номер секции должен совпадать с номером ригеля (Рг N).
+    ;; Совпало — «=»; у столбца без ригеля (З, Блок 2) сверки нет.
+    (setq was (mark:rjust (itoa n) 3)
+          was (if (and (> n *mark:scale-shift*) (= src "З"))
+                (strcat was "  ")
+                (progn
+                  (setq nbeam (1+ nbeam))
+                  (if (mark:num-match? n size)
+                    (strcat was "= ")
+                    (progn (setq bad (1+ bad)) (strcat was "! "))))))
     (setq lines
-      (cons (strcat "  " (mark:rjust (itoa n) 3)
+      (cons (strcat "  " was
                     "  " (mark:rjust (mark:fmt-raw size) 6)
                     "  " src
                     "  "
@@ -8171,13 +8371,21 @@
   (mark:out
     (strcat "  Секций: " (itoa (length rows))
             ", из них разделённых: " (itoa div)))
+  (mark:out
+    (strcat "  Сверка номеров с ригелями MarkZV (Рг): "
+            (if (= bad 0) "совпало" (strcat "расхождений " (itoa bad)))
+            ", ригелей в шкале: " (itoa *mark:scale-shift*)
+            ", секций с ригелем " (itoa nbeam)
+            ", без ригеля (З) " (itoa (- (length rows) nbeam))))
   (if rows
     (progn
-      (mark:out "  №   W      источник  подъячейки")
+      (mark:out "  №       W      источник  подъячейки")
+      (mark:out "  (= — номер совпал с ригелем, ! — не совпал)")
       (foreach ln (reverse lines)
         (mark:out ln))))
-  ;; Ред. 48.20: INFO-строка о номерах без столбца (48.18) снята —
-  ;; нумерация сплошная по фактическим столбцам, пропусков нет.
+  ;; Ред. 48.37: нумерация — по ригелям, поэтому номера без столбца
+  ;; (ригель нарисован, заполнения той ширины нет) возможны; они не
+  ;; дефект: номер закреплён за размером и не «едет» при правке фрамуги.
   ;; ярусы: группировка по букве
   (setq lrows nil)
   (foreach r *mark:records*
@@ -8358,7 +8566,7 @@
 ;; *mark:widths* к этому моменту перезаписан mark:ar-reindex
 ;; строками обозначений («1» … «9.1»), читать его как числа
 ;; нельзя (поломка 48.20: numberp "9.1").
-(defun mark:scale-write-file (/ path f row i w src rest ws)
+(defun mark:scale-write-file (/ path f row i w src rest ws n)
   (if *mark:scale-final*
     (progn
       (setq path (strcat (getvar "dwgprefix")
@@ -8368,11 +8576,10 @@
       (if f
         (progn
           (write-line "индекс;размер_мм;источник" f)
-          (setq ws nil)
-          (foreach geo *mark:fill-geo*
-            (if (and (cdr geo) (numberp (cadr geo)))
-              (setq ws (cons (float (mark:sec-key (cadr geo))) ws))))
-          (setq ws (mark:sort-unique (mark:positives ws)))
+          ;; Ред. 48.37: индекс строки — номер марки (по ригелям, затем
+          ;; Блок 2). Шкала считается заново (mark:num-keys):
+          ;; *mark:widths* к этому моменту уже перезаписан рядовкой.
+          (setq ws (mark:num-keys))
           (setq i 0)
           (foreach w ws
             (setq i   (1+ i)
@@ -8389,9 +8596,19 @@
           (foreach row (reverse rest)
             (write-line
               (strcat "-;"
-                      (rtos (nth 0 row) 2 0) ";"
+                      (rtos (float (nth 0 row)) 2 0) ";"
                       (nth 1 row))
               f))
+          ;; Ред. 48.37: итог по шкале номеров (строки «-» — ригель
+          ;; без столбца, номер за размером закреплён)
+          (if *mark:beam-scale*
+            (progn
+              (setq n (length *mark:beam-scale*))
+              (write-line
+                (strcat "; ригелей MarkZV: " (itoa n)
+                        ", номеров всего: " (itoa (length ws))
+                        ", без столбца: " (itoa (length rest)))
+                f)))
           (close f)
           (mark:out (strcat "[OK] Шкала: " path)))
         (mark:out "[WARN] Шкала не записана: файл недоступен.")))))
