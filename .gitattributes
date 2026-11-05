@@ -1,0 +1,5 @@
+# AutoLISP-модули: в рабочем дереве CP1251 + CRLF (как в поставке AutoCAD),
+# в Git — UTF-8 через working-tree-encoding, поэтому diff на GitHub читаемый.
+*.lsp text working-tree-encoding=CP1251 eol=crlf
+*.md  text eol=lf
+*.py  text eol=lf

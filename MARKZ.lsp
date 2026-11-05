@@ -1,50 +1,50 @@
 ;;;=====================================================================
-;;;  MARKZ.lsp  —  ЗАПОЛНЕНИЕ АТРИБУТОВ МАРКИ ЗАПОЛНЕНИЙ
-;;;  Файл: D:\MARKZ.lsp
-;;;  Команды: МАРКАЗАП, МАРКАРОВКАЗАП, МАРКАЗАПРЯД, МАРКАЗАПТАБЛ, МАРКАЗАПБЛОК
+;;;  MARKZ.lsp  вЂ”  Р—РђРџРћР›РќР•РќРР• РђРўР РР‘РЈРўРћР’ РњРђР РљР Р—РђРџРћР›РќР•РќРР™
+;;;  Р¤Р°Р№Р»: D:\MARKZ.lsp
+;;;  РљРѕРјР°РЅРґС‹: РњРђР РљРђР—РђРџ, РњРђР РљРђР РћР’РљРђР—РђРџ, РњРђР РљРђР—РђРџР РЇР”, РњРђР РљРђР—РђРџРўРђР‘Р›, РњРђР РљРђР—РђРџР‘Р›РћРљ
 ;;;
-;;;  Режим самодиагностики TEST 00 ... TEST 14.
-;;;  TEST 00 — прогон скобок исходника MARKZ.lsp.
-;;;  Этап A: выбор > чтение > диагностика > расчёт > PRE-CHECK
-;;;  Этап B: запись атрибута "Марка" только после PRE-CHECK = OK
+;;;  Р РµР¶РёРј СЃР°РјРѕРґРёР°РіРЅРѕСЃС‚РёРєРё TEST 00 ... TEST 14.
+;;;  TEST 00 вЂ” РїСЂРѕРіРѕРЅ СЃРєРѕР±РѕРє РёСЃС…РѕРґРЅРёРєР° MARKZ.lsp.
+;;;  Р­С‚Р°Рї A: РІС‹Р±РѕСЂ > С‡С‚РµРЅРёРµ > РґРёР°РіРЅРѕСЃС‚РёРєР° > СЂР°СЃС‡С‘С‚ > PRE-CHECK
+;;;  Р­С‚Р°Рї B: Р·Р°РїРёСЃСЊ Р°С‚СЂРёР±СѓС‚Р° "РњР°СЂРєР°" С‚РѕР»СЊРєРѕ РїРѕСЃР»Рµ PRE-CHECK = OK
 ;;;
-;;;  Загрузка:
+;;;  Р—Р°РіСЂСѓР·РєР°:
 ;;;    (load "D:/MARKZ.lsp")
-;;;    МАРКАРОВКАЗАП
+;;;    РњРђР РљРђР РћР’РљРђР—РђРџ
 ;;;
-;;;  ВАЖНО: имена блоков, атрибутов и Dynamic Properties должны
-;;;  точно совпадать с чертежом. Если Visibility называется иначе —
-;;;  добавьте имя в *mark:prop-vis-candidates* (см. TEST 07).
+;;;  Р’РђР–РќРћ: РёРјРµРЅР° Р±Р»РѕРєРѕРІ, Р°С‚СЂРёР±СѓС‚РѕРІ Рё Dynamic Properties РґРѕР»Р¶РЅС‹
+;;;  С‚РѕС‡РЅРѕ СЃРѕРІРїР°РґР°С‚СЊ СЃ С‡РµСЂС‚РµР¶РѕРј. Р•СЃР»Рё Visibility РЅР°Р·С‹РІР°РµС‚СЃСЏ РёРЅР°С‡Рµ вЂ”
+;;;  РґРѕР±Р°РІСЊС‚Рµ РёРјСЏ РІ *mark:prop-vis-candidates* (СЃРј. TEST 07).
 ;;;=====================================================================
 
 (vl-load-com)
 
-;;;--------------------- Шапка: имена и допуски (править здесь) ------
+;;;--------------------- РЁР°РїРєР°: РёРјРµРЅР° Рё РґРѕРїСѓСЃРєРё (РїСЂР°РІРёС‚СЊ Р·РґРµСЃСЊ) ------
 
-;; Точное имя или маска wcmatch, напр.: "*аполнение*витраж*"
-(setq *mark:block-fill*    "Заполнение в витраж")
-(setq *mark:block-glazing* "Атрибуты витража")
-(setq *mark:attr-vitrage*  "Витраж")
-(setq *mark:attr-mark*     "Марка")
-(setq *mark:prop-width*    "Ширина в свету")
-(setq *mark:prop-height*   "Высота в свету")
+;; РўРѕС‡РЅРѕРµ РёРјСЏ РёР»Рё РјР°СЃРєР° wcmatch, РЅР°РїСЂ.: "*Р°РїРѕР»РЅРµРЅРёРµ*РІРёС‚СЂР°Р¶*"
+(setq *mark:block-fill*    "Р—Р°РїРѕР»РЅРµРЅРёРµ РІ РІРёС‚СЂР°Р¶")
+(setq *mark:block-glazing* "РђС‚СЂРёР±СѓС‚С‹ РІРёС‚СЂР°Р¶Р°")
+(setq *mark:attr-vitrage*  "Р’РёС‚СЂР°Р¶")
+(setq *mark:attr-mark*     "РњР°СЂРєР°")
+(setq *mark:prop-width*    "РЁРёСЂРёРЅР° РІ СЃРІРµС‚Сѓ")
+(setq *mark:prop-height*   "Р’С‹СЃРѕС‚Р° РІ СЃРІРµС‚Сѓ")
 
-;; Кандидаты имени Dynamic Property состояния Visibility
+;; РљР°РЅРґРёРґР°С‚С‹ РёРјРµРЅРё Dynamic Property СЃРѕСЃС‚РѕСЏРЅРёСЏ Visibility
 (setq *mark:prop-vis-candidates*
-  '("Видимость1"
-    "Видимость"
+  '("Р’РёРґРёРјРѕСЃС‚СЊ1"
+    "Р’РёРґРёРјРѕСЃС‚СЊ"
     "Visibility"
     "Visibility1"
-    "Состояние видимости"
+    "РЎРѕСЃС‚РѕСЏРЅРёРµ РІРёРґРёРјРѕСЃС‚Рё"
     "Visibility State"
-    "Вид"
-    "Видимость2"))
+    "Р’РёРґ"
+    "Р’РёРґРёРјРѕСЃС‚СЊ2"))
 
-;; 29 букв: нет Ё, Й, З, О. После Я — АА, АБ, … БА, ББ. Не останавливаемся.
+;; 29 Р±СѓРєРІ: РЅРµС‚ РЃ, Р™, Р—, Рћ. РџРѕСЃР»Рµ РЇ вЂ” РђРђ, РђР‘, вЂ¦ Р‘Рђ, Р‘Р‘. РќРµ РѕСЃС‚Р°РЅР°РІР»РёРІР°РµРјСЃСЏ.
 (setq *mark:letters*
-  '("А" "Б" "В" "Г" "Д" "Е" "Ж" "И"
-    "К" "Л" "М" "Н" "П" "Р" "С" "Т" "У" "Ф"
-    "Х" "Ц" "Ч" "Ш" "Щ" "Ъ" "Ы" "Ь" "Э" "Ю" "Я"))
+  '("Рђ" "Р‘" "Р’" "Р“" "Р”" "Р•" "Р–" "Р"
+    "Рљ" "Р›" "Рњ" "Рќ" "Рџ" "Р " "РЎ" "Рў" "РЈ" "Р¤"
+    "РҐ" "Р¦" "Р§" "РЁ" "Р©" "РЄ" "Р«" "Р¬" "Р­" "Р®" "РЇ"))
 
 (defun mark:letter-at (n / base len span start off digits d ch)
   (setq base (length *mark:letters*))
@@ -70,57 +70,58 @@
              digits (cons (if ch ch "") digits)))
      (apply 'strcat digits))))
 
-;; Специальные Visibility > приписка (без дефиса, нижний регистр)
+;; РЎРїРµС†РёР°Р»СЊРЅС‹Рµ Visibility > РїСЂРёРїРёСЃРєР° (Р±РµР· РґРµС„РёСЃР°, РЅРёР¶РЅРёР№ СЂРµРіРёСЃС‚СЂ)
 (setq *mark:specials*
-  '(("Стемалит" . "стм")
-    ("Сэндвич" . "снд")))
+  '(("РЎС‚РµРјР°Р»РёС‚" . "СЃС‚Рј")
+    ("РЎСЌРЅРґРІРёС‡" . "СЃРЅРґ")))
 
-;; Ред. 48.0: секции/ярусы и шкала «в свету» (зеркало MarkZV)
-(setq *mark:fill-geo*    nil)     ;; (ename . (ширина секции высота яруса))
-(setq *mark:cell-hs*     nil)     ;; Ред. 48.8: высоты всех ячеек каркаса (З-1)
-(setq *mark:scale1*      nil)     ;; Блок 1: ключи длин ригелей, мм
-(setq *mark:scale-final* nil)     ;; ((размер источник) ...), Р/З/РЗ
-(setq *mark:sec-diag*    nil)     ;; Ред. 48.14: [DIAG] печать геометрии секций
-;; Сколько блоков показывать в TEST 13
+;; Р РµРґ. 48.0: СЃРµРєС†РёРё/СЏСЂСѓСЃС‹ Рё С€РєР°Р»Р° В«РІ СЃРІРµС‚СѓВ» (Р·РµСЂРєР°Р»Рѕ MarkZV)
+(setq *mark:fill-geo*    nil)     ;; (ename . (С€РёСЂРёРЅР° СЃРµРєС†РёРё РІС‹СЃРѕС‚Р° СЏСЂСѓСЃР°))
+(setq *mark:cell-hs*     nil)     ;; Р РµРґ. 48.8: РІС‹СЃРѕС‚С‹ РІСЃРµС… СЏС‡РµРµРє РєР°СЂРєР°СЃР° (Р—-1)
+(setq *mark:scale1*      nil)     ;; Р‘Р»РѕРє 1: РєР»СЋС‡Рё РґР»РёРЅ СЂРёРіРµР»РµР№, РјРј
+(setq *mark:scale-final* nil)     ;; ((СЂР°Р·РјРµСЂ РёСЃС‚РѕС‡РЅРёРє) ...), Р /Р—/Р Р—
+(setq *mark:sec-diag*    nil)     ;; Р РµРґ. 48.14: [DIAG] РїРµС‡Р°С‚СЊ РіРµРѕРјРµС‚СЂРёРё СЃРµРєС†РёР№
+;; РЎРєРѕР»СЊРєРѕ Р±Р»РѕРєРѕРІ РїРѕРєР°Р·С‹РІР°С‚СЊ РІ TEST 13
 (setq *mark:test13-show*  10)
-;; Сколько строк ошибок показывать в одном тесте (остальное — сводка)
+;; РЎРєРѕР»СЊРєРѕ СЃС‚СЂРѕРє РѕС€РёР±РѕРє РїРѕРєР°Р·С‹РІР°С‚СЊ РІ РѕРґРЅРѕРј С‚РµСЃС‚Рµ (РѕСЃС‚Р°Р»СЊРЅРѕРµ вЂ” СЃРІРѕРґРєР°)
 (setq *mark:max-err-lines* 10)
 
-;; Рядовка
-(setq *mark:ar-block*   "Ряд заполнений")
-(setq *mark:ar-attr*    "Ряд")
-(setq *mark:ar-group-h* "Рядовка горизонтальная")
-(setq *mark:ar-group-v* "Рядовка вертикальная")
+;; Р СЏРґРѕРІРєР°
+(setq *mark:ar-block*   "Р СЏРґ Р·Р°РїРѕР»РЅРµРЅРёР№")
+(setq *mark:ar-attr*    "Р СЏРґ")
+(setq *mark:ar-group-h* "Р СЏРґРѕРІРєР° РіРѕСЂРёР·РѕРЅС‚Р°Р»СЊРЅР°СЏ")
+(setq *mark:ar-group-v* "Р СЏРґРѕРІРєР° РІРµСЂС‚РёРєР°Р»СЊРЅР°СЏ")
 (setq *mark:ar-offset*  1000.0)
 (setq *mark:ar-gap*     1000.0)
-(setq *mark:ar-line*    150.0)   ; шаг линий 1+, мм
+(setq *mark:ar-line*    150.0)   ; С€Р°Рі Р»РёРЅРёР№ 1+, РјРј
 (setq *mark:ar-tol*     1.0)
-;; Ред. 48.29: порог разрыва между витражами, мм — меньше порога
-;; один витраж (проёмные ячейки не разрывают); у ТБ-1/В-7 ~9.9 м
+;; Р РµРґ. 48.29: РїРѕСЂРѕРі СЂР°Р·СЂС‹РІР° РјРµР¶РґСѓ РІРёС‚СЂР°Р¶Р°РјРё, РјРј вЂ” РјРµРЅСЊС€Рµ РїРѕСЂРѕРіР°
+;; РѕРґРёРЅ РІРёС‚СЂР°Р¶ (РїСЂРѕС‘РјРЅС‹Рµ СЏС‡РµР№РєРё РЅРµ СЂР°Р·СЂС‹РІР°СЋС‚); Сѓ РўР‘-1/Р’-7 ~9.9 Рј
 (setq *mark:vz-gap*     2500.0)
-;; Ред. 48.30: карта (ename . префикс витража) — совместная маркировка;
-;; режим: "joint" (общие шкалы) / "separate" (свои per витраж) / nil
+;; Р РµРґ. 48.30: РєР°СЂС‚Р° (ename . РїСЂРµС„РёРєСЃ РІРёС‚СЂР°Р¶Р°) вЂ” СЃРѕРІРјРµСЃС‚РЅР°СЏ РјР°СЂРєРёСЂРѕРІРєР°;
+;; СЂРµР¶РёРј: "joint" (РѕР±С‰РёРµ С€РєР°Р»С‹) / "separate" (СЃРІРѕРё per РІРёС‚СЂР°Р¶) / nil
 (setq *mark:vz-map*     nil)
 (setq *mark:vz-mode*    nil)
 
-;; Сетка заполнений
-(setq *mark:fill-tol*    30.0)    ; мм — выравнивание осей
-(setq *mark:fill-slope*  0.0033)  ; уклон стойки, не ослаблять без чертежа
-(setq *mark:fill-window* 5000.0)  ; мм — окно поиска для режима «Точка»
-(setq *mark:fill-max-w*  3000.0)  ; шире — не ячейка, а разрыв между участками
+;; РЎРµС‚РєР° Р·Р°РїРѕР»РЅРµРЅРёР№
+(setq *mark:fill-tol*    30.0)    ; РјРј вЂ” РІС‹СЂР°РІРЅРёРІР°РЅРёРµ РѕСЃРµР№
+(setq *mark:fill-slope*  0.0033)  ; СѓРєР»РѕРЅ СЃС‚РѕР№РєРё, РЅРµ РѕСЃР»Р°Р±Р»СЏС‚СЊ Р±РµР· С‡РµСЂС‚РµР¶Р°
+(setq *mark:fill-window* 5000.0)  ; РјРј вЂ” РѕРєРЅРѕ РїРѕРёСЃРєР° РґР»СЏ СЂРµР¶РёРјР° В«РўРѕС‡РєР°В»
+(setq *mark:fill-max-w*  3000.0)  ; С€РёСЂРµ вЂ” РЅРµ СЏС‡РµР№РєР°, Р° СЂР°Р·СЂС‹РІ РјРµР¶РґСѓ СѓС‡Р°СЃС‚РєР°РјРё
 (setq *mark:fill-max-h*  4500.0)
 
-;; Ведомость
+;; Р’РµРґРѕРјРѕСЃС‚СЊ
 (setq *mtab:allowance* 26)
-(setq *mtab:h-keys* '("Высота в свету" "ВЫСОТА В СВЕТУ" "ВЫСОТА" "Height"))
-(setq *mtab:w-keys* '("Ширина в свету" "ШИРИНА В СВЕТУ" "ШИРИНА" "ДЛИНА" "Width"))
+(setq *mtab:h-keys* '("Р’С‹СЃРѕС‚Р° РІ СЃРІРµС‚Сѓ" "Р’Р«РЎРћРўРђ Р’ РЎР’Р•РўРЈ" "Р’Р«РЎРћРўРђ" "Height"))
+(setq *mtab:w-keys* '("РЁРёСЂРёРЅР° РІ СЃРІРµС‚Сѓ" "РЁРР РРќРђ Р’ РЎР’Р•РўРЈ" "РЁРР РРќРђ" "Р”Р›РРќРђ" "Width"))
 
-;;;--------------------- Состояние сеанса -----------------------------
+;;;--------------------- РЎРѕСЃС‚РѕСЏРЅРёРµ СЃРµР°РЅСЃР° -----------------------------
 
-;; Редакция модуля — видно в консоли при загрузке и в баннерах
-(setq *mark:rev*    "Ред. 48.35")
+;; Р РµРґР°РєС†РёСЏ РјРѕРґСѓР»СЏ вЂ” РІРёРґРЅРѕ РІ РєРѕРЅСЃРѕР»Рё РїСЂРё Р·Р°РіСЂСѓР·РєРµ Рё РІ Р±Р°РЅРЅРµСЂР°С…
+(setq *mark:rev*    "Р РµРґ. 48.35")
+(setq *mark:build*  "36.1")
 
-;; МАРКАЗАП: один выбор; один UNDO на весь пакет
+;; РњРђР РљРђР—РђРџ: РѕРґРёРЅ РІС‹Р±РѕСЂ; РѕРґРёРЅ UNDO РЅР° РІРµСЃСЊ РїР°РєРµС‚
 (setq *mark:reuse-sel* nil)
 (setq *mark:batch-undo* nil)
 (setq *mark:seg-cache* nil)
@@ -146,7 +147,7 @@
         *mark:written*      0
         *mark:precheck-ok*  nil
         *mark:apply-failed* 0)
-  ;; выбор и таблицы индексов не трогаем, если МАРКАЗАП переиспользует
+  ;; РІС‹Р±РѕСЂ Рё С‚Р°Р±Р»РёС†С‹ РёРЅРґРµРєСЃРѕРІ РЅРµ С‚СЂРѕРіР°РµРј, РµСЃР»Рё РњРђР РљРђР—РђРџ РїРµСЂРµРёСЃРїРѕР»СЊР·СѓРµС‚
   (if (not *mark:reuse-sel*)
     (setq *mark:found-names*   nil
           *mark:sel-total*     0
@@ -160,13 +161,13 @@
           *mark:fill-geo*      nil
           *mark:scale1*        nil
           *mark:scale-final*   nil))
-  ;; Ред. 48.23: кэш проёмов сбрасывается здесь, а не только в
-  ;; fill-main — МАРКАЗАП (a-all) вызывает режимную функцию
-  ;; напрямую, и после переноса чертежа в той же сессии кэш
-  ;; держал СТАРЫЕ габариты окон: ячейки не признавались
-  ;; проёмными и получали вставки (ТБ-1, прогон 48.21 — обе
-  ;; 1150-ячейки). reset-state выполняется при LOAD и в начале
-  ;; каждого пакета — кэш всегда свежий.
+  ;; Р РµРґ. 48.23: РєСЌС€ РїСЂРѕС‘РјРѕРІ СЃР±СЂР°СЃС‹РІР°РµС‚СЃСЏ Р·РґРµСЃСЊ, Р° РЅРµ С‚РѕР»СЊРєРѕ РІ
+  ;; fill-main вЂ” РњРђР РљРђР—РђРџ (a-all) РІС‹Р·С‹РІР°РµС‚ СЂРµР¶РёРјРЅСѓСЋ С„СѓРЅРєС†РёСЋ
+  ;; РЅР°РїСЂСЏРјСѓСЋ, Рё РїРѕСЃР»Рµ РїРµСЂРµРЅРѕСЃР° С‡РµСЂС‚РµР¶Р° РІ С‚РѕР№ Р¶Рµ СЃРµСЃСЃРёРё РєСЌС€
+  ;; РґРµСЂР¶Р°Р» РЎРўРђР Р«Р• РіР°Р±Р°СЂРёС‚С‹ РѕРєРѕРЅ: СЏС‡РµР№РєРё РЅРµ РїСЂРёР·РЅР°РІР°Р»РёСЃСЊ
+  ;; РїСЂРѕС‘РјРЅС‹РјРё Рё РїРѕР»СѓС‡Р°Р»Рё РІСЃС‚Р°РІРєРё (РўР‘-1, РїСЂРѕРіРѕРЅ 48.21 вЂ” РѕР±Рµ
+  ;; 1150-СЏС‡РµР№РєРё). reset-state РІС‹РїРѕР»РЅСЏРµС‚СЃСЏ РїСЂРё LOAD Рё РІ РЅР°С‡Р°Р»Рµ
+  ;; РєР°Р¶РґРѕРіРѕ РїР°РєРµС‚Р° вЂ” РєСЌС€ РІСЃРµРіРґР° СЃРІРµР¶РёР№.
   (setq *mark:opening-bbs*     nil
         *mark:opening-loaded*  nil
         *mark:opening-partial* nil
@@ -174,12 +175,12 @@
 
 (mark:reset-state)
 
-;;;--------------------- Сообщения ------------------------------------
+;;;--------------------- РЎРѕРѕР±С‰РµРЅРёСЏ ------------------------------------
 
 (defun mark:out (msg)
   (prompt (strcat msg "\n")))
 
-;; Одна строка в командной строке при старте. В пакете МАРКАЗАП не повторяем.
+;; РћРґРЅР° СЃС‚СЂРѕРєР° РІ РєРѕРјР°РЅРґРЅРѕР№ СЃС‚СЂРѕРєРµ РїСЂРё СЃС‚Р°СЂС‚Рµ. Р’ РїР°РєРµС‚Рµ РњРђР РљРђР—РђРџ РЅРµ РїРѕРІС‚РѕСЂСЏРµРј.
 (defun mark:cmd-line (text)
   (if (not *mark:reuse-sel*)
     (prompt (strcat "\n" text "\n"))))
@@ -192,13 +193,13 @@
 
 (defun mark:banner ()
   (mark:out "========================================")
-  (mark:out (strcat " ЗАПОЛНЕНИЕ АТРИБУТОВ МАРКИ  "
+  (mark:out (strcat " Р—РђРџРћР›РќР•РќРР• РђРўР РР‘РЈРўРћР’ РњРђР РљР  "
                     *mark:rev*))
   (mark:out "========================================"))
 
-;;;--------------------- Утилиты --------------------------------------
+;;;--------------------- РЈС‚РёР»РёС‚С‹ --------------------------------------
 
-;; Переносимая проверка строки (не зависит от `stringp` из Visual LISP)
+;; РџРµСЂРµРЅРѕСЃРёРјР°СЏ РїСЂРѕРІРµСЂРєР° СЃС‚СЂРѕРєРё (РЅРµ Р·Р°РІРёСЃРёС‚ РѕС‚ `stringp` РёР· Visual LISP)
 (defun mark:strp (x)
   (and x (eq (type x) 'STR)))
 
@@ -227,14 +228,14 @@
     (t (vl-princ-to-string (mark:unwrap v)))))
 
 (defun mark:mm-key (v / u)
-  ;; Ред. 48.7: размер в целых мм (ключ сортировки); nil — не число.
+  ;; Р РµРґ. 48.7: СЂР°Р·РјРµСЂ РІ С†РµР»С‹С… РјРј (РєР»СЋС‡ СЃРѕСЂС‚РёСЂРѕРІРєРё); nil вЂ” РЅРµ С‡РёСЃР»Рѕ.
   (setq u (mark:unwrap v))
   (if (numberp u)
     (mark:round1 u)
     nil))
 
 (defun mark:fmt-mm (v / u)
-  ;; Ред. 48.7: печать размеров в целых мм — без хвостов вида 409.99999847.
+  ;; Р РµРґ. 48.7: РїРµС‡Р°С‚СЊ СЂР°Р·РјРµСЂРѕРІ РІ С†РµР»С‹С… РјРј вЂ” Р±РµР· С…РІРѕСЃС‚РѕРІ РІРёРґР° 409.99999847.
   (setq u (mark:unwrap v))
   (if (numberp u)
     (rtos (mark:round1 u) 2 0)
@@ -256,14 +257,14 @@
                   (max 1 (- 36 (strlen label))))
           value))
 
-;; Выравнивание вправо: колонки лога «ячейка/вставка» стоят ровно.
+;; Р’С‹СЂР°РІРЅРёРІР°РЅРёРµ РІРїСЂР°РІРѕ: РєРѕР»РѕРЅРєРё Р»РѕРіР° В«СЏС‡РµР№РєР°/РІСЃС‚Р°РІРєР°В» СЃС‚РѕСЏС‚ СЂРѕРІРЅРѕ.
 (defun mark:rjust (s w / d)
   (setq d (- w (strlen s)))
   (if (> d 0)
     (strcat (substr "                            " 1 d) s)
     s))
 
-;; Печать списка строк с ограничением *mark:max-err-lines*
+;; РџРµС‡Р°С‚СЊ СЃРїРёСЃРєР° СЃС‚СЂРѕРє СЃ РѕРіСЂР°РЅРёС‡РµРЅРёРµРј *mark:max-err-lines*
 (defun mark:print-limited (lines / total shown)
   (setq total (length lines)
         shown 0)
@@ -273,9 +274,9 @@
         (setq shown (1+ shown))
         (mark:out ln))))
   (if (> total *mark:max-err-lines*)
-    (mark:out (strcat "... и ещё "
+    (mark:out (strcat "... Рё РµС‰С‘ "
                       (itoa (- total *mark:max-err-lines*))
-                      " строк(и)."))))
+                      " СЃС‚СЂРѕРє(Рё)."))))
 
 (defun mark:insert-sorted (lst n / res done hit)
   (setq res nil
@@ -296,10 +297,10 @@
   (reverse res))
 
 (defun mark:same-num? (a b)
-  ;; одинаковый размер: 0.5 мм — шум float/округление, не «другой типоразмер»
+  ;; РѕРґРёРЅР°РєРѕРІС‹Р№ СЂР°Р·РјРµСЂ: 0.5 РјРј вЂ” С€СѓРј float/РѕРєСЂСѓРіР»РµРЅРёРµ, РЅРµ В«РґСЂСѓРіРѕР№ С‚РёРїРѕСЂР°Р·РјРµСЂВ»
   (and (numberp a) (numberp b) (equal a b 0.5)))
 
-;; округление размера для ключа индекса (0.5 мм)
+;; РѕРєСЂСѓРіР»РµРЅРёРµ СЂР°Р·РјРµСЂР° РґР»СЏ РєР»СЋС‡Р° РёРЅРґРµРєСЃР° (0.5 РјРј)
 (defun mark:dim-key (x)
   (if (and (numberp x) (> x 0.0))
     (fix (+ (* x 2.0) 0.5))  ; half-mm integer key
@@ -343,22 +344,22 @@
 (defun mark:vla (e)
   (vlax-ename->vla-object e))
 
-;; Имя блока: DXF-код 2 + имя через ActiveX (для динамических блоков)
-;; Безопасное чтение ActiveX-свойства через vlax-get-property
+;; РРјСЏ Р±Р»РѕРєР°: DXF-РєРѕРґ 2 + РёРјСЏ С‡РµСЂРµР· ActiveX (РґР»СЏ РґРёРЅР°РјРёС‡РµСЃРєРёС… Р±Р»РѕРєРѕРІ)
+;; Р‘РµР·РѕРїР°СЃРЅРѕРµ С‡С‚РµРЅРёРµ ActiveX-СЃРІРѕР№СЃС‚РІР° С‡РµСЂРµР· vlax-get-property
 (defun mark:ax-get (obj prop / r)
   (setq r (vl-catch-all-apply 'vlax-get-property (list obj prop)))
   (if (vl-catch-all-error-p r)
     nil
     r))
 
-;; Безопасная запись ActiveX-свойства
+;; Р‘РµР·РѕРїР°СЃРЅР°СЏ Р·Р°РїРёСЃСЊ ActiveX-СЃРІРѕР№СЃС‚РІР°
 (defun mark:ax-put (obj prop val / r)
   (setq r (vl-catch-all-apply 'vlax-put-property (list obj prop val)))
   (if (vl-catch-all-error-p r)
     nil
     t))
 
-;; Вызов ActiveX-метода (аргументы после method)
+;; Р’С‹Р·РѕРІ ActiveX-РјРµС‚РѕРґР° (Р°СЂРіСѓРјРµРЅС‚С‹ РїРѕСЃР»Рµ method)
 (defun mark:ax-invoke (obj method arg / r)
   (setq r (vl-catch-all-apply 'vlax-invoke-method
                               (if arg
@@ -368,7 +369,7 @@
     nil
     r))
 
-;; T если метод вызван без ошибки (void-методы возвращают nil — это OK)
+;; T РµСЃР»Рё РјРµС‚РѕРґ РІС‹Р·РІР°РЅ Р±РµР· РѕС€РёР±РєРё (void-РјРµС‚РѕРґС‹ РІРѕР·РІСЂР°С‰Р°СЋС‚ nil вЂ” СЌС‚Рѕ OK)
 (defun mark:ax-invoke-ok (obj method arg / r)
   (setq r (vl-catch-all-apply 'vlax-invoke-method
                               (if arg
@@ -376,7 +377,7 @@
                                 (list obj method))))
   (not (vl-catch-all-error-p r)))
 
-;; Все известные имена вставки: DXF-2, Name, EffectiveName
+;; Р’СЃРµ РёР·РІРµСЃС‚РЅС‹Рµ РёРјРµРЅР° РІСЃС‚Р°РІРєРё: DXF-2, Name, EffectiveName
 (defun mark:block-names (e / obj names nm)
   (setq names nil
         nm    (cdr (assoc 2 (entget e))))
@@ -393,7 +394,7 @@
         (setq names (cons nm names)))))
   (reverse names))
 
-;; Точное имя ИЛИ маска wcmatch в target (* ?)
+;; РўРѕС‡РЅРѕРµ РёРјСЏ РР›Р РјР°СЃРєР° wcmatch РІ target (* ?)
 (defun mark:name-match? (actual target / a t*)
   (and (mark:strp actual)
        (mark:strp target)
@@ -411,14 +412,14 @@
       (setq ok t)))
   ok)
 
-;;;--------------------- Атрибуты -------------------------------------
+;;;--------------------- РђС‚СЂРёР±СѓС‚С‹ -------------------------------------
 
-;; Поиск ATTRIB по DXF-цепочке INSERT(-2) > ATTRIB(-2) > ...
-;; Возвращает ename атрибута или nil.
-;; Принимает ename вставки.
-;; Универсальный поиск: tag передаём явно
+;; РџРѕРёСЃРє ATTRIB РїРѕ DXF-С†РµРїРѕС‡РєРµ INSERT(-2) > ATTRIB(-2) > ...
+;; Р’РѕР·РІСЂР°С‰Р°РµС‚ ename Р°С‚СЂРёР±СѓС‚Р° РёР»Рё nil.
+;; РџСЂРёРЅРёРјР°РµС‚ ename РІСЃС‚Р°РІРєРё.
+;; РЈРЅРёРІРµСЂСЃР°Р»СЊРЅС‹Р№ РїРѕРёСЃРє: tag РїРµСЂРµРґР°С‘Рј СЏРІРЅРѕ
 (defun mark:find-attr-in-ename (e tag / head ent data result)
-  ;; 1) классическая цепочка INSERT -2
+  ;; 1) РєР»Р°СЃСЃРёС‡РµСЃРєР°СЏ С†РµРїРѕС‡РєР° INSERT -2
   (setq head   e
         result nil
         ent    (cdr (assoc -2 (entget e))))
@@ -435,7 +436,7 @@
            (setq result ent))
           (t
            (setq ent (cdr (assoc -2 data))))))))
-  ;; 2) fallback: entnext — ATTRIB/SEQEND сразу после INSERT (66=1)
+  ;; 2) fallback: entnext вЂ” ATTRIB/SEQEND СЃСЂР°Р·Сѓ РїРѕСЃР»Рµ INSERT (66=1)
   (if (null result)
     (progn
       (setq ent (entnext e))
@@ -451,11 +452,11 @@
           ((mark:name= (cdr (assoc 0 data)) "SEQEND")
            (setq ent nil))
           (t
-           ;; не ATTRIB — дальше не ищем в этой ветке
+           ;; РЅРµ ATTRIB вЂ” РґР°Р»СЊС€Рµ РЅРµ РёС‰РµРј РІ СЌС‚РѕР№ РІРµС‚РєРµ
            (setq ent nil))))))
   result)
 
-;; Через ActiveX-коллекцию Attributes (без vla-get-*)
+;; Р§РµСЂРµР· ActiveX-РєРѕР»Р»РµРєС†РёСЋ Attributes (Р±РµР· vla-get-*)
 (defun mark:find-attr-obj (obj tag / result attrs i cnt a tagv)
   (setq result nil)
   (if obj
@@ -475,7 +476,7 @@
                 (setq i (1+ i)))))))))
   result)
 
-;; Чтение значения атрибута по ename вставки: (T значение) | (NIL NIL)
+;; Р§С‚РµРЅРёРµ Р·РЅР°С‡РµРЅРёСЏ Р°С‚СЂРёР±СѓС‚Р° РїРѕ ename РІСЃС‚Р°РІРєРё: (T Р·РЅР°С‡РµРЅРёРµ) | (NIL NIL)
 (defun mark:find-attr (e tag / a data val obj)
   (setq a (mark:find-attr-in-ename e tag))
   (cond
@@ -499,15 +500,15 @@
 
 ;;;--------------------- Dynamic Properties ---------------------------
 
-;; (T значение) | (NIL NIL), если свойство недоступно
-;; Развернуть VARIANT > значение
+;; (T Р·РЅР°С‡РµРЅРёРµ) | (NIL NIL), РµСЃР»Рё СЃРІРѕР№СЃС‚РІРѕ РЅРµРґРѕСЃС‚СѓРїРЅРѕ
+;; Р Р°Р·РІРµСЂРЅСѓС‚СЊ VARIANT > Р·РЅР°С‡РµРЅРёРµ
 (defun mark:unwrap (v / w)
   (setq w (vl-catch-all-apply 'vlax-variant-value (list v)))
   (if (vl-catch-all-error-p w)
     v
     w))
 
-;; Имя свойства dynamic block: PropertyName | Name | Description
+;; РРјСЏ СЃРІРѕР№СЃС‚РІР° dynamic block: PropertyName | Name | Description
 (defun mark:dyn-item-name (item / nm)
   (setq nm (mark:ax-get item "PropertyName"))
   (if (not (mark:strp nm))
@@ -522,7 +523,7 @@
     (setq val (mark:ax-get item "PropertyValue")))
   (mark:unwrap val))
 
-;; Разбор одного элемента коллекции свойств > cons или nil
+;; Р Р°Р·Р±РѕСЂ РѕРґРЅРѕРіРѕ СЌР»РµРјРµРЅС‚Р° РєРѕР»Р»РµРєС†РёРё СЃРІРѕР№СЃС‚РІ > cons РёР»Рё nil
 (defun mark:dyn-item-pair (item / nm val)
   (setq nm  (mark:dyn-item-name item)
         val (mark:dyn-item-value item))
@@ -530,7 +531,7 @@
     (cons nm val)
     nil))
 
-;; Пары (имя . значение) из GetDynamicBlockProperties
+;; РџР°СЂС‹ (РёРјСЏ . Р·РЅР°С‡РµРЅРёРµ) РёР· GetDynamicBlockProperties
 (defun mark:load-dyn-pairs (obj / r v lst item pair out)
   (setq out nil)
   (setq r (vl-catch-all-apply 'vlax-invoke-method
@@ -539,13 +540,13 @@
     nil
     (progn
       (setq v (mark:unwrap r))
-      ;; safearray > list (без get-ubound)
+      ;; safearray > list (Р±РµР· get-ubound)
       (setq lst (vl-catch-all-apply 'vlax-safearray->list (list v)))
       (cond
         ((and (not (vl-catch-all-error-p lst)) (listp lst))
          (progn
            (foreach item lst
-             ;; item может быть variant
+             ;; item РјРѕР¶РµС‚ Р±С‹С‚СЊ variant
              (setq item (mark:unwrap item)
                    pair (mark:dyn-item-pair item))
              (if pair
@@ -553,12 +554,12 @@
            (reverse out)))
         (t
          (progn
-           ;; не список — пробуем как одиночный объект
+           ;; РЅРµ СЃРїРёСЃРѕРє вЂ” РїСЂРѕР±СѓРµРј РєР°Рє РѕРґРёРЅРѕС‡РЅС‹Р№ РѕР±СЉРµРєС‚
            (setq pair (mark:dyn-item-pair v))
            (if pair
              (list pair)
              (progn
-               ;; последняя попытка: сам r как коллекция Count/Item
+               ;; РїРѕСЃР»РµРґРЅСЏСЏ РїРѕРїС‹С‚РєР°: СЃР°Рј r РєР°Рє РєРѕР»Р»РµРєС†РёСЏ Count/Item
                (setq out nil
                      item (mark:ax-invoke r "Item" 0))
                (if item
@@ -568,7 +569,7 @@
                    (if pair (setq out (list pair)))))
                out))))))))
 
-;; Кэш: ename > alist
+;; РљСЌС€: ename > alist
 (defun mark:dyn-pairs (e / cache pair obj)
   (setq cache (assoc e *mark:dyn-cache*))
   (if cache
@@ -606,25 +607,25 @@
           (setq res (list t cand (cadr r)))))))
   res)
 
-;;;--------------------- Выбор объектов -------------------------------
+;;;--------------------- Р’С‹Р±РѕСЂ РѕР±СЉРµРєС‚РѕРІ -------------------------------
 
 (defun mark:select (/ ss i e fills glazings others names nm lst)
   (if (and *mark:reuse-sel* *mark:fills*)
     (progn
-      (mark:out "[INFO] Выбор уже выполнен (МАРКАЗАП) — без повторного выделения.")
+      (mark:out "[INFO] Р’С‹Р±РѕСЂ СѓР¶Рµ РІС‹РїРѕР»РЅРµРЅ (РњРђР РљРђР—РђРџ) вЂ” Р±РµР· РїРѕРІС‚РѕСЂРЅРѕРіРѕ РІС‹РґРµР»РµРЅРёСЏ.")
       t)
     (progn
   (mark:out "")
   (prompt
-    "\nВыберите блоки «Заполнение в витраж» (стойки не нужны): ")
+    "\nР’С‹Р±РµСЂРёС‚Рµ Р±Р»РѕРєРё В«Р—Р°РїРѕР»РЅРµРЅРёРµ РІ РІРёС‚СЂР°Р¶В» (СЃС‚РѕР№РєРё РЅРµ РЅСѓР¶РЅС‹): ")
   (setq ss (vl-catch-all-apply 'ssget nil))
   (cond
     ((vl-catch-all-error-p ss)
-     (mark:out "[ERROR] Ошибка при выделении.")
+     (mark:out "[ERROR] РћС€РёР±РєР° РїСЂРё РІС‹РґРµР»РµРЅРёРё.")
      (mark:note-error)
      nil)
     ((null ss)
-     (mark:out "[INFO] Выбор отменён. Изменений не выполнено.")
+     (mark:out "[INFO] Р’С‹Р±РѕСЂ РѕС‚РјРµРЅС‘РЅ. РР·РјРµРЅРµРЅРёР№ РЅРµ РІС‹РїРѕР»РЅРµРЅРѕ.")
      nil)
     (t
      (setq fills     nil
@@ -650,34 +651,34 @@
            *mark:glazings*     (reverse glazings)
            *mark:others*       others
            *mark:found-names*  (reverse names))
-     ;; Ред. 48.30: новый выбор — карта витражей недействительна
-     ;; Ред. 48.32: и кэш каркаса тоже
+     ;; Р РµРґ. 48.30: РЅРѕРІС‹Р№ РІС‹Р±РѕСЂ вЂ” РєР°СЂС‚Р° РІРёС‚СЂР°Р¶РµР№ РЅРµРґРµР№СЃС‚РІРёС‚РµР»СЊРЅР°
+     ;; Р РµРґ. 48.32: Рё РєСЌС€ РєР°СЂРєР°СЃР° С‚РѕР¶Рµ
      (setq *mark:vz-map*  nil
            *mark:vz-mode* nil
            *mark:carc-cache* nil)
      (mark:out "")
-     (mark:out (strcat "[INFO] Выбрано объектов: " (itoa *mark:sel-total*)))
-     (mark:out (strcat "[INFO] Заполнений: " (itoa (length *mark:fills*))))
+     (mark:out (strcat "[INFO] Р’С‹Р±СЂР°РЅРѕ РѕР±СЉРµРєС‚РѕРІ: " (itoa *mark:sel-total*)))
+     (mark:out (strcat "[INFO] Р—Р°РїРѕР»РЅРµРЅРёР№: " (itoa (length *mark:fills*))))
      (mark:out
-       (strcat "[INFO] \"Атрибуты витража\": "
+       (strcat "[INFO] \"РђС‚СЂРёР±СѓС‚С‹ РІРёС‚СЂР°Р¶Р°\": "
                (itoa (length *mark:glazings*))))
      (if (> others 0)
        (mark:out
-         (strcat "[INFO] Прочих объектов (игнорируются): " (itoa others))))
-     (mark:out "[INFO] Имена вставок в выделении:")
+         (strcat "[INFO] РџСЂРѕС‡РёС… РѕР±СЉРµРєС‚РѕРІ (РёРіРЅРѕСЂРёСЂСѓСЋС‚СЃСЏ): " (itoa others))))
+     (mark:out "[INFO] РРјРµРЅР° РІСЃС‚Р°РІРѕРє РІ РІС‹РґРµР»РµРЅРёРё:")
      (if *mark:found-names*
        (foreach nm *mark:found-names*
          (mark:out (strcat "         - " nm)))
-       (mark:out "         (имена не прочитаны)"))
+       (mark:out "         (РёРјРµРЅР° РЅРµ РїСЂРѕС‡РёС‚Р°РЅС‹)"))
      (if (null *mark:fills*)
        (progn
-         (mark:out "[INFO] Имя/маска заполнения (*mark:block-fill*):")
+         (mark:out "[INFO] РРјСЏ/РјР°СЃРєР° Р·Р°РїРѕР»РЅРµРЅРёСЏ (*mark:block-fill*):")
          (mark:out (strcat "         " *mark:block-fill*))))
      t)))))
 
-;;;--------------------- Сбор данных (только чтение) ------------------
+;;;--------------------- РЎР±РѕСЂ РґР°РЅРЅС‹С… (С‚РѕР»СЊРєРѕ С‡С‚РµРЅРёРµ) ------------------
 
-;; Все теги ATTRIB вставки (DXF-цепочка -2)
+;; Р’СЃРµ С‚РµРіРё ATTRIB РІСЃС‚Р°РІРєРё (DXF-С†РµРїРѕС‡РєР° -2)
 (defun mark:attr-tags (e / head ent data tags tag)
   (setq head e
         tags nil
@@ -711,7 +712,7 @@
            (setq ent nil))))))
   (reverse tags))
 
-;; Теги через ActiveX-коллекцию Attributes
+;; РўРµРіРё С‡РµСЂРµР· ActiveX-РєРѕР»Р»РµРєС†РёСЋ Attributes
 (defun mark:attr-tags-ax (obj / attrs cnt i a tag tags)
   (setq tags nil
         attrs (mark:ax-get obj "Attributes"))
@@ -772,7 +773,7 @@
   (setq *mark:records* (reverse recs))
   *mark:records*)
 
-;;;--------------------- TEST 00 — прогон скобок исходника ------------
+;;;--------------------- TEST 00 вЂ” РїСЂРѕРіРѕРЅ СЃРєРѕР±РѕРє РёСЃС…РѕРґРЅРёРєР° ------------
 
 (setq *mark:source-candidates*
   '("D:/MarkZ/MARKZ.lsp"
@@ -791,7 +792,7 @@
        f
        (progn (close f) t)))
 
-;; Не привязан к одному диску: findfile (пути поддержки) и явные кандидаты.
+;; РќРµ РїСЂРёРІСЏР·Р°РЅ Рє РѕРґРЅРѕРјСѓ РґРёСЃРєСѓ: findfile (РїСѓС‚Рё РїРѕРґРґРµСЂР¶РєРё) Рё СЏРІРЅС‹Рµ РєР°РЅРґРёРґР°С‚С‹.
 (defun mark:find-source (/ cand found ff)
   (setq found nil
         ff    (vl-catch-all-apply 'findfile (list "MARKZ.lsp")))
@@ -810,13 +811,13 @@
   (setq *mark:source-file* found)
   found)
 
-;; Сканер: баланс () вне строк и комментариев.
-;; Возвращает (T "детали OK") или (NIL "детали ошибка")
+;; РЎРєР°РЅРµСЂ: Р±Р°Р»Р°РЅСЃ () РІРЅРµ СЃС‚СЂРѕРє Рё РєРѕРјРјРµРЅС‚Р°СЂРёРµРІ.
+;; Р’РѕР·РІСЂР°С‰Р°РµС‚ (T "РґРµС‚Р°Р»Рё OK") РёР»Рё (NIL "РґРµС‚Р°Р»Рё РѕС€РёР±РєР°")
 (defun mark:scan-parens (path / f ch depth in-str in-com line err n-open n-close
                             n-str-start escaped cr)
   (setq f (vl-catch-all-apply 'open (list path "r")))
   (if (or (vl-catch-all-error-p f) (null f))
-    (list nil (strcat "файл не открыт: " path))
+    (list nil (strcat "С„Р°Р№Р» РЅРµ РѕС‚РєСЂС‹С‚: " path))
     (progn
       (setq depth   0
             in-str  nil
@@ -828,24 +829,24 @@
             n-str-start 0)
       (while (and (null err) (setq ch (read-char f)))
         (cond
-          ;; перевод строки
+          ;; РїРµСЂРµРІРѕРґ СЃС‚СЂРѕРєРё
           ((= ch 10)
            (setq in-com nil
                  line   (1+ line)))
-          ;; внутри комментария — до конца строки
+          ;; РІРЅСѓС‚СЂРё РєРѕРјРјРµРЅС‚Р°СЂРёСЏ вЂ” РґРѕ РєРѕРЅС†Р° СЃС‚СЂРѕРєРё
           (in-com nil)
-          ;; внутри строки
+          ;; РІРЅСѓС‚СЂРё СЃС‚СЂРѕРєРё
           (in-str
            (cond
-             ((= ch 92)  ; backslash — экранирующий символ
+             ((= ch 92)  ; backslash вЂ” СЌРєСЂР°РЅРёСЂСѓСЋС‰РёР№ СЃРёРјРІРѕР»
               (if (null (read-char f))
-                (setq err (strcat "незавершённый escape, строка " (itoa line)))))
-             ((= ch 34)  ; закрывающая кавычка
+                (setq err (strcat "РЅРµР·Р°РІРµСЂС€С‘РЅРЅС‹Р№ escape, СЃС‚СЂРѕРєР° " (itoa line)))))
+             ((= ch 34)  ; Р·Р°РєСЂС‹РІР°СЋС‰Р°СЏ РєР°РІС‹С‡РєР°
               (setq in-str nil))
              (t nil)))
-          ;; обычный код
-          ((= ch 59) (setq in-com t))          ; ; — комментарий
-          ((= ch 34)                           ; " — открытие строки
+          ;; РѕР±С‹С‡РЅС‹Р№ РєРѕРґ
+          ((= ch 59) (setq in-com t))          ; ; вЂ” РєРѕРјРјРµРЅС‚Р°СЂРёР№
+          ((= ch 34)                           ; " вЂ” РѕС‚РєСЂС‹С‚РёРµ СЃС‚СЂРѕРєРё
            (setq in-str t
                  n-str-start (1+ n-str-start)))
           ((= ch 40)                           ; (
@@ -855,24 +856,24 @@
            (setq depth    (1- depth)
                  n-close  (1+ n-close))
            (if (< depth 0)
-             (setq err (strcat "лишняя закрывающая ) — строка " (itoa line)))))
+             (setq err (strcat "Р»РёС€РЅСЏСЏ Р·Р°РєСЂС‹РІР°СЋС‰Р°СЏ ) вЂ” СЃС‚СЂРѕРєР° " (itoa line)))))
           (t nil)))
       (close f)
       (cond
         (err
          (list nil err))
         (in-str
-         (list nil (strcat "незакрытая строка \"..., строка " (itoa line))))
+         (list nil (strcat "РЅРµР·Р°РєСЂС‹С‚Р°СЏ СЃС‚СЂРѕРєР° \"..., СЃС‚СЂРѕРєР° " (itoa line))))
         ((/= depth 0)
          (list nil
-               (strcat "дисбаланс глубины " (itoa depth)
-                       " (открыто " (itoa n-open)
-                       ", закрыто " (itoa n-close) ")")))
+               (strcat "РґРёСЃР±Р°Р»Р°РЅСЃ РіР»СѓР±РёРЅС‹ " (itoa depth)
+                       " (РѕС‚РєСЂС‹С‚Рѕ " (itoa n-open)
+                       ", Р·Р°РєСЂС‹С‚Рѕ " (itoa n-close) ")")))
         (t
          (list t
-               (strcat "OK, открытых (: " (itoa n-open)
-                       ", закрытых ): " (itoa n-close)
-                       ", строк: " (itoa line))))))))
+               (strcat "OK, РѕС‚РєСЂС‹С‚С‹С… (: " (itoa n-open)
+                       ", Р·Р°РєСЂС‹С‚С‹С… ): " (itoa n-close)
+                       ", СЃС‚СЂРѕРє: " (itoa line))))))))
 
 (defun mark:test-parens (/ path res)
   (mark:out "")
@@ -880,9 +881,9 @@
   (cond
     ((null path)
      (progn
-       (mark:out "[TEST 00] Прогон скобок — WARNING")
-       (mark:out "Файл исходника для прогона скобок не найден.")
-       (mark:out "[INFO] Искали findfile MARKZ.lsp, D:/MarkZ/MARKZ.lsp и D:/MARKZ.lsp.")
+       (mark:out "[TEST 00] РџСЂРѕРіРѕРЅ СЃРєРѕР±РѕРє вЂ” WARNING")
+       (mark:out "Р¤Р°Р№Р» РёСЃС…РѕРґРЅРёРєР° РґР»СЏ РїСЂРѕРіРѕРЅР° СЃРєРѕР±РѕРє РЅРµ РЅР°Р№РґРµРЅ.")
+       (mark:out "[INFO] РСЃРєР°Р»Рё findfile MARKZ.lsp, D:/MarkZ/MARKZ.lsp Рё D:/MARKZ.lsp.")
        (mark:note-warning)))
     (t
      (progn
@@ -890,98 +891,98 @@
        (cond
          ((car res)
           (progn
-            (mark:out "[TEST 00] Прогон скобок — OK")
-            (mark:out (strcat "Файл: " path))
+            (mark:out "[TEST 00] РџСЂРѕРіРѕРЅ СЃРєРѕР±РѕРє вЂ” OK")
+            (mark:out (strcat "Р¤Р°Р№Р»: " path))
             (mark:out (cadr res))))
          (t
           (progn
-            (mark:out "[TEST 00] Прогон скобок — ERROR")
-            (mark:out (strcat "Файл: " path))
-            (mark:out (strcat "Синтаксис исходника нарушен: " (cadr res)))
-            (mark:out "[ERROR] Немедленно исправьте MARKZ.lsp — запись запрещена.")
+            (mark:out "[TEST 00] РџСЂРѕРіРѕРЅ СЃРєРѕР±РѕРє вЂ” ERROR")
+            (mark:out (strcat "Р¤Р°Р№Р»: " path))
+            (mark:out (strcat "РЎРёРЅС‚Р°РєСЃРёСЃ РёСЃС…РѕРґРЅРёРєР° РЅР°СЂСѓС€РµРЅ: " (cadr res)))
+            (mark:out "[ERROR] РќРµРјРµРґР»РµРЅРЅРѕ РёСЃРїСЂР°РІСЊС‚Рµ MARKZ.lsp вЂ” Р·Р°РїРёСЃСЊ Р·Р°РїСЂРµС‰РµРЅР°.")
             (mark:note-error))))))))
 
-;;;--------------------- TEST 01 — блоки заполнений -------------------
+;;;--------------------- TEST 01 вЂ” Р±Р»РѕРєРё Р·Р°РїРѕР»РЅРµРЅРёР№ -------------------
 
 (defun mark:test-fillings ()
   (mark:out "")
   (if (> (length *mark:fills*) 0)
     (progn
-      (mark:out "[TEST 01] Блоки \"Заполнение в витраж\" — OK")
-      (mark:out (strcat "Найдено: " (itoa (length *mark:fills*)))))
+      (mark:out "[TEST 01] Р‘Р»РѕРєРё \"Р—Р°РїРѕР»РЅРµРЅРёРµ РІ РІРёС‚СЂР°Р¶\" вЂ” OK")
+      (mark:out (strcat "РќР°Р№РґРµРЅРѕ: " (itoa (length *mark:fills*)))))
     (progn
-      (mark:out "[TEST 01] Блоки \"Заполнение в витраж\" — ERROR")
-      (mark:out "Блоки заполнений не обнаружены.")
-      (mark:out "[INFO] МАРКАРОВКАЗАП пишет марку только в «Заполнение в витраж».")
-      (mark:out "[INFO] Стойки и линии сетки эта команда не маркирует.")
-      (mark:out "[INFO] Сетка без заполнений — команда МАРКАЗАП, источник Сетка.")
-      (mark:out "[INFO] Имена, найденные в выделении:")
+      (mark:out "[TEST 01] Р‘Р»РѕРєРё \"Р—Р°РїРѕР»РЅРµРЅРёРµ РІ РІРёС‚СЂР°Р¶\" вЂ” ERROR")
+      (mark:out "Р‘Р»РѕРєРё Р·Р°РїРѕР»РЅРµРЅРёР№ РЅРµ РѕР±РЅР°СЂСѓР¶РµРЅС‹.")
+      (mark:out "[INFO] РњРђР РљРђР РћР’РљРђР—РђРџ РїРёС€РµС‚ РјР°СЂРєСѓ С‚РѕР»СЊРєРѕ РІ В«Р—Р°РїРѕР»РЅРµРЅРёРµ РІ РІРёС‚СЂР°Р¶В».")
+      (mark:out "[INFO] РЎС‚РѕР№РєРё Рё Р»РёРЅРёРё СЃРµС‚РєРё СЌС‚Р° РєРѕРјР°РЅРґР° РЅРµ РјР°СЂРєРёСЂСѓРµС‚.")
+      (mark:out "[INFO] РЎРµС‚РєР° Р±РµР· Р·Р°РїРѕР»РЅРµРЅРёР№ вЂ” РєРѕРјР°РЅРґР° РњРђР РљРђР—РђРџ, РёСЃС‚РѕС‡РЅРёРє РЎРµС‚РєР°.")
+      (mark:out "[INFO] РРјРµРЅР°, РЅР°Р№РґРµРЅРЅС‹Рµ РІ РІС‹РґРµР»РµРЅРёРё:")
       (if *mark:found-names*
         (foreach nm *mark:found-names*
           (mark:out (strcat "         - " nm))))
-      (mark:out "[INFO] Ожидалось (*mark:block-fill*):")
+      (mark:out "[INFO] РћР¶РёРґР°Р»РѕСЃСЊ (*mark:block-fill*):")
       (mark:out (strcat "         " *mark:block-fill*))
       (mark:note-error))))
 
-;;;--------------------- TEST 02 / 03 — Атрибуты витража --------------
+;;;--------------------- TEST 02 / 03 вЂ” РђС‚СЂРёР±СѓС‚С‹ РІРёС‚СЂР°Р¶Р° --------------
 
 (defun mark:test-glazing-attr (/ g obj res val)
   (mark:out "")
   (cond
-    ;; не найден — не ошибка, работа без префикса
+    ;; РЅРµ РЅР°Р№РґРµРЅ вЂ” РЅРµ РѕС€РёР±РєР°, СЂР°Р±РѕС‚Р° Р±РµР· РїСЂРµС„РёРєСЃР°
     ((null *mark:glazings*)
-     (mark:out "[TEST 02] \"Атрибуты витража\" — NOT FOUND")
-     (mark:out "Работа без префикса \"Витраж\".")
-     (mark:out "[INFO] Блок \"Атрибуты витража\" не найден.")
-     (mark:out "[INFO] Маркировка будет выполнена без префикса \"Витраж\".")
+     (mark:out "[TEST 02] \"РђС‚СЂРёР±СѓС‚С‹ РІРёС‚СЂР°Р¶Р°\" вЂ” NOT FOUND")
+     (mark:out "Р Р°Р±РѕС‚Р° Р±РµР· РїСЂРµС„РёРєСЃР° \"Р’РёС‚СЂР°Р¶\".")
+     (mark:out "[INFO] Р‘Р»РѕРє \"РђС‚СЂРёР±СѓС‚С‹ РІРёС‚СЂР°Р¶Р°\" РЅРµ РЅР°Р№РґРµРЅ.")
+     (mark:out "[INFO] РњР°СЂРєРёСЂРѕРІРєР° Р±СѓРґРµС‚ РІС‹РїРѕР»РЅРµРЅР° Р±РµР· РїСЂРµС„РёРєСЃР° \"Р’РёС‚СЂР°Р¶\".")
      (setq *mark:prefix* ""
            *mark:prefix-found* nil))
     (t
-     (mark:out "[TEST 02] \"Атрибуты витража\" — FOUND")
-     (mark:out (strcat "Количество: " (itoa (length *mark:glazings*))))
+     (mark:out "[TEST 02] \"РђС‚СЂРёР±СѓС‚С‹ РІРёС‚СЂР°Р¶Р°\" вЂ” FOUND")
+     (mark:out (strcat "РљРѕР»РёС‡РµСЃС‚РІРѕ: " (itoa (length *mark:glazings*))))
      (if (> (length *mark:glazings*) 1)
        (if *mark:vz-map*
          (mark:out
-           "[INFO] Несколько блоков \"Атрибуты витража\" — совместная маркировка: префикс каждого витража в его марках.")
+           "[INFO] РќРµСЃРєРѕР»СЊРєРѕ Р±Р»РѕРєРѕРІ \"РђС‚СЂРёР±СѓС‚С‹ РІРёС‚СЂР°Р¶Р°\" вЂ” СЃРѕРІРјРµСЃС‚РЅР°СЏ РјР°СЂРєРёСЂРѕРІРєР°: РїСЂРµС„РёРєСЃ РєР°Р¶РґРѕРіРѕ РІРёС‚СЂР°Р¶Р° РІ РµРіРѕ РјР°СЂРєР°С….")
          (progn
            (mark:out
-             "[WARN] Найдено несколько блоков \"Атрибуты витража\". Используется первый.")
+             "[WARN] РќР°Р№РґРµРЅРѕ РЅРµСЃРєРѕР»СЊРєРѕ Р±Р»РѕРєРѕРІ \"РђС‚СЂРёР±СѓС‚С‹ РІРёС‚СЂР°Р¶Р°\". РСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РїРµСЂРІС‹Р№.")
            (mark:note-warning))))
      (setq g   (car *mark:glazings*)
            obj (mark:vla g)
            res (mark:find-attr g *mark:attr-vitrage*))
      (mark:out "")
      (cond
-       ;; атрибута нет — критическая ошибка
+       ;; Р°С‚СЂРёР±СѓС‚Р° РЅРµС‚ вЂ” РєСЂРёС‚РёС‡РµСЃРєР°СЏ РѕС€РёР±РєР°
        ((null (car res))
-        (mark:out "[TEST 03] Атрибут \"Витраж\" — ERROR")
-        (mark:out "В блоке \"Атрибуты витража\" атрибут не найден.")
+        (mark:out "[TEST 03] РђС‚СЂРёР±СѓС‚ \"Р’РёС‚СЂР°Р¶\" вЂ” ERROR")
+        (mark:out "Р’ Р±Р»РѕРєРµ \"РђС‚СЂРёР±СѓС‚С‹ РІРёС‚СЂР°Р¶Р°\" Р°С‚СЂРёР±СѓС‚ РЅРµ РЅР°Р№РґРµРЅ.")
         (mark:note-error)
         (setq *mark:prefix* ""
               *mark:prefix-found* nil))
-       ;; пустое значение — WARNING, по умолчанию блокирует запись
+       ;; РїСѓСЃС‚РѕРµ Р·РЅР°С‡РµРЅРёРµ вЂ” WARNING, РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ Р±Р»РѕРєРёСЂСѓРµС‚ Р·Р°РїРёСЃСЊ
        ((= (mark:trim (cadr res)) "")
-        (mark:out "[TEST 03] Атрибут \"Витраж\" — WARNING")
-        (mark:out "Атрибут найден, но значение пустое.")
+        (mark:out "[TEST 03] РђС‚СЂРёР±СѓС‚ \"Р’РёС‚СЂР°Р¶\" вЂ” WARNING")
+        (mark:out "РђС‚СЂРёР±СѓС‚ РЅР°Р№РґРµРЅ, РЅРѕ Р·РЅР°С‡РµРЅРёРµ РїСѓСЃС‚РѕРµ.")
         (mark:out
-          "[ERROR] По умолчанию это критическая ошибка. Маркировка будет остановлена.")
+          "[ERROR] РџРѕ СѓРјРѕР»С‡Р°РЅРёСЋ СЌС‚Рѕ РєСЂРёС‚РёС‡РµСЃРєР°СЏ РѕС€РёР±РєР°. РњР°СЂРєРёСЂРѕРІРєР° Р±СѓРґРµС‚ РѕСЃС‚Р°РЅРѕРІР»РµРЅР°.")
         (mark:note-warning)
         (mark:note-error)
         (setq *mark:prefix* ""
               *mark:prefix-found* nil))
-       ;; успех
+       ;; СѓСЃРїРµС…
        (t
         (setq val (mark:trim (cadr res)))
-        (mark:out "[TEST 03] Атрибут \"Витраж\" — OK")
-        (mark:out (strcat "Значение: " val))
-        ;; Ред. 48.30: совместная маркировка — перечень витражей
+        (mark:out "[TEST 03] РђС‚СЂРёР±СѓС‚ \"Р’РёС‚СЂР°Р¶\" вЂ” OK")
+        (mark:out (strcat "Р—РЅР°С‡РµРЅРёРµ: " val))
+        ;; Р РµРґ. 48.30: СЃРѕРІРјРµСЃС‚РЅР°СЏ РјР°СЂРєРёСЂРѕРІРєР° вЂ” РїРµСЂРµС‡РµРЅСЊ РІРёС‚СЂР°Р¶РµР№
         (if (and *mark:vz-map* (> (length (mark:vz-map-pfxs)) 1))
           (mark:out
-            (strcat "Значения: " (mark:vz-join (mark:vz-map-pfxs) ", "))))
+            (strcat "Р—РЅР°С‡РµРЅРёСЏ: " (mark:vz-join (mark:vz-map-pfxs) ", "))))
         (setq *mark:prefix* val
               *mark:prefix-found* t))))))
 
-;;;--------------------- TEST 04/05/06 — размеры ----------------------
+;;;--------------------- TEST 04/05/06 вЂ” СЂР°Р·РјРµСЂС‹ ----------------------
 
 (defun mark:test-dynamic-properties (/ bad4 bad5 bad6 r idx lines)
   (setq bad4 nil
@@ -993,31 +994,31 @@
       (setq bad4 (cons idx bad4)))
     (if (null (mark:rec-get r 'height-ok))
       (setq bad5 (cons idx bad5)))
-    ;; TEST 06 — существуют, числовые, > 0
+    ;; TEST 06 вЂ” СЃСѓС‰РµСЃС‚РІСѓСЋС‚, С‡РёСЃР»РѕРІС‹Рµ, > 0
     (cond
       ((null (mark:rec-get r 'width-ok))
-       (setq bad6 (cons (list idx "Ширина в свету" "NIL") bad6)))
+       (setq bad6 (cons (list idx "РЁРёСЂРёРЅР° РІ СЃРІРµС‚Сѓ" "NIL") bad6)))
       ((null (mark:rec-get r 'width))
        (setq bad6
-         (cons (list idx "Ширина в свету"
+         (cons (list idx "РЁРёСЂРёРЅР° РІ СЃРІРµС‚Сѓ"
                      (mark:fmt-raw (mark:rec-get r 'width-raw)))
                bad6)))
       ((not (> (mark:rec-get r 'width) 0.0))
        (setq bad6
-         (cons (list idx "Ширина в свету"
+         (cons (list idx "РЁРёСЂРёРЅР° РІ СЃРІРµС‚Сѓ"
                      (mark:fmt-raw (mark:rec-get r 'width)))
                bad6))))
     (cond
       ((null (mark:rec-get r 'height-ok))
-       (setq bad6 (cons (list idx "Высота в свету" "NIL") bad6)))
+       (setq bad6 (cons (list idx "Р’С‹СЃРѕС‚Р° РІ СЃРІРµС‚Сѓ" "NIL") bad6)))
       ((null (mark:rec-get r 'height))
        (setq bad6
-         (cons (list idx "Высота в свету"
+         (cons (list idx "Р’С‹СЃРѕС‚Р° РІ СЃРІРµС‚Сѓ"
                      (mark:fmt-raw (mark:rec-get r 'height-raw)))
                bad6)))
       ((not (> (mark:rec-get r 'height) 0.0))
        (setq bad6
-         (cons (list idx "Высота в свету"
+         (cons (list idx "Р’С‹СЃРѕС‚Р° РІ СЃРІРµС‚Сѓ"
                      (mark:fmt-raw (mark:rec-get r 'height)))
                bad6)))))
   (setq bad4 (reverse bad4)
@@ -1028,42 +1029,42 @@
   (mark:out "")
   (cond
     ((null bad4)
-     (mark:out "[TEST 04] \"Ширина в свету\" — OK"))
+     (mark:out "[TEST 04] \"РЁРёСЂРёРЅР° РІ СЃРІРµС‚Сѓ\" вЂ” OK"))
     (t
-     (mark:out "[TEST 04] \"Ширина в свету\" — ERROR")
+     (mark:out "[TEST 04] \"РЁРёСЂРёРЅР° РІ СЃРІРµС‚Сѓ\" вЂ” ERROR")
      (setq lines nil)
      (foreach r *mark:records*
        (if (null (mark:rec-get r 'width-ok))
          (setq lines
-           (cons (strcat "Блок №" (itoa (mark:rec-get r 'idx))
+           (cons (strcat "Р‘Р»РѕРє в„–" (itoa (mark:rec-get r 'idx))
                          ": "
                          (if (mark:rec-get r 'width-err)
                            (mark:rec-get r 'width-err)
-                           "свойство не найдено"))
+                           "СЃРІРѕР№СЃС‚РІРѕ РЅРµ РЅР°Р№РґРµРЅРѕ"))
                  lines))))
      (mark:print-limited (reverse lines))
-     (mark:out "[INFO] Имя свойства должно точно совпадать: \"Ширина в свету\".")
+     (mark:out "[INFO] РРјСЏ СЃРІРѕР№СЃС‚РІР° РґРѕР»Р¶РЅРѕ С‚РѕС‡РЅРѕ СЃРѕРІРїР°РґР°С‚СЊ: \"РЁРёСЂРёРЅР° РІ СЃРІРµС‚Сѓ\".")
      (mark:note-error)))
 
   ;; TEST 05
   (mark:out "")
   (cond
     ((null bad5)
-     (mark:out "[TEST 05] \"Высота в свету\" — OK"))
+     (mark:out "[TEST 05] \"Р’С‹СЃРѕС‚Р° РІ СЃРІРµС‚Сѓ\" вЂ” OK"))
     (t
-     (mark:out "[TEST 05] \"Высота в свету\" — ERROR")
+     (mark:out "[TEST 05] \"Р’С‹СЃРѕС‚Р° РІ СЃРІРµС‚Сѓ\" вЂ” ERROR")
      (setq lines nil)
      (foreach r *mark:records*
        (if (null (mark:rec-get r 'height-ok))
          (setq lines
-           (cons (strcat "Блок №" (itoa (mark:rec-get r 'idx))
+           (cons (strcat "Р‘Р»РѕРє в„–" (itoa (mark:rec-get r 'idx))
                          ": "
                          (if (mark:rec-get r 'height-err)
                            (mark:rec-get r 'height-err)
-                           "свойство не найдено"))
+                           "СЃРІРѕР№СЃС‚РІРѕ РЅРµ РЅР°Р№РґРµРЅРѕ"))
                  lines))))
      (mark:print-limited (reverse lines))
-     (mark:out "[INFO] Имя свойства должно точно совпадать: \"Высота в свету\".")
+     (mark:out "[INFO] РРјСЏ СЃРІРѕР№СЃС‚РІР° РґРѕР»Р¶РЅРѕ С‚РѕС‡РЅРѕ СЃРѕРІРїР°РґР°С‚СЊ: \"Р’С‹СЃРѕС‚Р° РІ СЃРІРµС‚Сѓ\".")
      (mark:note-error)))
 
   ;; TEST 06
@@ -1071,20 +1072,20 @@
   (cond
     ((null bad6)
      (progn
-       (mark:out "[TEST 06] Значения размеров — OK")
-       (mark:out (strcat "Обработано: " (itoa (length *mark:records*))))))
+       (mark:out "[TEST 06] Р—РЅР°С‡РµРЅРёСЏ СЂР°Р·РјРµСЂРѕРІ вЂ” OK")
+       (mark:out (strcat "РћР±СЂР°Р±РѕС‚Р°РЅРѕ: " (itoa (length *mark:records*))))))
     (t
      (progn
-       (mark:out "[TEST 06] Значения размеров — ERROR")
+       (mark:out "[TEST 06] Р—РЅР°С‡РµРЅРёСЏ СЂР°Р·РјРµСЂРѕРІ вЂ” ERROR")
        (setq lines nil)
        (foreach r bad6
          (setq lines
-           (cons (strcat "Блок №" (itoa (car r)) ": " (cadr r) " = " (caddr r))
+           (cons (strcat "Р‘Р»РѕРє в„–" (itoa (car r)) ": " (cadr r) " = " (caddr r))
                  lines)))
        (mark:print-limited (reverse lines))
        (mark:note-error)))))
 
-;;;--------------------- TEST 07 — Visibility --------------------------
+;;;--------------------- TEST 07 вЂ” Visibility --------------------------
 
 (defun mark:test-visibility (/ bad r lines)
   (setq bad nil)
@@ -1095,22 +1096,22 @@
   (mark:out "")
   (cond
     ((null bad)
-     (mark:out "[TEST 07] Visibility State — OK"))
+     (mark:out "[TEST 07] Visibility State вЂ” OK"))
     (t
      (progn
-       (mark:out "[TEST 07] Visibility State — ERROR")
+       (mark:out "[TEST 07] Visibility State вЂ” ERROR")
        (setq lines nil)
        (foreach idx bad
          (setq lines
-           (cons (strcat "Блок №" (itoa idx)
-                         ": невозможно определить состояние Visibility.")
+           (cons (strcat "Р‘Р»РѕРє в„–" (itoa idx)
+                         ": РЅРµРІРѕР·РјРѕР¶РЅРѕ РѕРїСЂРµРґРµР»РёС‚СЊ СЃРѕСЃС‚РѕСЏРЅРёРµ Visibility.")
                  lines)))
        (mark:print-limited (reverse lines))
        (mark:note-error)
-       (mark:out "[INFO] Проверьте имя Dynamic Property Visibility")
-       (mark:out "       в списке *mark:prop-vis-candidates*.")))))
+       (mark:out "[INFO] РџСЂРѕРІРµСЂСЊС‚Рµ РёРјСЏ Dynamic Property Visibility")
+       (mark:out "       РІ СЃРїРёСЃРєРµ *mark:prop-vis-candidates*.")))))
 
-;;;--------------------- TEST 08 — атрибут "Марка" ---------------------
+;;;--------------------- TEST 08 вЂ” Р°С‚СЂРёР±СѓС‚ "РњР°СЂРєР°" ---------------------
 
 (defun mark:test-mark-attribute (/ bad r lines)
   (setq bad nil)
@@ -1122,34 +1123,34 @@
   (cond
     ((null bad)
      (progn
-       (mark:out "[TEST 08] Атрибут \"Марка\" — OK")
+       (mark:out "[TEST 08] РђС‚СЂРёР±СѓС‚ \"РњР°СЂРєР°\" вЂ” OK")
        (mark:out
-         (strcat "Найден у всех " (itoa (length *mark:records*)) " блоков."))))
+         (strcat "РќР°Р№РґРµРЅ Сѓ РІСЃРµС… " (itoa (length *mark:records*)) " Р±Р»РѕРєРѕРІ."))))
     (t
      (progn
-       (mark:out "[TEST 08] Атрибут \"Марка\" — ERROR")
+       (mark:out "[TEST 08] РђС‚СЂРёР±СѓС‚ \"РњР°СЂРєР°\" вЂ” ERROR")
        (setq lines nil)
        (foreach idx bad
          (setq lines
-           (cons (strcat "Блок №" (itoa idx) ": атрибут \"Марка\" отсутствует.")
+           (cons (strcat "Р‘Р»РѕРє в„–" (itoa idx) ": Р°С‚СЂРёР±СѓС‚ \"РњР°СЂРєР°\" РѕС‚СЃСѓС‚СЃС‚РІСѓРµС‚.")
                  lines)))
        (mark:print-limited (reverse lines))
        (mark:note-error)))))
 
-;;;--------------------- TEST 09/10/11 — данные и нумерация ------------
+;;;--------------------- TEST 09/10/11 вЂ” РґР°РЅРЅС‹Рµ Рё РЅСѓРјРµСЂР°С†РёСЏ ------------
 
 (defun mark:test-data (/ wlist hlist geo th h)
   (if *mark:fill-geo*
     (progn
-      ;; Ред. 48.20: номера — только фактические столбцы,
-      ;; буквы — только фактические строки заполнений.
+      ;; Р РµРґ. 48.20: РЅРѕРјРµСЂР° вЂ” С‚РѕР»СЊРєРѕ С„Р°РєС‚РёС‡РµСЃРєРёРµ СЃС‚РѕР»Р±С†С‹,
+      ;; Р±СѓРєРІС‹ вЂ” С‚РѕР»СЊРєРѕ С„Р°РєС‚РёС‡РµСЃРєРёРµ СЃС‚СЂРѕРєРё Р·Р°РїРѕР»РЅРµРЅРёР№.
       (setq *mark:scale-final* (mark:sec-scale-full))
-      ;; Ред. 48.20: шкала номеров — secw из геометрии заполнений;
-      ;; Р-длины шкалы осей номера не резервируют: пропусков
-      ;; номеров нет (отмена зеркала MarkZV; ТБ-1: 450 больше не
-      ;; занимает №1, столбцы нумеруются 550=№1 … 1450=№5; В-7:
-      ;; 9 столбцов №1…№9). scale-final остаётся для источника
-      ;; Р/РЗ/З и файла Шкала.txt.
+      ;; Р РµРґ. 48.20: С€РєР°Р»Р° РЅРѕРјРµСЂРѕРІ вЂ” secw РёР· РіРµРѕРјРµС‚СЂРёРё Р·Р°РїРѕР»РЅРµРЅРёР№;
+      ;; Р -РґР»РёРЅС‹ С€РєР°Р»С‹ РѕСЃРµР№ РЅРѕРјРµСЂР° РЅРµ СЂРµР·РµСЂРІРёСЂСѓСЋС‚: РїСЂРѕРїСѓСЃРєРѕРІ
+      ;; РЅРѕРјРµСЂРѕРІ РЅРµС‚ (РѕС‚РјРµРЅР° Р·РµСЂРєР°Р»Р° MarkZV; РўР‘-1: 450 Р±РѕР»СЊС€Рµ РЅРµ
+      ;; Р·Р°РЅРёРјР°РµС‚ в„–1, СЃС‚РѕР»Р±С†С‹ РЅСѓРјРµСЂСѓСЋС‚СЃСЏ 550=в„–1 вЂ¦ 1450=в„–5; Р’-7:
+      ;; 9 СЃС‚РѕР»Р±С†РѕРІ в„–1вЂ¦в„–9). scale-final РѕСЃС‚Р°С‘С‚СЃСЏ РґР»СЏ РёСЃС‚РѕС‡РЅРёРєР°
+      ;; Р /Р Р—/Р— Рё С„Р°Р№Р»Р° РЁРєР°Р»Р°.txt.
       (setq wlist nil)
       (foreach geo *mark:fill-geo*
         (if (and (cdr geo) (numberp (cadr geo)))
@@ -1159,13 +1160,13 @@
       (foreach geo *mark:fill-geo*
         (if (and (cdr geo) (numberp (caddr geo)))
           (setq th (cons (caddr geo) th))))
-      ;; Ред. 48.20 (отмена 48.8/З-1): шкала строк — только
-      ;; фактические строки заполнений (th = высоты строк-
-      ;; родителей). Ячейки каркаса без заполнений (проёмы,
-      ;; глухие зоны) шкалу не сдвигают: пропусков букв нет
-      ;; (ТБ-1: Д = 1250, проёмные 1150 букву не резервируют).
-      ;; Высоты подъячеек (750/1015) в шкалу не входят — они
-      ;; получают литеры .а/.б внутри строки-родителя.
+      ;; Р РµРґ. 48.20 (РѕС‚РјРµРЅР° 48.8/Р—-1): С€РєР°Р»Р° СЃС‚СЂРѕРє вЂ” С‚РѕР»СЊРєРѕ
+      ;; С„Р°РєС‚РёС‡РµСЃРєРёРµ СЃС‚СЂРѕРєРё Р·Р°РїРѕР»РЅРµРЅРёР№ (th = РІС‹СЃРѕС‚С‹ СЃС‚СЂРѕРє-
+      ;; СЂРѕРґРёС‚РµР»РµР№). РЇС‡РµР№РєРё РєР°СЂРєР°СЃР° Р±РµР· Р·Р°РїРѕР»РЅРµРЅРёР№ (РїСЂРѕС‘РјС‹,
+      ;; РіР»СѓС…РёРµ Р·РѕРЅС‹) С€РєР°Р»Сѓ РЅРµ СЃРґРІРёРіР°СЋС‚: РїСЂРѕРїСѓСЃРєРѕРІ Р±СѓРєРІ РЅРµС‚
+      ;; (РўР‘-1: Р” = 1250, РїСЂРѕС‘РјРЅС‹Рµ 1150 Р±СѓРєРІСѓ РЅРµ СЂРµР·РµСЂРІРёСЂСѓСЋС‚).
+      ;; Р’С‹СЃРѕС‚С‹ РїРѕРґСЉСЏС‡РµРµРє (750/1015) РІ С€РєР°Р»Сѓ РЅРµ РІС…РѕРґСЏС‚ вЂ” РѕРЅРё
+      ;; РїРѕР»СѓС‡Р°СЋС‚ Р»РёС‚РµСЂС‹ .Р°/.Р± РІРЅСѓС‚СЂРё СЃС‚СЂРѕРєРё-СЂРѕРґРёС‚РµР»СЏ.
       (setq hlist (mark:sort-unique (mark:positives th)))
       (setq *mark:widths*  wlist
             *mark:heights* hlist))
@@ -1184,58 +1185,58 @@
   (cond
     ((and wlist hlist)
      (progn
-       (mark:out "[TEST 09] Уникальные размеры — OK")
+       (mark:out "[TEST 09] РЈРЅРёРєР°Р»СЊРЅС‹Рµ СЂР°Р·РјРµСЂС‹ вЂ” OK")
        (mark:out "")
-       (mark:out (strcat "Размеров шкалы (в свету): " (itoa (length wlist))))
-       (mark:out (strcat "Строк (буквы): " (itoa (length hlist))))
+       (mark:out (strcat "Р Р°Р·РјРµСЂРѕРІ С€РєР°Р»С‹ (РІ СЃРІРµС‚Сѓ): " (itoa (length wlist))))
+       (mark:out (strcat "РЎС‚СЂРѕРє (Р±СѓРєРІС‹): " (itoa (length hlist))))
        (mark:out "")
        (mark:out
-         (strcat "Шкала: " (mark:fmt-raw (car wlist))
+         (strcat "РЁРєР°Р»Р°: " (mark:fmt-raw (car wlist))
                  " ... " (mark:fmt-raw (car (reverse wlist)))))
        (mark:out
-         (strcat "Строка: " (mark:fmt-raw (car hlist))
+         (strcat "РЎС‚СЂРѕРєР°: " (mark:fmt-raw (car hlist))
                  " ... " (mark:fmt-raw (car (reverse hlist)))))))
     (t
      (progn
-       (mark:out "[TEST 09] Уникальные размеры — ERROR")
-       (mark:out "Нет корректных значений ширины/высоты.")
+       (mark:out "[TEST 09] РЈРЅРёРєР°Р»СЊРЅС‹Рµ СЂР°Р·РјРµСЂС‹ вЂ” ERROR")
+       (mark:out "РќРµС‚ РєРѕСЂСЂРµРєС‚РЅС‹С… Р·РЅР°С‡РµРЅРёР№ С€РёСЂРёРЅС‹/РІС‹СЃРѕС‚С‹.")
        (mark:note-error))))
 
-  ;; TEST 10 — буквы по ярусам. После списка продолжаем АА, АБ, … БА, ББ.
+  ;; TEST 10 вЂ” Р±СѓРєРІС‹ РїРѕ СЏСЂСѓСЃР°Рј. РџРѕСЃР»Рµ СЃРїРёСЃРєР° РїСЂРѕРґРѕР»Р¶Р°РµРј РђРђ, РђР‘, вЂ¦ Р‘Рђ, Р‘Р‘.
   (mark:out "")
-  (mark:out "[TEST 10] Буквенная маркировка — OK")
-  (mark:out (strcat "Строк: " (itoa (length hlist))))
+  (mark:out "[TEST 10] Р‘СѓРєРІРµРЅРЅР°СЏ РјР°СЂРєРёСЂРѕРІРєР° вЂ” OK")
+  (mark:out (strcat "РЎС‚СЂРѕРє: " (itoa (length hlist))))
   (mark:out
-    (strcat "Букв в списке: " (itoa (length *mark:letters*))
-            ". Дальше АА, АБ, … БА, ББ."))
+    (strcat "Р‘СѓРєРІ РІ СЃРїРёСЃРєРµ: " (itoa (length *mark:letters*))
+            ". Р”Р°Р»СЊС€Рµ РђРђ, РђР‘, вЂ¦ Р‘Рђ, Р‘Р‘."))
 
-  ;; TEST 11 — номера по шкале секций
+  ;; TEST 11 вЂ” РЅРѕРјРµСЂР° РїРѕ С€РєР°Р»Рµ СЃРµРєС†РёР№
   (mark:out "")
   (cond
     ((> (length wlist) 0)
      (progn
-       (mark:out "[TEST 11] Нумерация секций — OK")
-       (mark:out (strcat "Размеров шкалы: " (itoa (length wlist))))))
+       (mark:out "[TEST 11] РќСѓРјРµСЂР°С†РёСЏ СЃРµРєС†РёР№ вЂ” OK")
+       (mark:out (strcat "Р Р°Р·РјРµСЂРѕРІ С€РєР°Р»С‹: " (itoa (length wlist))))))
     (t
      (progn
-       (mark:out "[TEST 11] Нумерация секций — ERROR")
-       (mark:out "Размеров шкалы: 0")
+       (mark:out "[TEST 11] РќСѓРјРµСЂР°С†РёСЏ СЃРµРєС†РёР№ вЂ” ERROR")
+       (mark:out "Р Р°Р·РјРµСЂРѕРІ С€РєР°Р»С‹: 0")
        (mark:note-error)))))
 
-;;;--------------------- TEST 12 — специальные Visibility --------------
+;;;--------------------- TEST 12 вЂ” СЃРїРµС†РёР°Р»СЊРЅС‹Рµ Visibility --------------
 
 (defun mark:test-specials ()
   (mark:out "")
-  (mark:out "[TEST 12] Специальные состояния Visibility")
+  (mark:out "[TEST 12] РЎРїРµС†РёР°Р»СЊРЅС‹Рµ СЃРѕСЃС‚РѕСЏРЅРёСЏ Visibility")
   (mark:out "")
   (if (> *mark:cnt-stem* 0)
-    (mark:out (strcat "Стемалит — найдено: " (itoa *mark:cnt-stem*)))
-    (mark:out "Стемалит — не найден"))
+    (mark:out (strcat "РЎС‚РµРјР°Р»РёС‚ вЂ” РЅР°Р№РґРµРЅРѕ: " (itoa *mark:cnt-stem*)))
+    (mark:out "РЎС‚РµРјР°Р»РёС‚ вЂ” РЅРµ РЅР°Р№РґРµРЅ"))
   (if (> *mark:cnt-sand* 0)
-    (mark:out (strcat "Сэндвич   — найдено: " (itoa *mark:cnt-sand*)))
-    (mark:out "Сэндвич   — не найден")))
+    (mark:out (strcat "РЎСЌРЅРґРІРёС‡   вЂ” РЅР°Р№РґРµРЅРѕ: " (itoa *mark:cnt-sand*)))
+    (mark:out "РЎСЌРЅРґРІРёС‡   вЂ” РЅРµ РЅР°Р№РґРµРЅ")))
 
-;;;--------------------- Сортировка и сборка марок ---------------------
+;;;--------------------- РЎРѕСЂС‚РёСЂРѕРІРєР° Рё СЃР±РѕСЂРєР° РјР°СЂРѕРє ---------------------
 
 (defun mark:sort-widths ()
   *mark:widths*)
@@ -1256,17 +1257,17 @@
 (defun mark:vis-rank (vis)
   (cond
     ((and (mark:strp vis)
-          (or (mark:name= vis "Стемалит")
-              (wcmatch (strcase (mark:trim vis)) "СТЕМАЛИТ*")))
+          (or (mark:name= vis "РЎС‚РµРјР°Р»РёС‚")
+              (wcmatch (strcase (mark:trim vis)) "РЎРўР•РњРђР›РРў*")))
      1)
     ((and (mark:strp vis)
-          (or (mark:name= vis "Сэндвич")
-              (wcmatch (strcase (mark:trim vis)) "СЭНДВИЧ*")))
+          (or (mark:name= vis "РЎСЌРЅРґРІРёС‡")
+              (wcmatch (strcase (mark:trim vis)) "РЎР­РќР”Р’РР§*")))
      2)
     (t 0)))
 
 (defun mark:compose (prefix letter subl hnum subw suffix)
-  ;; Ред. 48.0: БУКВА [. литера подъяруса] НОМЕР [. подындекс ширины] суффикс
+  ;; Р РµРґ. 48.0: Р‘РЈРљР’Рђ [. Р»РёС‚РµСЂР° РїРѕРґСЉСЏСЂСѓСЃР°] РќРћРњР•Р  [. РїРѕРґС‹РЅРґРµРєСЃ С€РёСЂРёРЅС‹] СЃСѓС„С„РёРєСЃ
   (strcat
     (if (and prefix (/= prefix "") letter)
       (strcat prefix " ")
@@ -1281,9 +1282,9 @@
 
 (defun mark:build-marks (/ out r w h geo secw tierh iw ih letter hnum suffix m
                             subw subl subh mapW mapH lst pos v)
-  ;; Ред. 48.0: марка от секции и яруса. Подындексы — глобально по
-  ;; номеру секции (.1/.2/.3 по возрастанию ширины) и букве яруса
-  ;; (.а/.б/.в по возрастанию высоты). Без гео — марка не формируется.
+  ;; Р РµРґ. 48.0: РјР°СЂРєР° РѕС‚ СЃРµРєС†РёРё Рё СЏСЂСѓСЃР°. РџРѕРґС‹РЅРґРµРєСЃС‹ вЂ” РіР»РѕР±Р°Р»СЊРЅРѕ РїРѕ
+  ;; РЅРѕРјРµСЂСѓ СЃРµРєС†РёРё (.1/.2/.3 РїРѕ РІРѕР·СЂР°СЃС‚Р°РЅРёСЋ С€РёСЂРёРЅС‹) Рё Р±СѓРєРІРµ СЏСЂСѓСЃР°
+  ;; (.Р°/.Р±/.РІ РїРѕ РІРѕР·СЂР°СЃС‚Р°РЅРёСЋ РІС‹СЃРѕС‚С‹). Р‘РµР· РіРµРѕ вЂ” РјР°СЂРєР° РЅРµ С„РѕСЂРјРёСЂСѓРµС‚СЃСЏ.
   (setq mapW nil
         mapH nil
         out  nil)
@@ -1308,8 +1309,8 @@
               r (mark:rec-put r 'tierh nil)
               r (mark:rec-put r 'hidx nil))
         (setq out (cons r out)))))
-  ;; Ред. 48.1: foreach не сохраняет изменённые записи (rec-put возвращает
-  ;; новый список) — пишем *mark:records* обратно перед вторым проходом.
+  ;; Р РµРґ. 48.1: foreach РЅРµ СЃРѕС…СЂР°РЅСЏРµС‚ РёР·РјРµРЅС‘РЅРЅС‹Рµ Р·Р°РїРёСЃРё (rec-put РІРѕР·РІСЂР°С‰Р°РµС‚
+  ;; РЅРѕРІС‹Р№ СЃРїРёСЃРѕРє) вЂ” РїРёС€РµРј *mark:records* РѕР±СЂР°С‚РЅРѕ РїРµСЂРµРґ РІС‚РѕСЂС‹Рј РїСЂРѕС…РѕРґРѕРј.
   (setq *mark:records* (reverse out)
         mapW            (mark:map-sort mapW)
         mapH            (mark:map-sort mapH)
@@ -1370,7 +1371,7 @@
   (setq *mark:records* (reverse out))
   *mark:records*)
 
-;;;--------------------- TEST 13 — марки в памяти ----------------------
+;;;--------------------- TEST 13 вЂ” РјР°СЂРєРё РІ РїР°РјСЏС‚Рё ----------------------
 
 (defun mark:num-safe (x)
   (cond
@@ -1382,7 +1383,7 @@
        0.0))))
 
 (defun mark:rec-key (r / w h vr ix sw sh pw pl)
-  ;; Ред. 48.0: секция -> подындекс -> ярус -> подъярус -> Visibility
+  ;; Р РµРґ. 48.0: СЃРµРєС†РёСЏ -> РїРѕРґС‹РЅРґРµРєСЃ -> СЏСЂСѓСЃ -> РїРѕРґСЉСЏСЂСѓСЃ -> Visibility
   (setq w  (mark:num-safe (mark:rec-get r 'secw))
         h  (mark:num-safe (mark:rec-get r 'tierh))
         sw (mark:rec-get r 'subw)
@@ -1399,7 +1400,7 @@
         (if (numberp ix) (float ix) 0.0)))
 
 (defun mark:key< (a b / i av bv)
-  ;; поэлементное сравнение только чисел (никогда T/строки)
+  ;; РїРѕСЌР»РµРјРµРЅС‚РЅРѕРµ СЃСЂР°РІРЅРµРЅРёРµ С‚РѕР»СЊРєРѕ С‡РёСЃРµР» (РЅРёРєРѕРіРґР° T/СЃС‚СЂРѕРєРё)
   (setq i 0)
   (while (< i 4)
     (setq av (nth i a)
@@ -1422,7 +1423,7 @@
     nil))
 
 (defun mark:sort-records (recs / res r inserted lst)
-  ;; сортировка для вывода: ширина ^, высота ^, Visibility (спец. — в конце)
+  ;; СЃРѕСЂС‚РёСЂРѕРІРєР° РґР»СЏ РІС‹РІРѕРґР°: С€РёСЂРёРЅР° ^, РІС‹СЃРѕС‚Р° ^, Visibility (СЃРїРµС†. вЂ” РІ РєРѕРЅС†Рµ)
   (setq res nil)
   (foreach r recs
     (setq inserted nil
@@ -1439,15 +1440,15 @@
     (setq res (reverse lst)))
   res)
 
-;;;--- DIAG: одинаковый размер — разный базис (стм/снд vs обычное) ----
-;; Группирует записи по ключу (W,H) с допуском 0.5 мм.
-;; В группе сравнивает (letter . hnum) — базис без суффикса.
+;;;--- DIAG: РѕРґРёРЅР°РєРѕРІС‹Р№ СЂР°Р·РјРµСЂ вЂ” СЂР°Р·РЅС‹Р№ Р±Р°Р·РёСЃ (СЃС‚Рј/СЃРЅРґ vs РѕР±С‹С‡РЅРѕРµ) ----
+;; Р“СЂСѓРїРїРёСЂСѓРµС‚ Р·Р°РїРёСЃРё РїРѕ РєР»СЋС‡Сѓ (W,H) СЃ РґРѕРїСѓСЃРєРѕРј 0.5 РјРј.
+;; Р’ РіСЂСѓРїРїРµ СЃСЂР°РІРЅРёРІР°РµС‚ (letter . hnum) вЂ” Р±Р°Р·РёСЃ Р±РµР· СЃСѓС„С„РёРєСЃР°.
 (defun mark:diag-base (/ groups g gg ng key r w h base bases
                              lines shown total conflicts qcnt
                              letter hnum suffix
                              kinds kind)
   (mark:out "")
-  (mark:out "[DIAG] Одинаковый размер > один базис (буква+литера+номер+подындекс)")
+  (mark:out "[DIAG] РћРґРёРЅР°РєРѕРІС‹Р№ СЂР°Р·РјРµСЂ > РѕРґРёРЅ Р±Р°Р·РёСЃ (Р±СѓРєРІР°+Р»РёС‚РµСЂР°+РЅРѕРјРµСЂ+РїРѕРґС‹РЅРґРµРєСЃ)")
   (setq groups nil)
   (foreach r *mark:records*
     (setq w (mark:rec-get r 'width)
@@ -1488,12 +1489,12 @@
                          (if (mark:rec-get r 'subw)
                            (strcat "." (itoa (mark:rec-get r 'subw)))
                            "")))
-      ;; Ред. 48.9: считаем базисы с «?» (буква/номер не определены).
+      ;; Р РµРґ. 48.9: СЃС‡РёС‚Р°РµРј Р±Р°Р·РёСЃС‹ СЃ В«?В» (Р±СѓРєРІР°/РЅРѕРјРµСЂ РЅРµ РѕРїСЂРµРґРµР»РµРЅС‹).
       (if (or (null letter) (null hnum))
         (setq qcnt (1+ qcnt)))
       (if (not (member base bases))
         (setq bases (cons base bases)))
-      (setq kind (if (= suffix "") "обычное" suffix))
+      (setq kind (if (= suffix "") "РѕР±С‹С‡РЅРѕРµ" suffix))
       (if (not (member kind kinds))
         (setq kinds (cons kind kinds))))
     (if (> (length bases) 1)
@@ -1503,14 +1504,14 @@
           (cons (strcat
                   "  W=" (rtos (car (car g)) 2 0)
                   " H=" (rtos (cadr (car g)) 2 0)
-                  " half-mm > базисы: "
+                  " half-mm > Р±Р°Р·РёСЃС‹: "
                   (mark:diag-bases-str bases)
-                  " | типы: " (mark:diag-join kinds))
+                  " | С‚РёРїС‹: " (mark:diag-join kinds))
                 lines)))))
   (if (null lines)
-    (mark:out "[DIAG] OK — расхождений базиса нет.")
+    (mark:out "[DIAG] OK вЂ” СЂР°СЃС…РѕР¶РґРµРЅРёР№ Р±Р°Р·РёСЃР° РЅРµС‚.")
     (progn
-      (mark:out (strcat "[DIAG] КОНФЛИКТОВ: " (itoa conflicts)))
+      (mark:out (strcat "[DIAG] РљРћРќР¤Р›РРљРўРћР’: " (itoa conflicts)))
       (setq lines (reverse lines)
             shown 0
             total (length lines))
@@ -1520,17 +1521,17 @@
             (setq shown (1+ shown))
             (mark:out ln))))
       (if (> total shown)
-        (mark:out (strcat "  ... ещё " (itoa (- total shown)) " строк"))
+        (mark:out (strcat "  ... РµС‰С‘ " (itoa (- total shown)) " СЃС‚СЂРѕРє"))
         nil)
-      (mark:out "[DIAG] Причина: разные фактические W/H у блоков")
-      (mark:out "        (сверьте «Ширина/Высота в свету» у конфликтов).")))
-  ;; Ред. 48.9: подсказка — что значит «?» в базисе (только печать).
+      (mark:out "[DIAG] РџСЂРёС‡РёРЅР°: СЂР°Р·РЅС‹Рµ С„Р°РєС‚РёС‡РµСЃРєРёРµ W/H Сѓ Р±Р»РѕРєРѕРІ")
+      (mark:out "        (СЃРІРµСЂСЊС‚Рµ В«РЁРёСЂРёРЅР°/Р’С‹СЃРѕС‚Р° РІ СЃРІРµС‚СѓВ» Сѓ РєРѕРЅС„Р»РёРєС‚РѕРІ).")))
+  ;; Р РµРґ. 48.9: РїРѕРґСЃРєР°Р·РєР° вЂ” С‡С‚Рѕ Р·РЅР°С‡РёС‚ В«?В» РІ Р±Р°Р·РёСЃРµ (С‚РѕР»СЊРєРѕ РїРµС‡Р°С‚СЊ).
   (if (> qcnt 0)
     (progn
-      (mark:out (strcat "[DIAG] «?» в базисе: " (itoa qcnt)
-                        " — буква строки или номер секции не определены."))
-      (mark:out "        Таким блокам марки не пишутся — подробности в TEST 13:")
-      (mark:out "        нет гео секции / нет буквы строки / нет номера шкалы.")))
+      (mark:out (strcat "[DIAG] В«?В» РІ Р±Р°Р·РёСЃРµ: " (itoa qcnt)
+                        " вЂ” Р±СѓРєРІР° СЃС‚СЂРѕРєРё РёР»Рё РЅРѕРјРµСЂ СЃРµРєС†РёРё РЅРµ РѕРїСЂРµРґРµР»РµРЅС‹."))
+      (mark:out "        РўР°РєРёРј Р±Р»РѕРєР°Рј РјР°СЂРєРё РЅРµ РїРёС€СѓС‚СЃСЏ вЂ” РїРѕРґСЂРѕР±РЅРѕСЃС‚Рё РІ TEST 13:")
+      (mark:out "        РЅРµС‚ РіРµРѕ СЃРµРєС†РёРё / РЅРµС‚ Р±СѓРєРІС‹ СЃС‚СЂРѕРєРё / РЅРµС‚ РЅРѕРјРµСЂР° С€РєР°Р»С‹.")))
   conflicts)
 
 (defun mark:diag-bases-str (bases / out b)
@@ -1551,8 +1552,8 @@
 
 (defun mark:validate-marks (/ bad nogeo sorted r shown total lines vis)
   (mark:out "")
-  ;; Ред. 48.5: без гео секции — предупреждение (блок уже помечен
-  ;; «вне ячеек» в standalone), не блокирует запись остальных марок.
+  ;; Р РµРґ. 48.5: Р±РµР· РіРµРѕ СЃРµРєС†РёРё вЂ” РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёРµ (Р±Р»РѕРє СѓР¶Рµ РїРѕРјРµС‡РµРЅ
+  ;; В«РІРЅРµ СЏС‡РµРµРєВ» РІ standalone), РЅРµ Р±Р»РѕРєРёСЂСѓРµС‚ Р·Р°РїРёСЃСЊ РѕСЃС‚Р°Р»СЊРЅС‹С… РјР°СЂРѕРє.
   (setq bad   nil
         nogeo nil)
   (foreach r *mark:records*
@@ -1560,15 +1561,15 @@
       (if (null (mark:rec-get r 'secw))
         (setq nogeo
           (cons
-            (strcat "Блок №" (itoa (mark:rec-get r 'idx))
-                    ": нет гео секции — марка не формируется.")
+            (strcat "Р‘Р»РѕРє в„–" (itoa (mark:rec-get r 'idx))
+                    ": РЅРµС‚ РіРµРѕ СЃРµРєС†РёРё вЂ” РјР°СЂРєР° РЅРµ С„РѕСЂРјРёСЂСѓРµС‚СЃСЏ.")
             nogeo))
         (setq bad
           (cons
-            (strcat "Блок №" (itoa (mark:rec-get r 'idx)) ": марка не сформирована"
+            (strcat "Р‘Р»РѕРє в„–" (itoa (mark:rec-get r 'idx)) ": РјР°СЂРєР° РЅРµ СЃС„РѕСЂРјРёСЂРѕРІР°РЅР°"
                     (cond
-                      ((null (mark:rec-get r 'letter)) " — нет буквы строки.")
-                      ((null (mark:rec-get r 'hnum)) " — нет номера шкалы.")
+                      ((null (mark:rec-get r 'letter)) " вЂ” РЅРµС‚ Р±СѓРєРІС‹ СЃС‚СЂРѕРєРё.")
+                      ((null (mark:rec-get r 'hnum)) " вЂ” РЅРµС‚ РЅРѕРјРµСЂР° С€РєР°Р»С‹.")
                       (t ".")))
             bad)))))
   (setq nogeo (reverse nogeo)
@@ -1576,19 +1577,19 @@
   (if nogeo
     (progn
       (mark:out
-        (strcat "[TEST 13] Без гео секции: " (itoa (length nogeo))
-                " — марки таким блокам не пишутся (предупреждение)."))
+        (strcat "[TEST 13] Р‘РµР· РіРµРѕ СЃРµРєС†РёРё: " (itoa (length nogeo))
+                " вЂ” РјР°СЂРєРё С‚Р°РєРёРј Р±Р»РѕРєР°Рј РЅРµ РїРёС€СѓС‚СЃСЏ (РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёРµ)."))
       (mark:print-limited nogeo)
       (mark:note-warning)))
   (cond
     (bad
      (progn
-       (mark:out "[TEST 13] Проверка формирования марок — ERROR")
+       (mark:out "[TEST 13] РџСЂРѕРІРµСЂРєР° С„РѕСЂРјРёСЂРѕРІР°РЅРёСЏ РјР°СЂРѕРє вЂ” ERROR")
        (mark:print-limited bad)
        (mark:note-error)))
     (t
      (progn
-       (mark:out "[TEST 13] Проверка формирования марок — OK")
+       (mark:out "[TEST 13] РџСЂРѕРІРµСЂРєР° С„РѕСЂРјРёСЂРѕРІР°РЅРёСЏ РјР°СЂРѕРє вЂ” OK")
        (mark:out "")
        (if (not (numberp *mark:test13-show*))
          (setq *mark:test13-show* 10))
@@ -1603,12 +1604,12 @@
                   (mark:rec-get r 'mark-new))
            (progn
              (setq shown (1+ shown))
-             ;; Одна строка на блок, колонки выровнены по ширине.
+             ;; РћРґРЅР° СЃС‚СЂРѕРєР° РЅР° Р±Р»РѕРє, РєРѕР»РѕРЅРєРё РІС‹СЂРѕРІРЅРµРЅС‹ РїРѕ С€РёСЂРёРЅРµ.
              (setq vis (if (mark:rec-get r 'vis)
                          (mark:rec-get r 'vis)
-                         "—"))
+                         "вЂ”"))
              (mark:out
-               (strcat "Блок " (mark:rjust (itoa (mark:rec-get r 'idx)) 3) ": "
+               (strcat "Р‘Р»РѕРє " (mark:rjust (itoa (mark:rec-get r 'idx)) 3) ": "
                        (mark:rjust (mark:fmt-mm (mark:rec-get r 'width)) 5)
                        " x "
                        (mark:rjust (mark:fmt-mm (mark:rec-get r 'height)) 5)
@@ -1620,16 +1621,16 @@
                        (mark:rec-get r 'mark-new))))))
        (if (> total *mark:test13-show*)
          (mark:out
-           (strcat "... (показаны первые " (itoa *mark:test13-show*)
-                   " из " (itoa total) ")")))
-       (mark:out (strcat "Всего блоков: " (itoa total)))
-       (mark:out (strcat "Сформировано марок: "
+           (strcat "... (РїРѕРєР°Р·Р°РЅС‹ РїРµСЂРІС‹Рµ " (itoa *mark:test13-show*)
+                   " РёР· " (itoa total) ")")))
+       (mark:out (strcat "Р’СЃРµРіРѕ Р±Р»РѕРєРѕРІ: " (itoa total)))
+       (mark:out (strcat "РЎС„РѕСЂРјРёСЂРѕРІР°РЅРѕ РјР°СЂРѕРє: "
                          (itoa (- total (length nogeo)))))
        (if nogeo
-         (mark:out (strcat "Пропущено без гео: "
+         (mark:out (strcat "РџСЂРѕРїСѓС‰РµРЅРѕ Р±РµР· РіРµРѕ: "
                            (itoa (length nogeo)))))))))
 
-;;;--------------------- TEST 14 — PRE-CHECK ---------------------------
+;;;--------------------- TEST 14 вЂ” PRE-CHECK ---------------------------
 
 (defun mark:pre-check ()
   (mark:out "")
@@ -1637,34 +1638,34 @@
     ((= *mark:errors* 0)
      (progn
        (setq *mark:precheck-ok* t)
-       (mark:out "[TEST 14] PRE-CHECK — OK")
-       (mark:out "Критических ошибок: 0")
-       (mark:out (strcat "Предупреждений: " (itoa *mark:warnings*)))
-       (mark:out "Готово к записи атрибутов.")))
+       (mark:out "[TEST 14] PRE-CHECK вЂ” OK")
+       (mark:out "РљСЂРёС‚РёС‡РµСЃРєРёС… РѕС€РёР±РѕРє: 0")
+       (mark:out (strcat "РџСЂРµРґСѓРїСЂРµР¶РґРµРЅРёР№: " (itoa *mark:warnings*)))
+       (mark:out "Р“РѕС‚РѕРІРѕ Рє Р·Р°РїРёСЃРё Р°С‚СЂРёР±СѓС‚РѕРІ.")))
     (t
      (progn
        (setq *mark:precheck-ok* nil)
-       (mark:out "[TEST 14] PRE-CHECK — FAILED")
-       (mark:out (strcat "Критических ошибок: " (itoa *mark:errors*)))
-       (mark:out (strcat "Предупреждений: " (itoa *mark:warnings*)))
-       (mark:out "Маркировка отменена.")
-       (mark:out "Изменений в чертеже не выполнено.")))))
+       (mark:out "[TEST 14] PRE-CHECK вЂ” FAILED")
+       (mark:out (strcat "РљСЂРёС‚РёС‡РµСЃРєРёС… РѕС€РёР±РѕРє: " (itoa *mark:errors*)))
+       (mark:out (strcat "РџСЂРµРґСѓРїСЂРµР¶РґРµРЅРёР№: " (itoa *mark:warnings*)))
+       (mark:out "РњР°СЂРєРёСЂРѕРІРєР° РѕС‚РјРµРЅРµРЅР°.")
+       (mark:out "РР·РјРµРЅРµРЅРёР№ РІ С‡РµСЂС‚РµР¶Рµ РЅРµ РІС‹РїРѕР»РЅРµРЅРѕ.")))))
 
 
 
-;;;--------------------- Глубокий разбор структуры --------------------
+;;;--------------------- Р“Р»СѓР±РѕРєРёР№ СЂР°Р·Р±РѕСЂ СЃС‚СЂСѓРєС‚СѓСЂС‹ --------------------
 
 (defun mark:tags-str (tags)
-  (if tags (vl-princ-to-string tags) "(нет)"))
+  (if tags (vl-princ-to-string tags) "(РЅРµС‚)"))
 
-;; Обычные свойства — проверка, что COM работает
+;; РћР±С‹С‡РЅС‹Рµ СЃРІРѕР№СЃС‚РІР° вЂ” РїСЂРѕРІРµСЂРєР°, С‡С‚Рѕ COM СЂР°Р±РѕС‚Р°РµС‚
 (defun mark:debug-std-props (obj)
   (mark:out (strcat "  Layer: "
                     (vl-princ-to-string (mark:ax-get obj "Layer"))))
   (mark:out (strcat "  Color: "
                     (vl-princ-to-string (mark:ax-get obj "Color")))))
 
-;; Проба списка имён Dynamic Properties
+;; РџСЂРѕР±Р° СЃРїРёСЃРєР° РёРјС‘РЅ Dynamic Properties
 (defun mark:debug-try-names (obj names / cand r okn bad)
   (setq okn nil)
   (foreach cand names
@@ -1674,41 +1675,41 @@
                       okn))))
   (if okn
     (progn
-      (mark:out "  Успешные имена Dynamic Properties:")
+      (mark:out "  РЈСЃРїРµС€РЅС‹Рµ РёРјРµРЅР° Dynamic Properties:")
       (foreach x (reverse okn)
         (mark:out (strcat "    OK  " x))))
-    (mark:out "  Успешных имён среди проб — нет")))
+    (mark:out "  РЈСЃРїРµС€РЅС‹С… РёРјС‘РЅ СЃСЂРµРґРё РїСЂРѕР± вЂ” РЅРµС‚")))
 
-;; GetDynamicBlockProperties (метод есть не во всех версиях)
+;; GetDynamicBlockProperties (РјРµС‚РѕРґ РµСЃС‚СЊ РЅРµ РІРѕ РІСЃРµС… РІРµСЂСЃРёСЏС…)
 (defun mark:debug-enum-dyn (obj / r v lst item pair n)
   (setq r (vl-catch-all-apply 'vlax-invoke-method
                               (list obj "GetDynamicBlockProperties")))
   (cond
     ((vl-catch-all-error-p r)
-     (mark:out (strcat "  GetDynamicBlockProperties: FAIL — "
+     (mark:out (strcat "  GetDynamicBlockProperties: FAIL вЂ” "
                        (vl-catch-all-error-message r))))
     ((null r)
      (mark:out "  GetDynamicBlockProperties: nil"))
     (t
      (progn
-       (mark:out "  GetDynamicBlockProperties: получен")
+       (mark:out "  GetDynamicBlockProperties: РїРѕР»СѓС‡РµРЅ")
        (mark:out (strcat "    type = " (vl-princ-to-string (type r))))
        (setq v (mark:unwrap r))
        (mark:out (strcat "    unwrap type = " (vl-princ-to-string (type v))))
-       ;; safearray > list (только эта функция)
+       ;; safearray > list (С‚РѕР»СЊРєРѕ СЌС‚Р° С„СѓРЅРєС†РёСЏ)
        (setq lst (vl-catch-all-apply 'vlax-safearray->list (list v)))
        (cond
          ((vl-catch-all-error-p lst)
           (mark:out (strcat "    safearray->list FAIL: "
                             (vl-catch-all-error-message lst))))
          ((null lst)
-          (mark:out "    safearray->list: пустой список"))
+          (mark:out "    safearray->list: РїСѓСЃС‚РѕР№ СЃРїРёСЃРѕРє"))
          ((not (listp lst))
-          (mark:out (strcat "    safearray->list: не список, type="
+          (mark:out (strcat "    safearray->list: РЅРµ СЃРїРёСЃРѕРє, type="
                             (vl-princ-to-string (type lst)))))
          (t
           (progn
-            (mark:out (strcat "    элементов: "
+            (mark:out (strcat "    СЌР»РµРјРµРЅС‚РѕРІ: "
                               (itoa (length lst))))
             (setq n 0)
             (foreach item lst
@@ -1730,7 +1731,7 @@
                               " Name="
                               (vl-princ-to-string
                                 (mark:ax-get item "Name"))))))))))
-       ;; итог через общий загрузчик
+       ;; РёС‚РѕРі С‡РµСЂРµР· РѕР±С‰РёР№ Р·Р°РіСЂСѓР·С‡РёРє
        (setq pair (mark:load-dyn-pairs obj))
        (if pair
          (progn
@@ -1742,7 +1743,7 @@
 
 
 (defun mark:debug-entget (e / pair k v)
-  (mark:out "  --- entget (ключевые группы) ---")
+  (mark:out "  --- entget (РєР»СЋС‡РµРІС‹Рµ РіСЂСѓРїРїС‹) ---")
   (foreach pair (entget e)
     (setq k (car pair)
           v (cdr pair))
@@ -1750,7 +1751,7 @@
       (mark:out (strcat "    " (vl-princ-to-string k) " = "
                         (vl-princ-to-string v))))))
 
-;; XDATA 1000–1071
+;; XDATA 1000вЂ“1071
 (defun mark:debug-xdata (e / pair items)
   (mark:out "  --- XDATA 1000-1071 ---")
   (setq items nil)
@@ -1762,13 +1763,13 @@
   (if items
     (foreach pair (reverse items)
       (mark:out (strcat "    " (vl-princ-to-string pair))))
-    (mark:out "    (нет)")))
+    (mark:out "    (РЅРµС‚)")))
 
-;; Перечисление ATTDEF/ATTRIB/TEXT в определении блока (только имена типов)
+;; РџРµСЂРµС‡РёСЃР»РµРЅРёРµ ATTDEF/ATTRIB/TEXT РІ РѕРїСЂРµРґРµР»РµРЅРёРё Р±Р»РѕРєР° (С‚РѕР»СЊРєРѕ РёРјРµРЅР° С‚РёРїРѕРІ)
 (defun mark:debug-block-def (bname / doc blocks rec cnt i item tn en data)
   (cond
     ((null (mark:strp bname))
-     (mark:out "  block-def: имя не строка"))
+     (mark:out "  block-def: РёРјСЏ РЅРµ СЃС‚СЂРѕРєР°"))
     (t
      (progn
        (mark:out (strcat "  block-def: " bname))
@@ -1809,11 +1810,11 @@
                                                (vl-princ-to-string
                                                  (cdr (assoc 1 data))))
                                        ""))
-                             " (нет ename/entget)")))
+                             " (РЅРµС‚ ename/entget)")))
                  (setq i (1+ i)))))))))))
 
 (defun mark:debug-entnext-chain (e / n data n15)
-  (mark:out "  --- entnext после INSERT (66=1) ---")
+  (mark:out "  --- entnext РїРѕСЃР»Рµ INSERT (66=1) ---")
   (setq n (entnext e)
         n15 0)
   (while (and n (< n15 30))
@@ -1834,10 +1835,10 @@
           (setq n nil)
           (setq n (entnext n))))))
   (if (= n15 0)
-    (mark:out "    (entnext дал другой объект/конец)")))
+    (mark:out "    (entnext РґР°Р» РґСЂСѓРіРѕР№ РѕР±СЉРµРєС‚/РєРѕРЅРµС†)")))
 
 (defun mark:debug-attr-values (e / ent data tag val)
-  (mark:out "  --- Значения ATTRIB (entnext) ---")
+  (mark:out "  --- Р—РЅР°С‡РµРЅРёСЏ ATTRIB (entnext) ---")
   (setq ent (entnext e))
   (while (and ent)
     (setq data (entget ent))
@@ -1861,7 +1862,7 @@
     (progn
       (setq e   (car *mark:fills*)
             obj (mark:vla e))
-      (mark:out "  --- Блок заполнения №1 ---")
+      (mark:out "  --- Р‘Р»РѕРє Р·Р°РїРѕР»РЅРµРЅРёСЏ в„–1 ---")
       (mark:out (strcat "  DXF-2: "
                         (vl-princ-to-string (cdr (assoc 2 (entget e))))))
       (mark:out (strcat "  Name: "
@@ -1880,15 +1881,15 @@
         obj
         (list *mark:prop-width*
               *mark:prop-height*
-              "Ширина_в_свету"
-              "Ширина"
-              "Высота"
+              "РЁРёСЂРёРЅР°_РІ_СЃРІРµС‚Сѓ"
+              "РЁРёСЂРёРЅР°"
+              "Р’С‹СЃРѕС‚Р°"
               "Width"
               "Height"
               "Visibility"
               "Visibility1"
-              "Видимость"
-              "Марка"
+              "Р’РёРґРёРјРѕСЃС‚СЊ"
+              "РњР°СЂРєР°"
               "Marka"))
       (mark:debug-enum-dyn obj)
       (mark:debug-entnext-chain e)
@@ -1901,7 +1902,7 @@
     (progn
       (setq e   (car *mark:glazings*)
             obj (mark:vla e))
-      (mark:out "  --- Атрибуты витража ---")
+      (mark:out "  --- РђС‚СЂРёР±СѓС‚С‹ РІРёС‚СЂР°Р¶Р° ---")
       (mark:out (strcat "  DXF-2: "
                         (vl-princ-to-string (cdr (assoc 2 (entget e))))))
       (mark:out (strcat "  EffectiveName: "
@@ -1913,7 +1914,7 @@
             tags2 (mark:attr-tags-ax obj))
       (mark:out (strcat "  ATTRIB DXF: " (mark:tags-str tags)))
       (mark:out (strcat "  ATTRIB AX:  " (mark:tags-str tags2)))
-      (mark:debug-try-names obj (list "Витраж" "Vitrage" "Марка" "Visibility"))
+      (mark:debug-try-names obj (list "Р’РёС‚СЂР°Р¶" "Vitrage" "РњР°СЂРєР°" "Visibility"))
       (mark:debug-enum-dyn obj)
       (mark:debug-entnext-chain e)
       (mark:debug-entget e)
@@ -1922,17 +1923,17 @@
 
 (defun mark:debug-structure ()
   (mark:out "")
-  (mark:out "[DEBUG] Разбор структуры (только чтение)...")
+  (mark:out "[DEBUG] Р Р°Р·Р±РѕСЂ СЃС‚СЂСѓРєС‚СѓСЂС‹ (С‚РѕР»СЊРєРѕ С‡С‚РµРЅРёРµ)...")
   (mark:debug-one-fill)
   (mark:debug-one-glazing))
 
-;;;--------------------- Диагностика (безопасный запуск) ---------------
+;;;--------------------- Р”РёР°РіРЅРѕСЃС‚РёРєР° (Р±РµР·РѕРїР°СЃРЅС‹Р№ Р·Р°РїСѓСЃРє) ---------------
 
 (defun mark:safe (fn label / r)
   (setq r (vl-catch-all-apply fn nil))
   (if (vl-catch-all-error-p r)
     (progn
-      (mark:out (strcat "[ERROR] Сбой на этапе " label ":"))
+      (mark:out (strcat "[ERROR] РЎР±РѕР№ РЅР° СЌС‚Р°РїРµ " label ":"))
       (mark:out (strcat "       " (vl-catch-all-error-message r)))
       (mark:note-error)
       nil)
@@ -1953,17 +1954,17 @@
         (mark:safe 'mark:debug-structure        "DEBUG")))
     (progn
       (mark:out "")
-      (mark:out "[TEST 04] \"Ширина в свету\" — SKIPPED (нет блоков заполнений)")
-      (mark:out "[TEST 05] \"Высота в свету\" — SKIPPED (нет блоков заполнений)")
-      (mark:out "[TEST 06] Значения размеров — SKIPPED (нет блоков заполнений)")
-      (mark:out "[TEST 07] Visibility State — SKIPPED (нет блоков заполнений)")
-      (mark:out "[TEST 08] Атрибут \"Марка\" — SKIPPED (нет блоков заполнений)")
-      (mark:out "[TEST 09] Уникальные размеры — SKIPPED (нет блоков заполнений)")
-      (mark:out "[TEST 10] Буквенная маркировка — SKIPPED (нет блоков заполнений)")
-      (mark:out "[TEST 11] Нумерация ширин — SKIPPED (нет блоков заполнений)")
-      (mark:out "[TEST 12] Специальные состояния — SKIPPED (нет блоков заполнений)"))))
+      (mark:out "[TEST 04] \"РЁРёСЂРёРЅР° РІ СЃРІРµС‚Сѓ\" вЂ” SKIPPED (РЅРµС‚ Р±Р»РѕРєРѕРІ Р·Р°РїРѕР»РЅРµРЅРёР№)")
+      (mark:out "[TEST 05] \"Р’С‹СЃРѕС‚Р° РІ СЃРІРµС‚Сѓ\" вЂ” SKIPPED (РЅРµС‚ Р±Р»РѕРєРѕРІ Р·Р°РїРѕР»РЅРµРЅРёР№)")
+      (mark:out "[TEST 06] Р—РЅР°С‡РµРЅРёСЏ СЂР°Р·РјРµСЂРѕРІ вЂ” SKIPPED (РЅРµС‚ Р±Р»РѕРєРѕРІ Р·Р°РїРѕР»РЅРµРЅРёР№)")
+      (mark:out "[TEST 07] Visibility State вЂ” SKIPPED (РЅРµС‚ Р±Р»РѕРєРѕРІ Р·Р°РїРѕР»РЅРµРЅРёР№)")
+      (mark:out "[TEST 08] РђС‚СЂРёР±СѓС‚ \"РњР°СЂРєР°\" вЂ” SKIPPED (РЅРµС‚ Р±Р»РѕРєРѕРІ Р·Р°РїРѕР»РЅРµРЅРёР№)")
+      (mark:out "[TEST 09] РЈРЅРёРєР°Р»СЊРЅС‹Рµ СЂР°Р·РјРµСЂС‹ вЂ” SKIPPED (РЅРµС‚ Р±Р»РѕРєРѕРІ Р·Р°РїРѕР»РЅРµРЅРёР№)")
+      (mark:out "[TEST 10] Р‘СѓРєРІРµРЅРЅР°СЏ РјР°СЂРєРёСЂРѕРІРєР° вЂ” SKIPPED (РЅРµС‚ Р±Р»РѕРєРѕРІ Р·Р°РїРѕР»РЅРµРЅРёР№)")
+      (mark:out "[TEST 11] РќСѓРјРµСЂР°С†РёСЏ С€РёСЂРёРЅ вЂ” SKIPPED (РЅРµС‚ Р±Р»РѕРєРѕРІ Р·Р°РїРѕР»РЅРµРЅРёР№)")
+      (mark:out "[TEST 12] РЎРїРµС†РёР°Р»СЊРЅС‹Рµ СЃРѕСЃС‚РѕСЏРЅРёСЏ вЂ” SKIPPED (РЅРµС‚ Р±Р»РѕРєРѕРІ Р·Р°РїРѕР»РЅРµРЅРёР№)"))))
 
-;;;--------------------- Этап B — запись атрибутов ---------------------
+;;;--------------------- Р­С‚Р°Рї B вЂ” Р·Р°РїРёСЃСЊ Р°С‚СЂРёР±СѓС‚РѕРІ ---------------------
 
 (defun mark:apply-impl (/ cnt failed r e obj aobj aent newm old)
   (setq cnt    0
@@ -1979,7 +1980,7 @@
                      nil
                      (mark:find-attr-obj obj *mark:attr-mark*)))
           (cond
-            ;; запись через DXF (entmod) — без ActiveX
+            ;; Р·Р°РїРёСЃСЊ С‡РµСЂРµР· DXF (entmod) вЂ” Р±РµР· ActiveX
             (aent
              (progn
                (setq old (cdr (assoc 1 (entget aent))))
@@ -1989,7 +1990,7 @@
                                   (entget aent)))
                    (entupd aent)))
                (setq cnt (1+ cnt))))
-            ;; фолбэк ActiveX
+            ;; С„РѕР»Р±СЌРє ActiveX
             (aobj
              (progn
                (setq old (mark:ax-get aobj "TextString"))
@@ -2004,12 +2005,12 @@
 
 (defun mark:apply-marks (/ doc r1 r2)
   (mark:out "")
-  (mark:out "[INFO] Начинается запись атрибутов...")
+  (mark:out "[INFO] РќР°С‡РёРЅР°РµС‚СЃСЏ Р·Р°РїРёСЃСЊ Р°С‚СЂРёР±СѓС‚РѕРІ...")
   (setq doc (mark:ax-get (vlax-get-acad-object) "ActiveDocument"))
-  ;; В МАРКАЗАП внешний маркер открыт — свой не открываем
+  ;; Р’ РњРђР РљРђР—РђРџ РІРЅРµС€РЅРёР№ РјР°СЂРєРµСЂ РѕС‚РєСЂС‹С‚ вЂ” СЃРІРѕР№ РЅРµ РѕС‚РєСЂС‹РІР°РµРј
   (if (and doc (not *mark:batch-undo*))
     (mark:ax-invoke-ok doc "StartUndoMark" nil))
-  ;; EndUndoMark закрывается всегда — один шаг UNDO отменяет сеанс записи
+  ;; EndUndoMark Р·Р°РєСЂС‹РІР°РµС‚СЃСЏ РІСЃРµРіРґР° вЂ” РѕРґРёРЅ С€Р°Рі UNDO РѕС‚РјРµРЅСЏРµС‚ СЃРµР°РЅСЃ Р·Р°РїРёСЃРё
   (setq r1 (vl-catch-all-apply 'mark:apply-impl nil))
   (setq r2 (if (and doc (not *mark:batch-undo*))
              (mark:ax-invoke-ok doc "EndUndoMark" nil)
@@ -2017,15 +2018,15 @@
   (cond
     ((vl-catch-all-error-p r1)
      (progn
-       (mark:out "[ERROR] Сбой при записи атрибутов:")
+       (mark:out "[ERROR] РЎР±РѕР№ РїСЂРё Р·Р°РїРёСЃРё Р°С‚СЂРёР±СѓС‚РѕРІ:")
        (mark:out (strcat "       " (vl-catch-all-error-message r1)))
        (mark:note-error)
-       (mark:out (strcat "[INFO] Выполнено записей: " (itoa *mark:written*)))
-       (mark:out "[INFO] При необходимости выполните UNDO (один шаг).")
+       (mark:out (strcat "[INFO] Р’С‹РїРѕР»РЅРµРЅРѕ Р·Р°РїРёСЃРµР№: " (itoa *mark:written*)))
+       (mark:out "[INFO] РџСЂРё РЅРµРѕР±С…РѕРґРёРјРѕСЃС‚Рё РІС‹РїРѕР»РЅРёС‚Рµ UNDO (РѕРґРёРЅ С€Р°Рі).")
        nil))
     ((null r2)
      (progn
-       (mark:out "[WARN] Не удалось закрыть Undo-маркер.")
+       (mark:out "[WARN] РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РєСЂС‹С‚СЊ Undo-РјР°СЂРєРµСЂ.")
        (mark:note-warning)
        r1))
     (t
@@ -2033,120 +2034,120 @@
        (if (> *mark:apply-failed* 0)
          (progn
            (mark:out
-             (strcat "[ERROR] Не удалось записать: "
+             (strcat "[ERROR] РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РїРёСЃР°С‚СЊ: "
                      (itoa *mark:apply-failed*)))
            (mark:note-error)))
        r1))))
 
-;;;--------------------- Итоговый отчёт --------------------------------
+;;;--------------------- РС‚РѕРіРѕРІС‹Р№ РѕС‚С‡С‘С‚ --------------------------------
 
 (defun mark:report (success)
   (mark:out "")
   (mark:out "========================================")
-  (mark:out (strcat " ИТОГ  " *mark:rev*))
+  (mark:out (strcat " РРўРћР“  " *mark:rev*))
   (mark:out "========================================")
-  (mark:out (mark:pad-line "Выбрано объектов:" (itoa *mark:sel-total*)))
+  (mark:out (mark:pad-line "Р’С‹Р±СЂР°РЅРѕ РѕР±СЉРµРєС‚РѕРІ:" (itoa *mark:sel-total*)))
   (mark:out
-    (mark:pad-line "Заполнений найдено:" (itoa (length *mark:fills*))))
+    (mark:pad-line "Р—Р°РїРѕР»РЅРµРЅРёР№ РЅР°Р№РґРµРЅРѕ:" (itoa (length *mark:fills*))))
   (mark:out
-    (mark:pad-line "\"Атрибуты витража\":"
+    (mark:pad-line "\"РђС‚СЂРёР±СѓС‚С‹ РІРёС‚СЂР°Р¶Р°\":"
                    (itoa (length *mark:glazings*))))
-  ;; Ред. 48.30: совместная маркировка — перечень витражей
+  ;; Р РµРґ. 48.30: СЃРѕРІРјРµСЃС‚РЅР°СЏ РјР°СЂРєРёСЂРѕРІРєР° вЂ” РїРµСЂРµС‡РµРЅСЊ РІРёС‚СЂР°Р¶РµР№
   (if (and *mark:vz-map* (> (length (mark:vz-map-pfxs)) 1))
     (mark:out
-      (mark:pad-line "Витражи:"
+      (mark:pad-line "Р’РёС‚СЂР°Р¶Рё:"
                      (mark:vz-join (mark:vz-map-pfxs) ", ")))
     (mark:out
-      (mark:pad-line "Витраж:"
-                     (if *mark:prefix-found* *mark:prefix* "—"))))
+      (mark:pad-line "Р’РёС‚СЂР°Р¶:"
+                     (if *mark:prefix-found* *mark:prefix* "вЂ”"))))
   (mark:out
-    (mark:pad-line "Шкала секций (номера):"
+    (mark:pad-line "РЁРєР°Р»Р° СЃРµРєС†РёР№ (РЅРѕРјРµСЂР°):"
                    (itoa (length *mark:widths*))))
   (mark:out
-    (mark:pad-line "Шкала строк (буквы):"
+    (mark:pad-line "РЁРєР°Р»Р° СЃС‚СЂРѕРє (Р±СѓРєРІС‹):"
                    (itoa (length *mark:heights*))))
-  (mark:out (mark:pad-line "Стемалит:" (itoa *mark:cnt-stem*)))
-  (mark:out (mark:pad-line "Сэндвич:"  (itoa *mark:cnt-sand*)))
+  (mark:out (mark:pad-line "РЎС‚РµРјР°Р»РёС‚:" (itoa *mark:cnt-stem*)))
+  (mark:out (mark:pad-line "РЎСЌРЅРґРІРёС‡:"  (itoa *mark:cnt-sand*)))
   (mark:out
-    (mark:pad-line "Марки успешно записаны:" (itoa *mark:written*)))
+    (mark:pad-line "РњР°СЂРєРё СѓСЃРїРµС€РЅРѕ Р·Р°РїРёСЃР°РЅС‹:" (itoa *mark:written*)))
   (if (> *mark:apply-failed* 0)
     (mark:out
-      (mark:pad-line "Ошибок записи:" (itoa *mark:apply-failed*))))
-  (mark:out (mark:pad-line "Ошибок:" (itoa *mark:errors*)))
-  (mark:out (mark:pad-line "Предупреждений:" (itoa *mark:warnings*)))
+      (mark:pad-line "РћС€РёР±РѕРє Р·Р°РїРёСЃРё:" (itoa *mark:apply-failed*))))
+  (mark:out (mark:pad-line "РћС€РёР±РѕРє:" (itoa *mark:errors*)))
+  (mark:out (mark:pad-line "РџСЂРµРґСѓРїСЂРµР¶РґРµРЅРёР№:" (itoa *mark:warnings*)))
   (mark:out "========================================")
   (if success
-    (mark:out "[INFO] Готово.")
+    (mark:out "[INFO] Р“РѕС‚РѕРІРѕ.")
     (progn
-      (mark:out "[INFO] Маркировка отменена.")
-      (mark:out "[INFO] Изменений в чертеже не выполнено."))))
+      (mark:out "[INFO] РњР°СЂРєРёСЂРѕРІРєР° РѕС‚РјРµРЅРµРЅР°.")
+      (mark:out "[INFO] РР·РјРµРЅРµРЅРёР№ РІ С‡РµСЂС‚РµР¶Рµ РЅРµ РІС‹РїРѕР»РЅРµРЅРѕ."))))
 
-;;;--------------------- Главная процедура -----------------------------
+;;;--------------------- Р“Р»Р°РІРЅР°СЏ РїСЂРѕС†РµРґСѓСЂР° -----------------------------
 
 (defun mark:main (/ r)
   (mark:cmd-line
-    "МАРКАРОВКАЗАП — марки блоков в «Заполнение в витраж».")
+    "РњРђР РљРђР РћР’РљРђР—РђРџ вЂ” РјР°СЂРєРё Р±Р»РѕРєРѕРІ РІ В«Р—Р°РїРѕР»РЅРµРЅРёРµ РІ РІРёС‚СЂР°Р¶В».")
   (mark:reset-state)
   (mark:banner)
 
-  ;; ===== Этап A: подготовка (без изменения чертежа) =====
+  ;; ===== Р­С‚Р°Рї A: РїРѕРґРіРѕС‚РѕРІРєР° (Р±РµР· РёР·РјРµРЅРµРЅРёСЏ С‡РµСЂС‚РµР¶Р°) =====
   (if (null (mark:select))
     (princ)
 
     (progn
-      ;; Ред. 48.0: без раскладки данных о секциях нет — просим каркас.
+      ;; Р РµРґ. 48.0: Р±РµР· СЂР°СЃРєР»Р°РґРєРё РґР°РЅРЅС‹С… Рѕ СЃРµРєС†РёСЏС… РЅРµС‚ вЂ” РїСЂРѕСЃРёРј РєР°СЂРєР°СЃ.
       (if (null *mark:fill-geo*)
         (setq r (vl-catch-all-apply 'mark:sec-standalone nil)))
       (if (and (null *mark:fill-geo*) *mark:fills*)
         (progn
           (mark:out
-            "[ERROR] Нет данных о секциях: запустите МАРКАЗАПБЛОК")
+            "[ERROR] РќРµС‚ РґР°РЅРЅС‹С… Рѕ СЃРµРєС†РёСЏС…: Р·Р°РїСѓСЃС‚РёС‚Рµ РњРђР РљРђР—РђРџР‘Р›РћРљ")
           (mark:out
-            "        или укажите каркас по запросу программы.")
+            "        РёР»Рё СѓРєР°Р¶РёС‚Рµ РєР°СЂРєР°СЃ РїРѕ Р·Р°РїСЂРѕСЃСѓ РїСЂРѕРіСЂР°РјРјС‹.")
           (mark:note-error)))
-      ;; A1. чтение данных (read-only)
+      ;; A1. С‡С‚РµРЅРёРµ РґР°РЅРЅС‹С… (read-only)
       (setq r (vl-catch-all-apply 'mark:collect-data nil))
       (if (vl-catch-all-error-p r)
         (progn
-          (mark:out "[ERROR] Сбой чтения данных блоков:")
+          (mark:out "[ERROR] РЎР±РѕР№ С‡С‚РµРЅРёСЏ РґР°РЅРЅС‹С… Р±Р»РѕРєРѕРІ:")
           (mark:out (strcat "       " (vl-catch-all-error-message r)))
           (mark:note-error)))
 
-      ;; A2. самодиагностика TEST 01 ... TEST 12
+      ;; A2. СЃР°РјРѕРґРёР°РіРЅРѕСЃС‚РёРєР° TEST 01 ... TEST 12
       (mark:diagnostics)
 
-      ;; A3. расчёт марок в памяти + TEST 13
+      ;; A3. СЂР°СЃС‡С‘С‚ РјР°СЂРѕРє РІ РїР°РјСЏС‚Рё + TEST 13
       (mark:out "")
       (cond
         ((= *mark:errors* 0)
          (progn
            (mark:out
-             "[INFO] Критических ошибок нет — формирование марок в памяти...")
+             "[INFO] РљСЂРёС‚РёС‡РµСЃРєРёС… РѕС€РёР±РѕРє РЅРµС‚ вЂ” С„РѕСЂРјРёСЂРѕРІР°РЅРёРµ РјР°СЂРѕРє РІ РїР°РјСЏС‚Рё...")
            (setq r (vl-catch-all-apply 'mark:build-marks nil))
            (if (vl-catch-all-error-p r)
              (progn
-               (mark:out "[TEST 13] Проверка формирования марок — ERROR")
+               (mark:out "[TEST 13] РџСЂРѕРІРµСЂРєР° С„РѕСЂРјРёСЂРѕРІР°РЅРёСЏ РјР°СЂРѕРє вЂ” ERROR")
                (mark:out (strcat "       " (vl-catch-all-error-message r)))
                (mark:note-error))
              (mark:safe 'mark:validate-marks "TEST 13"))))
         (t
          (progn
-           (mark:out "[TEST 13] Проверка формирования марок — SKIPPED")
+           (mark:out "[TEST 13] РџСЂРѕРІРµСЂРєР° С„РѕСЂРјРёСЂРѕРІР°РЅРёСЏ РјР°СЂРѕРє вЂ” SKIPPED")
            (mark:out
-             "[INFO] Есть критические ошибки диагностики — марки не формируются."))))
+             "[INFO] Р•СЃС‚СЊ РєСЂРёС‚РёС‡РµСЃРєРёРµ РѕС€РёР±РєРё РґРёР°РіРЅРѕСЃС‚РёРєРё вЂ” РјР°СЂРєРё РЅРµ С„РѕСЂРјРёСЂСѓСЋС‚СЃСЏ."))))
 
-      ;; A3a. TEST 16 — секции и ярусы (Ред. 48.0)
+      ;; A3a. TEST 16 вЂ” СЃРµРєС†РёРё Рё СЏСЂСѓСЃС‹ (Р РµРґ. 48.0)
       (if (and (= *mark:errors* 0) *mark:fill-geo* *mark:records*)
         (mark:safe 'mark:test-16 "TEST 16"))
 
-      ;; A3b. диагностика стм/снд vs обычное
+      ;; A3b. РґРёР°РіРЅРѕСЃС‚РёРєР° СЃС‚Рј/СЃРЅРґ vs РѕР±С‹С‡РЅРѕРµ
       (if (and (= *mark:errors* 0) *mark:records*)
         (vl-catch-all-apply 'mark:diag-base nil))
 
-      ;; A4. финальный контроль
+      ;; A4. С„РёРЅР°Р»СЊРЅС‹Р№ РєРѕРЅС‚СЂРѕР»СЊ
       (mark:pre-check)
 
-      ;; ===== Этап B: применение — только после PRE-CHECK OK =====
+      ;; ===== Р­С‚Р°Рї B: РїСЂРёРјРµРЅРµРЅРёРµ вЂ” С‚РѕР»СЊРєРѕ РїРѕСЃР»Рµ PRE-CHECK OK =====
       (if *mark:precheck-ok*
         (progn
           (setq r (vl-catch-all-apply 'mark:apply-marks nil))
@@ -2159,13 +2160,13 @@
 
 
 ;;;=====================================================================
-;;;  MARKTABLE — обратное извлечение заполнений в таблицу / XLS / CSV
-;;;  Команды: MARKTABLE / МАРКАЗАПТАБЛ
-;;;  Столбец «Марка» читается из атрибута блока «Заполнение в витраж».
-;;;  Размеры: припуск +26 мм (как в ZAPOLNENIE), округление fix().
+;;;  MARKTABLE вЂ” РѕР±СЂР°С‚РЅРѕРµ РёР·РІР»РµС‡РµРЅРёРµ Р·Р°РїРѕР»РЅРµРЅРёР№ РІ С‚Р°Р±Р»РёС†Сѓ / XLS / CSV
+;;;  РљРѕРјР°РЅРґС‹: MARKTABLE / РњРђР РљРђР—РђРџРўРђР‘Р›
+;;;  РЎС‚РѕР»Р±РµС† В«РњР°СЂРєР°В» С‡РёС‚Р°РµС‚СЃСЏ РёР· Р°С‚СЂРёР±СѓС‚Р° Р±Р»РѕРєР° В«Р—Р°РїРѕР»РЅРµРЅРёРµ РІ РІРёС‚СЂР°Р¶В».
+;;;  Р Р°Р·РјРµСЂС‹: РїСЂРёРїСѓСЃРє +26 РјРј (РєР°Рє РІ ZAPOLNENIE), РѕРєСЂСѓРіР»РµРЅРёРµ fix().
 ;;;=====================================================================
 
-;; *mtab:allowance* *mtab:h-keys* *mtab:w-keys* — в шапке
+;; *mtab:allowance* *mtab:h-keys* *mtab:w-keys* вЂ” РІ С€Р°РїРєРµ
 
 (defun mtab:round2 (x)
   (/ (fix (+ (* x 100.0) 0.5)) 100.0))
@@ -2179,7 +2180,7 @@
     ((< frac 10) (strcat (itoa int-part) ",0" (itoa frac)))
     (t (strcat (itoa int-part) "," (itoa frac)))))
 
-;; Поиск размера: список ключей через mark:get-dyn
+;; РџРѕРёСЃРє СЂР°Р·РјРµСЂР°: СЃРїРёСЃРѕРє РєР»СЋС‡РµР№ С‡РµСЂРµР· mark:get-dyn
 (defun mtab:dim (obj keys / k r n)
   (setq r nil)
   (foreach k keys
@@ -2196,17 +2197,17 @@
 (defun mtab:select (/ ss i e fills glazings others names nm lst)
   (if (and *mark:reuse-sel* *mark:fills*)
     (progn
-      (mark:out "[INFO] Выбор уже выполнен (МАРКАЗАП) — без повторного выделения.")
+      (mark:out "[INFO] Р’С‹Р±РѕСЂ СѓР¶Рµ РІС‹РїРѕР»РЅРµРЅ (РњРђР РљРђР—РђРџ) вЂ” Р±РµР· РїРѕРІС‚РѕСЂРЅРѕРіРѕ РІС‹РґРµР»РµРЅРёСЏ.")
       t)
     (progn
   (mark:out "")
-  (prompt "\nВыберите блоки «Заполнение в витраж» для ведомости: ")
+  (prompt "\nР’С‹Р±РµСЂРёС‚Рµ Р±Р»РѕРєРё В«Р—Р°РїРѕР»РЅРµРЅРёРµ РІ РІРёС‚СЂР°Р¶В» РґР»СЏ РІРµРґРѕРјРѕСЃС‚Рё: ")
   (setq ss (vl-catch-all-apply 'ssget nil))
   (cond
     ((vl-catch-all-error-p ss)
-     (mark:out "[ERROR] Ошибка выделения.") nil)
+     (mark:out "[ERROR] РћС€РёР±РєР° РІС‹РґРµР»РµРЅРёСЏ.") nil)
     ((null ss)
-     (mark:out "[INFO] Выбор отменён.") nil)
+     (mark:out "[INFO] Р’С‹Р±РѕСЂ РѕС‚РјРµРЅС‘РЅ.") nil)
     (t
      (setq fills nil glazings nil others 0 names nil i (sslength ss))
      (repeat i
@@ -2227,21 +2228,21 @@
            *mark:glazings*    (reverse glazings)
            *mark:others*      others
            *mark:found-names* (reverse names))
-     (mark:out (strcat "[INFO] Заполнений: " (itoa (length *mark:fills*))))
-     (mark:out (strcat "[INFO] \"Атрибуты витража\": " (itoa (length *mark:glazings*))))
+     (mark:out (strcat "[INFO] Р—Р°РїРѕР»РЅРµРЅРёР№: " (itoa (length *mark:fills*))))
+     (mark:out (strcat "[INFO] \"РђС‚СЂРёР±СѓС‚С‹ РІРёС‚СЂР°Р¶Р°\": " (itoa (length *mark:glazings*))))
      (if (null *mark:fills*)
-       (progn (mark:out "[ERROR] Блоки заполнений не найдены.") nil)
+       (progn (mark:out "[ERROR] Р‘Р»РѕРєРё Р·Р°РїРѕР»РЅРµРЅРёР№ РЅРµ РЅР°Р№РґРµРЅС‹.") nil)
        t))))))
 
-;; Префикс Витраж (как в MARKZ)
+;; РџСЂРµС„РёРєСЃ Р’РёС‚СЂР°Р¶ (РєР°Рє РІ MARKZ)
 (defun mtab:prefix (/ g res val names)
   (setq *mark:prefix* ""
         *mark:prefix-found* nil
         names               nil)
   (if *mark:glazings*
     (progn
-      ;; Ред. 48.29: несколько витражей — перечень в лог (ведомость
-      ;; одна на всех); *mark:prefix* — первый (марки уже с префиксами)
+      ;; Р РµРґ. 48.29: РЅРµСЃРєРѕР»СЊРєРѕ РІРёС‚СЂР°Р¶РµР№ вЂ” РїРµСЂРµС‡РµРЅСЊ РІ Р»РѕРі (РІРµРґРѕРјРѕСЃС‚СЊ
+      ;; РѕРґРЅР° РЅР° РІСЃРµС…); *mark:prefix* вЂ” РїРµСЂРІС‹Р№ (РјР°СЂРєРё СѓР¶Рµ СЃ РїСЂРµС„РёРєСЃР°РјРё)
       (if (> (length *mark:glazings*) 1)
         (progn
           (foreach g *mark:glazings*
@@ -2255,8 +2256,8 @@
               (setq *mark:prefix*       (car names)
                     *mark:prefix-found* t)
               (mark:out
-                (strcat "[INFO] Витражи: " (mark:vz-join names ", "))))
-            (mark:out "[INFO] Атрибут \"Витраж\" пуст — без префикса.")))
+                (strcat "[INFO] Р’РёС‚СЂР°Р¶Рё: " (mark:vz-join names ", "))))
+            (mark:out "[INFO] РђС‚СЂРёР±СѓС‚ \"Р’РёС‚СЂР°Р¶\" РїСѓСЃС‚ вЂ” Р±РµР· РїСЂРµС„РёРєСЃР°.")))
         (progn
           (setq g   (car *mark:glazings*)
                 res (mark:find-attr g *mark:attr-vitrage*))
@@ -2264,12 +2265,12 @@
             (progn
               (setq *mark:prefix* (mark:trim (cadr res))
                     *mark:prefix-found* t)
-              (mark:out (strcat "[INFO] Витраж: " *mark:prefix*)))
-            (mark:out "[INFO] Атрибут \"Витраж\" пуст — без префикса.")))))
-    (mark:out "[INFO] \"Атрибуты витража\" нет — без префикса."))
+              (mark:out (strcat "[INFO] Р’РёС‚СЂР°Р¶: " *mark:prefix*)))
+            (mark:out "[INFO] РђС‚СЂРёР±СѓС‚ \"Р’РёС‚СЂР°Р¶\" РїСѓСЃС‚ вЂ” Р±РµР· РїСЂРµС„РёРєСЃР°.")))))
+    (mark:out "[INFO] \"РђС‚СЂРёР±СѓС‚С‹ РІРёС‚СЂР°Р¶Р°\" РЅРµС‚ вЂ” Р±РµР· РїСЂРµС„РёРєСЃР°."))
   *mark:prefix*)
 
-;; Сбор по блокам: (type h w mark)
+;; РЎР±РѕСЂ РїРѕ Р±Р»РѕРєР°Рј: (type h w mark)
 (defun mtab:collect-blocks (/ blocks e obj raw-h raw-w h w vv vis mres mval)
   (setq blocks nil)
   (foreach e *mark:fills*
@@ -2278,7 +2279,7 @@
           raw-w (mtab:dim obj *mtab:w-keys*))
     (cond
       ((or (null raw-h) (null raw-w) (<= raw-h 0.0) (<= raw-w 0.0))
-       (mark:out "[WARN] Пропуск блока: нет корректных размеров."))
+       (mark:out "[WARN] РџСЂРѕРїСѓСЃРє Р±Р»РѕРєР°: РЅРµС‚ РєРѕСЂСЂРµРєС‚РЅС‹С… СЂР°Р·РјРµСЂРѕРІ."))
       (t
        (progn
          (setq h   (fix (+ raw-h *mtab:allowance*))
@@ -2288,14 +2289,14 @@
                mres (mark:find-attr e *mark:attr-mark*)
                mval (if (car mres) (mark:trim (cadr mres)) ""))
          (if (or (null vis) (= vis ""))
-           (setq vis "Без типа"))
+           (setq vis "Р‘РµР· С‚РёРїР°"))
          (setq blocks
            (cons (list vis h w mval) blocks))))))
   (reverse blocks))
 
-;; Сортировка: Тип -> Высота -> Ширина -> Марка
-;; Ред. 48.30: разделение марки — "ТБ-1 И3.2" даёт ("ТБ-1" "И3.2");
-;; "Г1" даёт ("" "Г1") — витраж и маркировка
+;; РЎРѕСЂС‚РёСЂРѕРІРєР°: РўРёРї -> Р’С‹СЃРѕС‚Р° -> РЁРёСЂРёРЅР° -> РњР°СЂРєР°
+;; Р РµРґ. 48.30: СЂР°Р·РґРµР»РµРЅРёРµ РјР°СЂРєРё вЂ” "РўР‘-1 Р3.2" РґР°С‘С‚ ("РўР‘-1" "Р3.2");
+;; "Р“1" РґР°С‘С‚ ("" "Р“1") вЂ” РІРёС‚СЂР°Р¶ Рё РјР°СЂРєРёСЂРѕРІРєР°
 (defun mtab:mark-split (m / cl i sp)
   (setq cl (vl-string->list m)
         i  0
@@ -2308,7 +2309,7 @@
     (list (substr m 1 sp) (substr m (+ sp 2)))
     (list "" m)))
 
-;; Ред. 48.30: сортировка ведомости — тип, витраж, маркировка
+;; Р РµРґ. 48.30: СЃРѕСЂС‚РёСЂРѕРІРєР° РІРµРґРѕРјРѕСЃС‚Рё вЂ” С‚РёРї, РІРёС‚СЂР°Р¶, РјР°СЂРєРёСЂРѕРІРєР°
 (defun mtab:sort-less (a b / ta tb pa pb)
   (setq ta (strcase (car a)) tb (strcase (car b)))
   (cond
@@ -2324,9 +2325,9 @@
        ((mark:nat-less (cadr pb) (cadr pa)) nil)
        (t nil)))))
 
-;; Агрегация (type h w mark) -> (type h w mark count)
+;; РђРіСЂРµРіР°С†РёСЏ (type h w mark) -> (type h w mark count)
 (defun mtab:aggregate (blocks / acc rec key found)
-  ;; acc: assoc, элемент (key type h w mark count)
+  ;; acc: assoc, СЌР»РµРјРµРЅС‚ (key type h w mark count)
   (setq acc nil)
   (foreach rec blocks
     (setq key (strcat (strcase (car rec)) "|"
@@ -2348,7 +2349,7 @@
         (cons (list key (car rec) (cadr rec)
                     (caddr rec) (cadddr rec) 1)
               acc))))
-  ;; нормализация к (type h w mark count)
+  ;; РЅРѕСЂРјР°Р»РёР·Р°С†РёСЏ Рє (type h w mark count)
   (setq acc
     (mapcar
       '(lambda (r)
@@ -2357,14 +2358,14 @@
       acc))
   (vl-sort acc 'mtab:sort-less))
 
-;; ---------- ТАБЛИЦА AutoCAD ----------
+;; ---------- РўРђР‘Р›РР¦Рђ AutoCAD ----------
 (defun mtab:area (h w cnt)
   (mtab:round2 (/ (* h w cnt) 1000000.0)))
 
-;; ---------- ТАБЛИЦА AutoCAD ----------
-;; Порядок: № | Тип | Марка | Высота | Ширина | Кол-во | Площадь
-;; Подитог по каждому типу + финальный итог
-;; Объединение ячеек строки: столбцы 2-5 -> col 1..4
+;; ---------- РўРђР‘Р›РР¦Рђ AutoCAD ----------
+;; РџРѕСЂСЏРґРѕРє: в„– | РўРёРї | РњР°СЂРєР° | Р’С‹СЃРѕС‚Р° | РЁРёСЂРёРЅР° | РљРѕР»-РІРѕ | РџР»РѕС‰Р°РґСЊ
+;; РџРѕРґРёС‚РѕРі РїРѕ РєР°Р¶РґРѕРјСѓ С‚РёРїСѓ + С„РёРЅР°Р»СЊРЅС‹Р№ РёС‚РѕРі
+;; РћР±СЉРµРґРёРЅРµРЅРёРµ СЏС‡РµРµРє СЃС‚СЂРѕРєРё: СЃС‚РѕР»Р±С†С‹ 2-5 -> col 1..4
 ;; ActiveX: MergeCells(minRow, maxRow, minCol, maxCol)
 (defun mtab:merge-2-5 (tbl r / res)
   (setq res
@@ -2379,18 +2380,18 @@
                           (vl-catch-all-error-message res))))))
   res)
 
-;; ---------- ТАБЛИЦА AutoCAD ----------
-;; Порядок: № | Тип | Марка | Высота | Ширина | Кол-во | Площадь
-;; Подитог по типу (без слова «Подитог») + финальный итог
+;; ---------- РўРђР‘Р›РР¦Рђ AutoCAD ----------
+;; РџРѕСЂСЏРґРѕРє: в„– | РўРёРї | РњР°СЂРєР° | Р’С‹СЃРѕС‚Р° | РЁРёСЂРёРЅР° | РљРѕР»-РІРѕ | РџР»РѕС‰Р°РґСЊ
+;; РџРѕРґРёС‚РѕРі РїРѕ С‚РёРїСѓ (Р±РµР· СЃР»РѕРІР° В«РџРѕРґРёС‚РѕРіВ») + С„РёРЅР°Р»СЊРЅС‹Р№ РёС‚РѕРі
 (defun mtab:create-table (data / pt doc space tbl row nRows nCols
     rec tip h w mark cnt area oldEcho i n-types
     cur cnt-sub area-sub n-row t0 t1 t2 t3)
   (if (null data)
-    (progn (mark:out "[INFO] Нет данных для таблицы.") nil)
+    (progn (mark:out "[INFO] РќРµС‚ РґР°РЅРЅС‹С… РґР»СЏ С‚Р°Р±Р»РёС†С‹.") nil)
     (progn
-      (setq pt (getpoint "\nУкажите точку вставки таблицы: "))
+      (setq pt (getpoint "\nРЈРєР°Р¶РёС‚Рµ С‚РѕС‡РєСѓ РІСЃС‚Р°РІРєРё С‚Р°Р±Р»РёС†С‹: "))
       (if (null pt)
-        (progn (mark:out "[INFO] Таблица пропущена.") nil)
+        (progn (mark:out "[INFO] РўР°Р±Р»РёС†Р° РїСЂРѕРїСѓС‰РµРЅР°.") nil)
         (progn
           (setq n-types 0
                 cur nil)
@@ -2402,7 +2403,7 @@
                 space (vla-get-ModelSpace doc)
                 pt (trans pt 1 0)
                 nCols 7
-                ;; title + header + data + subtotals + total (без лишней строки)
+                ;; title + header + data + subtotals + total (Р±РµР· Р»РёС€РЅРµР№ СЃС‚СЂРѕРєРё)
                 nRows (+ 3 (length data) n-types)
                 oldEcho (getvar "CMDECHO"))
           (vl-catch-all-apply 'setvar (list "CMDECHO" 0))
@@ -2420,16 +2421,16 @@
               (vl-catch-all-apply 'setvar (list "CMDECHO" oldEcho))
               nil)
             (progn
-              ;; Ред. 48.32: подавить пересчёт таблицы на время заполнения
-              ;; (документация Autodesk: RegenerateTableSuppressed — без
-              ;; этого AutoCAD пересоздаёт таблицу на каждом изменении
-              ;; ячейки, ~850 раз для ведомости из 54 позиций)
+              ;; Р РµРґ. 48.32: РїРѕРґР°РІРёС‚СЊ РїРµСЂРµСЃС‡С‘С‚ С‚Р°Р±Р»РёС†С‹ РЅР° РІСЂРµРјСЏ Р·Р°РїРѕР»РЅРµРЅРёСЏ
+              ;; (РґРѕРєСѓРјРµРЅС‚Р°С†РёСЏ Autodesk: RegenerateTableSuppressed вЂ” Р±РµР·
+              ;; СЌС‚РѕРіРѕ AutoCAD РїРµСЂРµСЃРѕР·РґР°С‘С‚ С‚Р°Р±Р»РёС†Сѓ РЅР° РєР°Р¶РґРѕРј РёР·РјРµРЅРµРЅРёРё
+              ;; СЏС‡РµР№РєРё, ~850 СЂР°Р· РґР»СЏ РІРµРґРѕРјРѕСЃС‚Рё РёР· 54 РїРѕР·РёС†РёР№)
               (vl-catch-all-apply 'vla-put-RegenerateTableSuppressed
                                   (list tbl :vlax-true))
-              ;; Ред. 48.33: замер этапов (создание / заполнение / сборка)
+              ;; Р РµРґ. 48.33: Р·Р°РјРµСЂ СЌС‚Р°РїРѕРІ (СЃРѕР·РґР°РЅРёРµ / Р·Р°РїРѕР»РЅРµРЅРёРµ / СЃР±РѕСЂРєР°)
               (setq t1 (getvar "MILLISECS"))
-              ;; ширины колонок: № | Тип | Марка | H | W | Кол-во | Площадь
-              ;; Ред. 48.0: таблица ведомости — на слой «Размеры»
+              ;; С€РёСЂРёРЅС‹ РєРѕР»РѕРЅРѕРє: в„– | РўРёРї | РњР°СЂРєР° | H | W | РљРѕР»-РІРѕ | РџР»РѕС‰Р°РґСЊ
+              ;; Р РµРґ. 48.0: С‚Р°Р±Р»РёС†Р° РІРµРґРѕРјРѕСЃС‚Рё вЂ” РЅР° СЃР»РѕР№ В«Р Р°Р·РјРµСЂС‹В»
               (mark:tbl-layer doc tbl)
               (vl-catch-all-apply 'vla-SetColumnWidth (list tbl 0 14.0))
               (vl-catch-all-apply 'vla-SetColumnWidth (list tbl 1 45.0))
@@ -2439,12 +2440,12 @@
               (vl-catch-all-apply 'vla-SetColumnWidth (list tbl 5 28.0))
               (vl-catch-all-apply 'vla-SetColumnWidth (list tbl 6 30.0))
               ;; title
-              (vla-SetText tbl 0 0 "Заполнение")
+              (vla-SetText tbl 0 0 "Р—Р°РїРѕР»РЅРµРЅРёРµ")
               (vl-catch-all-apply 'vla-SetRowHeight (list tbl 0 8.0))
               ;; header
               (setq i 0)
-              (foreach hdr '("№" "Тип" "Марка" "Высота, мм" "Ширина, мм"
-                             "Кол-во, шт." "Площадь, м2")
+              (foreach hdr '("в„–" "РўРёРї" "РњР°СЂРєР°" "Р’С‹СЃРѕС‚Р°, РјРј" "РЁРёСЂРёРЅР°, РјРј"
+                             "РљРѕР»-РІРѕ, С€С‚." "РџР»РѕС‰Р°РґСЊ, Рј2")
                 (vla-SetText tbl 1 i hdr)
                 (vla-SetCellAlignment tbl 1 i 5)
                 (setq i (1+ i)))
@@ -2459,11 +2460,11 @@
                       mark (cadddr rec)
                       cnt  (car (cddddr rec))
                       area (mtab:area h w cnt))
-                ;; смена типа > подитог предыдущего
+                ;; СЃРјРµРЅР° С‚РёРїР° > РїРѕРґРёС‚РѕРі РїСЂРµРґС‹РґСѓС‰РµРіРѕ
                 (if (and cur (/= (strcase tip) (strcase cur)))
                   (progn
                     (vla-SetText tbl row 0 "")
-                    ;; 3 пробела + название типа, влево, без «Подитог»
+                    ;; 3 РїСЂРѕР±РµР»Р° + РЅР°Р·РІР°РЅРёРµ С‚РёРїР°, РІР»РµРІРѕ, Р±РµР· В«РџРѕРґРёС‚РѕРіВ»
                     (vla-SetText tbl row 1 (strcat "   " cur))
                     (mtab:merge-2-5 tbl row)
                     (vla-SetCellAlignment tbl row 1 4)
@@ -2471,7 +2472,7 @@
                     (vla-SetText tbl row 6 (mtab:format-area area-sub))
                     (vla-SetCellAlignment tbl row 5 5)
                     (vla-SetCellAlignment tbl row 6 5)
-                    ;; высота как у строк данных
+                    ;; РІС‹СЃРѕС‚Р° РєР°Рє Сѓ СЃС‚СЂРѕРє РґР°РЅРЅС‹С…
                     (vl-catch-all-apply 'vla-SetRowHeight (list tbl row 8.0))
                     (setq row (1+ row)
                           cnt-sub 0 area-sub 0.0)))
@@ -2480,7 +2481,7 @@
                       area-sub (+ area-sub area))
                 (vla-SetText tbl row 0 (itoa n-row))
                 (vla-SetText tbl row 1 tip)
-                (vla-SetText tbl row 2 (if (= mark "") "—" mark))
+                (vla-SetText tbl row 2 (if (= mark "") "вЂ”" mark))
                 (vla-SetText tbl row 3 (itoa h))
                 (vla-SetText tbl row 4 (itoa w))
                 (vla-SetText tbl row 5 (itoa cnt))
@@ -2495,7 +2496,7 @@
                 (vl-catch-all-apply 'vla-SetRowHeight (list tbl row 8.0))
                 (setq row (1+ row)
                       n-row (1+ n-row)))
-              ;; последний подитог
+              ;; РїРѕСЃР»РµРґРЅРёР№ РїРѕРґРёС‚РѕРі
               (if cur
                 (progn
                   (vla-SetText tbl row 0 "")
@@ -2508,7 +2509,7 @@
                   (vla-SetCellAlignment tbl row 6 5)
                   (vl-catch-all-apply 'vla-SetRowHeight (list tbl row 8.0))
                   (setq row (1+ row))))
-              ;; финальный итог
+              ;; С„РёРЅР°Р»СЊРЅС‹Р№ РёС‚РѕРі
               (setq cnt-sub 0 area-sub 0.0)
               (foreach rec data
                 (setq h (cadr rec) w (caddr rec)
@@ -2516,8 +2517,8 @@
                       cnt-sub (+ cnt-sub cnt)
                       area-sub (+ area-sub (mtab:area h w cnt))))
               (vla-SetText tbl row 0 "")
-              ;; 3 пробела + «Итого:», подчёркивание, влево
-              (vla-SetText tbl row 1 "   {\\LИтого:}")
+              ;; 3 РїСЂРѕР±РµР»Р° + В«РС‚РѕРіРѕ:В», РїРѕРґС‡С‘СЂРєРёРІР°РЅРёРµ, РІР»РµРІРѕ
+              (vla-SetText tbl row 1 "   {\\LРС‚РѕРіРѕ:}")
               (mtab:merge-2-5 tbl row)
               (vla-SetCellAlignment tbl row 1 4)
               (vla-SetText tbl row 5 (itoa cnt-sub))
@@ -2526,11 +2527,11 @@
               (vla-SetCellAlignment tbl row 6 5)
               (vl-catch-all-apply 'vla-SetRowHeight (list tbl row 8.0))
               (setq t2 (getvar "MILLISECS"))
-              ;; Ред. 48.34: vla-Update убран — включение регенерации
-              ;; (:vlax-false) само пересобирает таблицовый блок
-              ;; (официальный пример Autodesk его не вызывает), а Update
-              ;; следом запускал пересчёт повторно — двойная «сборка».
-              ;; Откат при проблемах с отображением: вернуть сюда строку
+              ;; Р РµРґ. 48.34: vla-Update СѓР±СЂР°РЅ вЂ” РІРєР»СЋС‡РµРЅРёРµ СЂРµРіРµРЅРµСЂР°С†РёРё
+              ;; (:vlax-false) СЃР°РјРѕ РїРµСЂРµСЃРѕР±РёСЂР°РµС‚ С‚Р°Р±Р»РёС†РѕРІС‹Р№ Р±Р»РѕРє
+              ;; (РѕС„РёС†РёР°Р»СЊРЅС‹Р№ РїСЂРёРјРµСЂ Autodesk РµРіРѕ РЅРµ РІС‹Р·С‹РІР°РµС‚), Р° Update
+              ;; СЃР»РµРґРѕРј Р·Р°РїСѓСЃРєР°Р» РїРµСЂРµСЃС‡С‘С‚ РїРѕРІС‚РѕСЂРЅРѕ вЂ” РґРІРѕР№РЅР°СЏ В«СЃР±РѕСЂРєР°В».
+              ;; РћС‚РєР°С‚ РїСЂРё РїСЂРѕР±Р»РµРјР°С… СЃ РѕС‚РѕР±СЂР°Р¶РµРЅРёРµРј: РІРµСЂРЅСѓС‚СЊ СЃСЋРґР° СЃС‚СЂРѕРєСѓ
               ;; (vl-catch-all-apply 'vla-Update (list tbl)).
               (vl-catch-all-apply 'vla-put-RegenerateTableSuppressed
                                   (list tbl :vlax-false))
@@ -2539,15 +2540,15 @@
                 (mark:ax-invoke-ok doc "EndUndoMark" nil))
               (vl-catch-all-apply 'setvar (list "CMDECHO" oldEcho))
               (mark:out
-                (strcat "[INFO] Таблица создана, строк данных: "
+                (strcat "[INFO] РўР°Р±Р»РёС†Р° СЃРѕР·РґР°РЅР°, СЃС‚СЂРѕРє РґР°РЅРЅС‹С…: "
                         (itoa (length data))
-                        " (время: "
+                        " (РІСЂРµРјСЏ: "
                         (rtos (/ (- t3 t0) 1000.0) 2 2)
-                        " с: создание "
+                        " СЃ: СЃРѕР·РґР°РЅРёРµ "
                         (rtos (/ (- t1 t0) 1000.0) 2 2)
-                        ", заполнение "
+                        ", Р·Р°РїРѕР»РЅРµРЅРёРµ "
                         (rtos (/ (- t2 t1) 1000.0) 2 2)
-                        ", сборка "
+                        ", СЃР±РѕСЂРєР° "
                         (rtos (/ (- t3 t2) 1000.0) 2 2)
                         ")"))
               t)))))))
@@ -2576,20 +2577,20 @@
       str)))
 
 ;; ---------- XLS (XML Spreadsheet 2003) ----------
-;; ТЗ: колонка площади и итоги — ФОРМУЛЫ Excel (не зашитые числа).
-;; Примитив mtab:cell (аналог eu-cell): ss:Formula + XML-экранирование.
-;; Синтаксис: ROUND(...,2) / SUM(...), английские имена, точка — дробь, запятая — разделитель.
-;; A1: счёт строк/колонок ведётся здесь же; на ss:Index в формулах не полагаемся.
+;; РўР—: РєРѕР»РѕРЅРєР° РїР»РѕС‰Р°РґРё Рё РёС‚РѕРіРё вЂ” Р¤РћР РњРЈР›Р« Excel (РЅРµ Р·Р°С€РёС‚С‹Рµ С‡РёСЃР»Р°).
+;; РџСЂРёРјРёС‚РёРІ mtab:cell (Р°РЅР°Р»РѕРі eu-cell): ss:Formula + XML-СЌРєСЂР°РЅРёСЂРѕРІР°РЅРёРµ.
+;; РЎРёРЅС‚Р°РєСЃРёСЃ: ROUND(...,2) / SUM(...), Р°РЅРіР»РёР№СЃРєРёРµ РёРјРµРЅР°, С‚РѕС‡РєР° вЂ” РґСЂРѕР±СЊ, Р·Р°РїСЏС‚Р°СЏ вЂ” СЂР°Р·РґРµР»РёС‚РµР»СЊ.
+;; A1: СЃС‡С‘С‚ СЃС‚СЂРѕРє/РєРѕР»РѕРЅРѕРє РІРµРґС‘С‚СЃСЏ Р·РґРµСЃСЊ Р¶Рµ; РЅР° ss:Index РІ С„РѕСЂРјСѓР»Р°С… РЅРµ РїРѕР»Р°РіР°РµРјСЃСЏ.
 
 (defun mtab:rtos-xml (x / s)
-  ;; число для SpreadsheetML: разделитель — точка
+  ;; С‡РёСЃР»Рѕ РґР»СЏ SpreadsheetML: СЂР°Р·РґРµР»РёС‚РµР»СЊ вЂ” С‚РѕС‡РєР°
   (setq s (rtos (float x) 2 2))
   (while (vl-string-search "," s)
     (setq s (vl-string-subst "." "," s)))
   s)
 
-;; Примитив записи ячейки (аналог eu-cell из excel-utils.lsp)
-;; formula = nil > без ss:Formula; иначе — каноническая формула A1
+;; РџСЂРёРјРёС‚РёРІ Р·Р°РїРёСЃРё СЏС‡РµР№РєРё (Р°РЅР°Р»РѕРі eu-cell РёР· excel-utils.lsp)
+;; formula = nil > Р±РµР· ss:Formula; РёРЅР°С‡Рµ вЂ” РєР°РЅРѕРЅРёС‡РµСЃРєР°СЏ С„РѕСЂРјСѓР»Р° A1
 (defun mtab:cell (f style formula dtype val)
   (if formula
     (write-line
@@ -2606,7 +2607,7 @@
               "</Data></Cell>")
       f)))
 
-;; Ячейка с объединением столбцов (MergeAcross) + опциональная формула
+;; РЇС‡РµР№РєР° СЃ РѕР±СЉРµРґРёРЅРµРЅРёРµРј СЃС‚РѕР»Р±С†РѕРІ (MergeAcross) + РѕРїС†РёРѕРЅР°Р»СЊРЅР°СЏ С„РѕСЂРјСѓР»Р°
 (defun mtab:cell-m (f style merge-across formula dtype val)
   (if formula
     (write-line
@@ -2625,20 +2626,20 @@
               "</Data></Cell>")
       f)))
 
-;; маркер идемпотентности патча формул
+;; РјР°СЂРєРµСЂ РёРґРµРјРїРѕС‚РµРЅС‚РЅРѕСЃС‚Рё РїР°С‚С‡Р° С„РѕСЂРјСѓР»
 ;; mtab:eu-cell-formula
 
-;; Формула SUM в R1C1 для диапазона строк r0..r1 в ТЕКУЩЕЙ колонке
-;; (SpreadsheetML — каноничный R1C1; одна строка > прямая ссылка R[n]C)
+;; Р¤РѕСЂРјСѓР»Р° SUM РІ R1C1 РґР»СЏ РґРёР°РїР°Р·РѕРЅР° СЃС‚СЂРѕРє r0..r1 РІ РўР•РљРЈР©Р•Р™ РєРѕР»РѕРЅРєРµ
+;; (SpreadsheetML вЂ” РєР°РЅРѕРЅРёС‡РЅС‹Р№ R1C1; РѕРґРЅР° СЃС‚СЂРѕРєР° > РїСЂСЏРјР°СЏ СЃСЃС‹Р»РєР° R[n]C)
 (defun mtab:sum-r1c1 (r0 r1 / n0)
-  (setq n0 (- r0 r1))  ;; отрицательный сдвиг от строки формулы (r1 = строка над формулой)
-  ;; формула пишется в строку (r1+1), сдвиг до r0 = r0-(r1+1) = n0-1
+  (setq n0 (- r0 r1))  ;; РѕС‚СЂРёС†Р°С‚РµР»СЊРЅС‹Р№ СЃРґРІРёРі РѕС‚ СЃС‚СЂРѕРєРё С„РѕСЂРјСѓР»С‹ (r1 = СЃС‚СЂРѕРєР° РЅР°Рґ С„РѕСЂРјСѓР»РѕР№)
+  ;; С„РѕСЂРјСѓР»Р° РїРёС€РµС‚СЃСЏ РІ СЃС‚СЂРѕРєСѓ (r1+1), СЃРґРІРёРі РґРѕ r0 = r0-(r1+1) = n0-1
   (setq n0 (1- n0))
   (if (= n0 -1)
     (strcat "=R[" (itoa -1) "]C")
     (strcat "=SUM(R[" (itoa n0) "]C:R[" (itoa -1) "]C)")))
 
-;; =SUM(R4C6,R6C6,…) — абсолютные строки подитогов, col 6=F / 7=G
+;; =SUM(R4C6,R6C6,вЂ¦) вЂ” Р°Р±СЃРѕР»СЋС‚РЅС‹Рµ СЃС‚СЂРѕРєРё РїРѕРґРёС‚РѕРіРѕРІ, col 6=F / 7=G
 (defun mtab:sum-abs-r1c1 (rows col / out r)
   (if (null rows)
     "=0"
@@ -2657,7 +2658,7 @@
                           xl-row grp-start sub-rows n-no)
   (setq f (open xlsfile "w"))
   (if (null f)
-    (progn (mark:out (strcat "[ERROR] Нет доступа: " xlsfile)) nil)
+    (progn (mark:out (strcat "[ERROR] РќРµС‚ РґРѕСЃС‚СѓРїР°: " xlsfile)) nil)
     (progn
       (write-line "<?xml version=\"1.0\" encoding=\"windows-1251\"?>" f)
       (write-line "<?mso-application progid=\"Excel.Sheet\"?>" f)
@@ -2689,7 +2690,7 @@
       (write-line "    <Border ss:Position=\"Top\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#000000\"/>" f)
       (write-line "   </Borders>" f)
       (write-line "  </Style>" f)
-      ;; TITLE — заголовок «Заполнение»: жирный + подчёркивание
+      ;; TITLE вЂ” Р·Р°РіРѕР»РѕРІРѕРє В«Р—Р°РїРѕР»РЅРµРЅРёРµВ»: Р¶РёСЂРЅС‹Р№ + РїРѕРґС‡С‘СЂРєРёРІР°РЅРёРµ
       (write-line "  <Style ss:ID=\"TITLE\">" f)
       (write-line "   <Font ss:Bold=\"1\" ss:Underline=\"Single\"/>" f)
       (write-line "   <Interior ss:Color=\"#D9D9D9\" ss:Pattern=\"Solid\"/>" f)
@@ -2701,7 +2702,7 @@
       (write-line "    <Border ss:Position=\"Top\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#000000\"/>" f)
       (write-line "   </Borders>" f)
       (write-line "  </Style>" f)
-      ;; S — подитог: подпись влево
+      ;; S вЂ” РїРѕРґРёС‚РѕРі: РїРѕРґРїРёСЃСЊ РІР»РµРІРѕ
       (write-line "  <Style ss:ID=\"S\">" f)
       (write-line "   <Font ss:Bold=\"1\"/>" f)
       (write-line "   <Interior ss:Color=\"#D9D9D9\" ss:Pattern=\"Solid\"/>" f)
@@ -2713,7 +2714,7 @@
       (write-line "    <Border ss:Position=\"Top\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#000000\"/>" f)
       (write-line "   </Borders>" f)
       (write-line "  </Style>" f)
-      ;; SN — числа подитога вправо
+      ;; SN вЂ” С‡РёСЃР»Р° РїРѕРґРёС‚РѕРіР° РІРїСЂР°РІРѕ
       (write-line "  <Style ss:ID=\"SN\">" f)
       (write-line "   <Font ss:Bold=\"1\"/>" f)
       (write-line "   <Interior ss:Color=\"#D9D9D9\" ss:Pattern=\"Solid\"/>" f)
@@ -2725,7 +2726,7 @@
       (write-line "    <Border ss:Position=\"Top\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#000000\"/>" f)
       (write-line "   </Borders>" f)
       (write-line "  </Style>" f)
-      ;; T — итог: подпись влево; без Underline на ячейке (пробелы не подчёркивать)
+      ;; T вЂ” РёС‚РѕРі: РїРѕРґРїРёСЃСЊ РІР»РµРІРѕ; Р±РµР· Underline РЅР° СЏС‡РµР№РєРµ (РїСЂРѕР±РµР»С‹ РЅРµ РїРѕРґС‡С‘СЂРєРёРІР°С‚СЊ)
       (write-line "  <Style ss:ID=\"T\">" f)
       (write-line "   <Font ss:Bold=\"1\"/>" f)
       (write-line "   <Interior ss:Color=\"#D9D9D9\" ss:Pattern=\"Solid\"/>" f)
@@ -2737,7 +2738,7 @@
       (write-line "    <Border ss:Position=\"Top\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#000000\"/>" f)
       (write-line "   </Borders>" f)
       (write-line "  </Style>" f)
-      ;; TN — числа итога вправо
+      ;; TN вЂ” С‡РёСЃР»Р° РёС‚РѕРіР° РІРїСЂР°РІРѕ
       (write-line "  <Style ss:ID=\"TN\">" f)
       (write-line "   <Font ss:Bold=\"1\"/>" f)
       (write-line "   <Interior ss:Color=\"#D9D9D9\" ss:Pattern=\"Solid\"/>" f)
@@ -2750,17 +2751,17 @@
       (write-line "   </Borders>" f)
       (write-line "  </Style>" f)
       (write-line " </Styles>" f)
-      (write-line " <Worksheet ss:Name=\"Заполнение\">" f)
+      (write-line " <Worksheet ss:Name=\"Р—Р°РїРѕР»РЅРµРЅРёРµ\">" f)
       (write-line "  <Table>" f)
       (foreach w0 '("30" "130" "90" "70" "70" "70" "70")
         (write-line (strcat "   <Column ss:Width=\"" w0 "\"/>") f))
       ;; row1 title, row2 header, data from 3
-      ;; A № | B Тип | C Марка | D Высота | E Ширина | F Кол-во | G Площадь
+      ;; A в„– | B РўРёРї | C РњР°СЂРєР° | D Р’С‹СЃРѕС‚Р° | E РЁРёСЂРёРЅР° | F РљРѕР»-РІРѕ | G РџР»РѕС‰Р°РґСЊ
       (write-line (strcat "   <Row><Cell ss:StyleID=\"TITLE\" ss:MergeAcross=\"6\">"
-                          "<Data ss:Type=\"String\">Заполнение</Data></Cell></Row>") f)
+                          "<Data ss:Type=\"String\">Р—Р°РїРѕР»РЅРµРЅРёРµ</Data></Cell></Row>") f)
       (write-line "   <Row>" f)
-      (foreach hdr '("№" "Тип" "Марка" "Высота, мм" "Ширина, мм"
-                      "Кол-во, шт." "Площадь, м2")
+      (foreach hdr '("в„–" "РўРёРї" "РњР°СЂРєР°" "Р’С‹СЃРѕС‚Р°, РјРј" "РЁРёСЂРёРЅР°, РјРј"
+                      "РљРѕР»-РІРѕ, С€С‚." "РџР»РѕС‰Р°РґСЊ, Рј2")
         (mtab:cell f "H" nil "String" hdr))
       (write-line "   </Row>" f)
       (setq xl-row 3 total-cnt 0 total-area 0.0
@@ -2774,7 +2775,7 @@
               mark (cadddr rec)
               cnt  (car (cddddr rec))
               area (mtab:area h w cnt))
-        ;; подитог: R1C1 SUM по группе (одна строка > прямая ссылка)
+        ;; РїРѕРґРёС‚РѕРі: R1C1 SUM РїРѕ РіСЂСѓРїРїРµ (РѕРґРЅР° СЃС‚СЂРѕРєР° > РїСЂСЏРјР°СЏ СЃСЃС‹Р»РєР°)
         (if (and cur (/= (strcase tip) (strcase cur)))
           (progn
             (write-line "   <Row>" f)
@@ -2804,13 +2805,13 @@
         (mtab:cell f "D" nil "Number" (itoa h))
         (mtab:cell f "D" nil "Number" (itoa w))
         (mtab:cell f "D" nil "Number" (itoa cnt))
-        ;; площадь — R1C1: D*E*F той же строки / 1e6, округление до 2
+        ;; РїР»РѕС‰Р°РґСЊ вЂ” R1C1: D*E*F С‚РѕР№ Р¶Рµ СЃС‚СЂРѕРєРё / 1e6, РѕРєСЂСѓРіР»РµРЅРёРµ РґРѕ 2
         (mtab:cell f "D"
                    "=ROUND(RC[-3]*RC[-2]*RC[-1]/1000000,2)"
                    "Number" (mtab:rtos-xml area))
         (write-line "   </Row>" f)
         (setq xl-row (1+ xl-row)))
-      ;; последний подитог
+      ;; РїРѕСЃР»РµРґРЅРёР№ РїРѕРґРёС‚РѕРі
       (if cur
         (progn
           (write-line "   <Row>" f)
@@ -2825,14 +2826,14 @@
           (write-line "   </Row>" f)
           (setq sub-rows (cons xl-row sub-rows)
                 xl-row (1+ xl-row))))
-      ;; финальный итог: =SUM(R…C6,…) / =SUM(R…C7,…) по строкам подитогов
+      ;; С„РёРЅР°Р»СЊРЅС‹Р№ РёС‚РѕРі: =SUM(RвЂ¦C6,вЂ¦) / =SUM(RвЂ¦C7,вЂ¦) РїРѕ СЃС‚СЂРѕРєР°Рј РїРѕРґРёС‚РѕРіРѕРІ
       (write-line "   <Row>" f)
       (mtab:cell f "T" nil "String" "")
-      ;; 3 пробела + подчёркнутый только «Итого:»
+      ;; 3 РїСЂРѕР±РµР»Р° + РїРѕРґС‡С‘СЂРєРЅСѓС‚С‹Р№ С‚РѕР»СЊРєРѕ В«РС‚РѕРіРѕ:В»
       (write-line
         (strcat "    <Cell ss:StyleID=\"T\" ss:MergeAcross=\"3\">"
                 "<Data ss:Type=\"String\">   "
-                "<html:B><html:U>Итого:</html:U></html:B></Data></Cell>")
+                "<html:B><html:U>РС‚РѕРіРѕ:</html:U></html:B></Data></Cell>")
         f)
       (mtab:cell f "TN"
                  (mtab:sum-abs-r1c1 sub-rows 6)
@@ -2854,10 +2855,10 @@
                          cnt-sub area-sub)
   (setq f (open csvfile "w"))
   (if (null f)
-    (progn (mark:out (strcat "[ERROR] Нет доступа: " csvfile)) nil)
+    (progn (mark:out (strcat "[ERROR] РќРµС‚ РґРѕСЃС‚СѓРїР°: " csvfile)) nil)
     (progn
-      (write-line "Заполнение" f)
-      (write-line "№;Тип;Марка;Высота, мм;Ширина, мм;Кол-во, шт.;Площадь, м2" f)
+      (write-line "Р—Р°РїРѕР»РЅРµРЅРёРµ" f)
+      (write-line "в„–;РўРёРї;РњР°СЂРєР°;Р’С‹СЃРѕС‚Р°, РјРј;РЁРёСЂРёРЅР°, РјРј;РљРѕР»-РІРѕ, С€С‚.;РџР»РѕС‰Р°РґСЊ, Рј2" f)
       (setq n 1 total-cnt 0 total-area 0.0
             cur nil cnt-sub 0 area-sub 0.0)
       (foreach rec data
@@ -2870,7 +2871,7 @@
         (if (and cur (/= (strcase tip) (strcase cur)))
           (progn
             (write-line
-              (strcat ";Подитог: " (mtab:csv-quote cur) ";;;;"
+              (strcat ";РџРѕРґРёС‚РѕРі: " (mtab:csv-quote cur) ";;;;"
                       (itoa cnt-sub) ";"
                       "\"" (mtab:format-area area-sub) "\"")
               f)
@@ -2892,12 +2893,12 @@
         (setq n (1+ n)))
       (if cur
         (write-line
-          (strcat ";Подитог: " (mtab:csv-quote cur) ";;;;"
+          (strcat ";РџРѕРґРёС‚РѕРі: " (mtab:csv-quote cur) ";;;;"
                   (itoa cnt-sub) ";"
                   "\"" (mtab:format-area area-sub) "\"")
           f))
       (write-line
-        (strcat ";Итого;;;;"
+        (strcat ";РС‚РѕРіРѕ;;;;"
                 (itoa total-cnt) ";"
                 "\"" (mtab:format-area total-area) "\"")
         f)
@@ -2905,9 +2906,9 @@
       (mark:out (strcat "[INFO] CSV: " csvfile))
       t)))
 
-;; ---------- Основная ----------
+;; ---------- РћСЃРЅРѕРІРЅР°СЏ ----------
 (defun mtab:main (/ data base do-table do-xls xls-ok)
-  (mark:cmd-line "МАРКАЗАПТАБЛ — ведомость по блокам «Заполнение в витраж».")
+  (mark:cmd-line "РњРђР РљРђР—РђРџРўРђР‘Р› вЂ” РІРµРґРѕРјРѕСЃС‚СЊ РїРѕ Р±Р»РѕРєР°Рј В«Р—Р°РїРѕР»РЅРµРЅРёРµ РІ РІРёС‚СЂР°Р¶В».")
   (mark:banner)
   (if (null (mtab:select))
     (princ)
@@ -2915,66 +2916,66 @@
       (mtab:prefix)
       (setq data (mtab:aggregate (mtab:collect-blocks)))
       (if (null data)
-        (mark:out "[ERROR] Нет данных (проверьте размеры блоков).")
+        (mark:out "[ERROR] РќРµС‚ РґР°РЅРЅС‹С… (РїСЂРѕРІРµСЂСЊС‚Рµ СЂР°Р·РјРµСЂС‹ Р±Р»РѕРєРѕРІ).")
         (progn
-          (mark:out (strcat "[INFO] Уникальных позиций: " (itoa (length data))))
-          ;; Ред. 48.27: русские ключи — ввод «Да»/«Нет» (или по
-          ;; первой букве Д/Н); Y/N и Enter работают как раньше
-          (initget "Да Нет Y N")
+          (mark:out (strcat "[INFO] РЈРЅРёРєР°Р»СЊРЅС‹С… РїРѕР·РёС†РёР№: " (itoa (length data))))
+          ;; Р РµРґ. 48.27: СЂСѓСЃСЃРєРёРµ РєР»СЋС‡Рё вЂ” РІРІРѕРґ В«Р”Р°В»/В«РќРµС‚В» (РёР»Рё РїРѕ
+          ;; РїРµСЂРІРѕР№ Р±СѓРєРІРµ Р”/Рќ); Y/N Рё Enter СЂР°Р±РѕС‚Р°СЋС‚ РєР°Рє СЂР°РЅСЊС€Рµ
+          (initget "Р”Р° РќРµС‚ Y N")
           (setq do-table
-            (getkword "\nСоздать таблицу AutoCAD? [Да(Y)/Нет(N)] <Да>: "))
-          (if (or (null do-table) (member do-table '("Y" "Да")))
+            (getkword "\nРЎРѕР·РґР°С‚СЊ С‚Р°Р±Р»РёС†Сѓ AutoCAD? [Р”Р°(Y)/РќРµС‚(N)] <Р”Р°>: "))
+          (if (or (null do-table) (member do-table '("Y" "Р”Р°")))
             (setq do-table t) (setq do-table nil))
-          (initget "Да Нет Y N")
+          (initget "Р”Р° РќРµС‚ Y N")
           (setq do-xls
-            (getkword "\nЭкспорт в XLS? [Да(Y)/Нет(N)] <Да>: "))
-          (if (or (null do-xls) (member do-xls '("Y" "Да")))
+            (getkword "\nР­РєСЃРїРѕСЂС‚ РІ XLS? [Р”Р°(Y)/РќРµС‚(N)] <Р”Р°>: "))
+          (if (or (null do-xls) (member do-xls '("Y" "Р”Р°")))
             (setq do-xls t) (setq do-xls nil))
           (setq base
             (strcat (getvar "dwgprefix")
                     (vl-filename-base (getvar "dwgname"))
-                    " Заполнение Марки"))
+                    " Р—Р°РїРѕР»РЅРµРЅРёРµ РњР°СЂРєРё"))
           (setq xls-ok nil)
           (if do-xls
             (progn
               (setq xls-ok (mtab:export-xls data (strcat base ".xls")))
-              ;; CSV — только резерв, если XLS не создался
+              ;; CSV вЂ” С‚РѕР»СЊРєРѕ СЂРµР·РµСЂРІ, РµСЃР»Рё XLS РЅРµ СЃРѕР·РґР°Р»СЃСЏ
               (if (null xls-ok)
                 (progn
-                  (mark:out "[INFO] XLS не создан — резервный экспорт CSV.")
+                  (mark:out "[INFO] XLS РЅРµ СЃРѕР·РґР°РЅ вЂ” СЂРµР·РµСЂРІРЅС‹Р№ СЌРєСЃРїРѕСЂС‚ CSV.")
                   (mtab:export-csv data (strcat base ".csv"))))))
           (if do-table
             (mtab:create-table data))
-          ;; Ред. 48.0: файл сверки шкал (SYNC_MARKZV.md, §7)
+          ;; Р РµРґ. 48.0: С„Р°Р№Р» СЃРІРµСЂРєРё С€РєР°Р» (SYNC_MARKZV.md, В§7)
           (mark:scale-write-file)
-          (mark:out "[INFO] Готово.")))))
+          (mark:out "[INFO] Р“РѕС‚РѕРІРѕ.")))))
   (princ))
 
 (defun c:MARKTABLE () (mtab:main))
-(defun c:МАРКАЗАПТАБЛ () (mtab:main))
+(defun c:РњРђР РљРђР—РђРџРўРђР‘Р› () (mtab:main))
 
 
 ;;;=====================================================================
-;;;  MARKAR — рядовка условных обозначений (Ряд заполнений)
-;;;  Команда: МАРКАЗАПРЯД
-;;;  После МАРКАРОВКАЗАП: индекс от размера (буква = высота, номер = ширина).
-;;;  Старые «Ряд заполнений» этой зоны удаляются и ставятся заново.
-;;;  Горизонталь: номера 1,2,3… снизу на min(y0)-1000, соосно по X.
-;;;  Вертикаль: буквы А,Б,В… справа на max(x1)+1000.
-;;;  Разная W в столбце > этаж ниже; разная H в ряду > этаж правее.
+;;;  MARKAR вЂ” СЂСЏРґРѕРІРєР° СѓСЃР»РѕРІРЅС‹С… РѕР±РѕР·РЅР°С‡РµРЅРёР№ (Р СЏРґ Р·Р°РїРѕР»РЅРµРЅРёР№)
+;;;  РљРѕРјР°РЅРґР°: РњРђР РљРђР—РђРџР РЇР”
+;;;  РџРѕСЃР»Рµ РњРђР РљРђР РћР’РљРђР—РђРџ: РёРЅРґРµРєСЃ РѕС‚ СЂР°Р·РјРµСЂР° (Р±СѓРєРІР° = РІС‹СЃРѕС‚Р°, РЅРѕРјРµСЂ = С€РёСЂРёРЅР°).
+;;;  РЎС‚Р°СЂС‹Рµ В«Р СЏРґ Р·Р°РїРѕР»РЅРµРЅРёР№В» СЌС‚РѕР№ Р·РѕРЅС‹ СѓРґР°Р»СЏСЋС‚СЃСЏ Рё СЃС‚Р°РІСЏС‚СЃСЏ Р·Р°РЅРѕРІРѕ.
+;;;  Р“РѕСЂРёР·РѕРЅС‚Р°Р»СЊ: РЅРѕРјРµСЂР° 1,2,3вЂ¦ СЃРЅРёР·Сѓ РЅР° min(y0)-1000, СЃРѕРѕСЃРЅРѕ РїРѕ X.
+;;;  Р’РµСЂС‚РёРєР°Р»СЊ: Р±СѓРєРІС‹ Рђ,Р‘,Р’вЂ¦ СЃРїСЂР°РІР° РЅР° max(x1)+1000.
+;;;  Р Р°Р·РЅР°СЏ W РІ СЃС‚РѕР»Р±С†Рµ > СЌС‚Р°Р¶ РЅРёР¶Рµ; СЂР°Р·РЅР°СЏ H РІ СЂСЏРґСѓ > СЌС‚Р°Р¶ РїСЂР°РІРµРµ.
 ;;;=====================================================================
 
-;; *mark:ar-* — в шапке
+;; *mark:ar-* вЂ” РІ С€Р°РїРєРµ
 
 (defun mark:ar-banner ()
   (mark:out "========================================")
-  (mark:out (strcat " РЯДОВКА УСЛОВНЫХ ОБОЗНАЧЕНИЙ  "
+  (mark:out (strcat " Р РЇР”РћР’РљРђ РЈРЎР›РћР’РќР«РҐ РћР‘РћР—РќРђР§Р•РќРР™  "
                     *mark:rev*))
   (mark:out "========================================"))
 
-;;;--- Разбор Марки: [Витраж] + " " + БУКВА + НОМЕР + [суффикс] ---------
+;;;--- Р Р°Р·Р±РѕСЂ РњР°СЂРєРё: [Р’РёС‚СЂР°Р¶] + " " + Р‘РЈРљР’Рђ + РќРћРњР•Р  + [СЃСѓС„С„РёРєСЃ] ---------
 
-;; Суффикс стм/снд не входит в индекс
+;; РЎСѓС„С„РёРєСЃ СЃС‚Рј/СЃРЅРґ РЅРµ РІС…РѕРґРёС‚ РІ РёРЅРґРµРєСЃ
 (defun mark:ar-strip-suffix (m / out msc sp suf n list)
   (setq out (mark:trim (if m m ""))
         msc (strcase out)
@@ -2999,7 +3000,7 @@
 (defun mark:ar-letter? (ch)
   (and (mark:strp ch)
        (= (strlen ch) 1)
-       (wcmatch ch "[А-Яа-я]")))
+       (wcmatch ch "[Рђ-РЇР°-СЏ]")))
 
 (defun mark:ar-digit? (ch)
   (and (mark:strp ch)
@@ -3020,9 +3021,9 @@
             num   "")
       (while (and (<= i n)
                   (mark:ar-letter? (substr tail i 1))
-                  ;; Й, З не используем; strcase без T = ВЕРХНИЙ регистр
+                  ;; Р™, Р— РЅРµ РёСЃРїРѕР»СЊР·СѓРµРј; strcase Р±РµР· T = Р’Р•Р РҐРќРР™ СЂРµРіРёСЃС‚СЂ
                   (not (member (strcase (substr tail i 1))
-                               '("Й" "З"))))
+                               '("Р™" "Р—"))))
         (setq letter (strcat letter (strcase (substr tail i 1)))
               i      (1+ i)))
       (while (and (<= i n) (mark:ar-digit? (substr tail i 1)))
@@ -3032,15 +3033,15 @@
         (list (strcase letter) num)
         nil))))
 
-;;;--- Сбор: rec = (letter num e cx cy x0 x1 y0 y1 w h) -----------------
+;;;--- РЎР±РѕСЂ: rec = (letter num e cx cy x0 x1 y0 y1 w h) -----------------
 
 (defun mark:ar-collect (fills / out e obj w h wh hh ins mres mval pa
                              x0 y0 x1 y1 cx cy)
-  ;; 1) сбор: геометрия + W/H теми же ключами, что в МАРКАРОВКАЗАП;
-  ;;    разбор Марки — только подсказка, не фильтр.
-  ;;    Ред. 48.10: разбор — ar-parse2 (литера и подындекс), как в
-  ;;    ar-reindex; ar-parse литер не знал — давал ложный WARN
-  ;;    «Марка не разобрана» на марках вида «Ж.б10.2».
+  ;; 1) СЃР±РѕСЂ: РіРµРѕРјРµС‚СЂРёСЏ + W/H С‚РµРјРё Р¶Рµ РєР»СЋС‡Р°РјРё, С‡С‚Рѕ РІ РњРђР РљРђР РћР’РљРђР—РђРџ;
+  ;;    СЂР°Р·Р±РѕСЂ РњР°СЂРєРё вЂ” С‚РѕР»СЊРєРѕ РїРѕРґСЃРєР°Р·РєР°, РЅРµ С„РёР»СЊС‚СЂ.
+  ;;    Р РµРґ. 48.10: СЂР°Р·Р±РѕСЂ вЂ” ar-parse2 (Р»РёС‚РµСЂР° Рё РїРѕРґС‹РЅРґРµРєСЃ), РєР°Рє РІ
+  ;;    ar-reindex; ar-parse Р»РёС‚РµСЂ РЅРµ Р·РЅР°Р» вЂ” РґР°РІР°Р» Р»РѕР¶РЅС‹Р№ WARN
+  ;;    В«РњР°СЂРєР° РЅРµ СЂР°Р·РѕР±СЂР°РЅР°В» РЅР° РјР°СЂРєР°С… РІРёРґР° В«Р–.Р±10.2В».
   (setq out nil)
   (foreach e fills
     (setq obj  (mark:vla e)
@@ -3059,26 +3060,26 @@
     (cond
       ((or (null w) (null h) (<= w 0.0) (<= h 0.0))
        (progn
-         (mark:out "[WARN] Нет W/H — пропуск.")
+         (mark:out "[WARN] РќРµС‚ W/H вЂ” РїСЂРѕРїСѓСЃРє.")
          (mark:note-warning)))
       ((null ins)
        (progn
-         (mark:out "[WARN] Нет точки вставки — пропуск.")
+         (mark:out "[WARN] РќРµС‚ С‚РѕС‡РєРё РІСЃС‚Р°РІРєРё вЂ” РїСЂРѕРїСѓСЃРє.")
          (mark:note-warning)))
       (t
        (progn
-         ;; сообщения о марке — INFO/WARN, но не выбрасываем блок
+         ;; СЃРѕРѕР±С‰РµРЅРёСЏ Рѕ РјР°СЂРєРµ вЂ” INFO/WARN, РЅРѕ РЅРµ РІС‹Р±СЂР°СЃС‹РІР°РµРј Р±Р»РѕРє
          (cond
            ((null (car mres))
             (mark:out
-              "[WARN] Нет атрибута \"Марка\" — индекс будет от размера."))
+              "[WARN] РќРµС‚ Р°С‚СЂРёР±СѓС‚Р° \"РњР°СЂРєР°\" вЂ” РёРЅРґРµРєСЃ Р±СѓРґРµС‚ РѕС‚ СЂР°Р·РјРµСЂР°."))
            ((or (null mval) (= (mark:trim mval) ""))
             (mark:out
-              "[WARN] Атрибут \"Марка\" пуст — индекс будет от размера."))
+              "[WARN] РђС‚СЂРёР±СѓС‚ \"РњР°СЂРєР°\" РїСѓСЃС‚ вЂ” РёРЅРґРµРєСЃ Р±СѓРґРµС‚ РѕС‚ СЂР°Р·РјРµСЂР°."))
            ((null pa)
             (mark:out
-              (strcat "[WARN] Марка не разобрана (" mval
-                      ") — индекс будет от размера."))))
+              (strcat "[WARN] РњР°СЂРєР° РЅРµ СЂР°Р·РѕР±СЂР°РЅР° (" mval
+                      ") вЂ” РёРЅРґРµРєСЃ Р±СѓРґРµС‚ РѕС‚ СЂР°Р·РјРµСЂР°."))))
          (setq x0 (float (car ins))
                y0 (float (cadr ins))
                x1 (+ x0 (float w))
@@ -3093,13 +3094,13 @@
                        (if mval mval ""))
                  out))))))
   (setq out (reverse out))
-  ;; 2) один знаменатель: индекс ТОЛЬКО от W/H — как МАРКАРОВКАЗАП
+  ;; 2) РѕРґРёРЅ Р·РЅР°РјРµРЅР°С‚РµР»СЊ: РёРЅРґРµРєСЃ РўРћР›Р¬РљРћ РѕС‚ W/H вЂ” РєР°Рє РњРђР РљРђР РћР’РљРђР—РђРџ
   (mark:ar-reindex out))
 
-;; Переназначение: буква = индекс высоты, номер = индекс ширины + 1
+;; РџРµСЂРµРЅР°Р·РЅР°С‡РµРЅРёРµ: Р±СѓРєРІР° = РёРЅРґРµРєСЃ РІС‹СЃРѕС‚С‹, РЅРѕРјРµСЂ = РёРЅРґРµРєСЃ С€РёСЂРёРЅС‹ + 1
 ;; rec = (letter num e cx cy x0 x1 y0 y1 w h)
-;; Ред. 48.0: буква/номер — из Марки (подындексы сохраняются);
-;; запас — индекс от W/H, как в Ред. 47.8.
+;; Р РµРґ. 48.0: Р±СѓРєРІР°/РЅРѕРјРµСЂ вЂ” РёР· РњР°СЂРєРё (РїРѕРґС‹РЅРґРµРєСЃС‹ СЃРѕС…СЂР°РЅСЏСЋС‚СЃСЏ);
+;; Р·Р°РїР°СЃ вЂ” РёРЅРґРµРєСЃ РѕС‚ W/H, РєР°Рє РІ Р РµРґ. 47.8.
 ;; rec = (letter num e cx cy x0 x1 y0 y1 w h mark)
 (defun mark:ar-reindex (recs / ws hs ws1 hs1 r w h iw ih letter num out m pa
                               nums letters)
@@ -3123,7 +3124,7 @@
         (setq letter (nth 0 pa)
               num    (nth 1 pa)))
       (t
-        ;; запас: индекс от размера (как в Ред. 47.8)
+        ;; Р·Р°РїР°СЃ: РёРЅРґРµРєСЃ РѕС‚ СЂР°Р·РјРµСЂР° (РєР°Рє РІ Р РµРґ. 47.8)
         (setq w      (nth 9 r)
               h      (nth 10 r)
               iw     (mark:index-of ws w)
@@ -3143,7 +3144,7 @@
                           (nth 9 r) (nth 10 r) (nth 11 r))
                     out)))
   (setq out (reverse out))
-  ;; INFO-шкалы: уникальные обозначения
+  ;; INFO-С€РєР°Р»С‹: СѓРЅРёРєР°Р»СЊРЅС‹Рµ РѕР±РѕР·РЅР°С‡РµРЅРёСЏ
   (setq nums nil
         letters nil)
   (foreach r out
@@ -3157,7 +3158,7 @@
         *mark:heights* (reverse letters))
   out)
 
-;;;--- Кластеризация ----------------------------------------------------
+;;;--- РљР»Р°СЃС‚РµСЂРёР·Р°С†РёСЏ ----------------------------------------------------
 
 (defun mark:ar-clusters (vals tol / s g out v lastv)
   (setq s   (vl-sort (mapcar 'float vals) '<)
@@ -3175,8 +3176,8 @@
   (if g (setq out (cons g out)))
   (reverse out))
 
-;; recs > ((cx0 rec...) (cx1 rec...) ...) по возрастанию ключа
-;; idx — индекс числового поля в rec (2=cx нет, см. вызовы)
+;; recs > ((cx0 rec...) (cx1 rec...) ...) РїРѕ РІРѕР·СЂР°СЃС‚Р°РЅРёСЋ РєР»СЋС‡Р°
+;; idx вЂ” РёРЅРґРµРєСЃ С‡РёСЃР»РѕРІРѕРіРѕ РїРѕР»СЏ РІ rec (2=cx РЅРµС‚, СЃРј. РІС‹Р·РѕРІС‹)
 (defun mark:ar-group-idx (recs idx tol / keys clus out g r hit m)
   (setq keys nil)
   (foreach r recs
@@ -3189,16 +3190,16 @@
     (foreach r recs
       (if (<= (abs (- (float (nth idx r)) (float m))) tol)
         (setq hit (cons r hit))))
-    ;; порядок recs: как в исходном списке
+    ;; РїРѕСЂСЏРґРѕРє recs: РєР°Рє РІ РёСЃС…РѕРґРЅРѕРј СЃРїРёСЃРєРµ
     (setq hit (reverse hit))
-    ;; в группе сортируем по idx (стабильно для кластера)
+    ;; РІ РіСЂСѓРїРїРµ СЃРѕСЂС‚РёСЂСѓРµРј РїРѕ idx (СЃС‚Р°Р±РёР»СЊРЅРѕ РґР»СЏ РєР»Р°СЃС‚РµСЂР°)
     (setq hit (vl-sort hit
                 '(lambda (a b)
                    (< (nth idx a) (nth idx b)))))
     (if hit (setq out (cons hit out))))
   (reverse out))
 
-;; внутри уже отсортированного по idx списка — подгруппы по другому idx
+;; РІРЅСѓС‚СЂРё СѓР¶Рµ РѕС‚СЃРѕСЂС‚РёСЂРѕРІР°РЅРЅРѕРіРѕ РїРѕ idx СЃРїРёСЃРєР° вЂ” РїРѕРґРіСЂСѓРїРїС‹ РїРѕ РґСЂСѓРіРѕРјСѓ idx
 (defun mark:ar-subgroup (recs idx2 tol / keys clus out g r hit m)
   (setq keys nil)
   (foreach r recs
@@ -3213,11 +3214,11 @@
         (setq hit (cons r hit))))
     (setq hit (reverse hit))
     (if hit (setq out (cons hit out))))
-  ;; порядок подгрупп: по ключу (clusters уже по возрастанию)
+  ;; РїРѕСЂСЏРґРѕРє РїРѕРґРіСЂСѓРїРї: РїРѕ РєР»СЋС‡Сѓ (clusters СѓР¶Рµ РїРѕ РІРѕР·СЂР°СЃС‚Р°РЅРёСЋ)
   out)
 
 (defun mark:ar-sort-by (groups idx-desc / out g)
-  ;; сортировка групп по (nth idx (car group)) по убыванию
+  ;; СЃРѕСЂС‚РёСЂРѕРІРєР° РіСЂСѓРїРї РїРѕ (nth idx (car group)) РїРѕ СѓР±С‹РІР°РЅРёСЋ
   (setq out
     (vl-sort groups
       '(lambda (a b)
@@ -3225,7 +3226,7 @@
             (nth idx-desc (car b))))))
   out)
 
-;;;--- Уже размещённые «Ряд заполнений» ---------------------------------
+;;;--- РЈР¶Рµ СЂР°Р·РјРµС‰С‘РЅРЅС‹Рµ В«Р СЏРґ Р·Р°РїРѕР»РЅРµРЅРёР№В» ---------------------------------
 
 (defun mark:ar-exists (x y lst / p hit)
   (setq p nil)
@@ -3256,7 +3257,7 @@
                               lst))))))))
   lst)
 
-;;;--- Вставка -----------------------------------------------------------
+;;;--- Р’СЃС‚Р°РІРєР° -----------------------------------------------------------
 
 (defun mark:ar-set-attr (obj tag val / atts att cnt i tagv ok aent e
                             ent data)
@@ -3279,7 +3280,7 @@
                 (setq ok t))
               (setq i cnt)))
           (setq i (1+ i))))))
-  ;; 2) fallback: entmod по ename
+  ;; 2) fallback: entmod РїРѕ ename
   (if (null ok)
     (progn
       (setq e (vl-catch-all-apply 'vlax-vla-object->ename (list obj)))
@@ -3292,7 +3293,7 @@
               (entmod (subst (cons 1 val) (assoc 1 data) data))
               (entupd aent)
               (setq ok t)))))))
-  ;; 3) fallback: ActiveX-атрибут через find-attr-obj
+  ;; 3) fallback: ActiveX-Р°С‚СЂРёР±СѓС‚ С‡РµСЂРµР· find-attr-obj
   (if (null ok)
     (progn
       (setq att (mark:find-attr-obj obj tag))
@@ -3300,7 +3301,7 @@
         (setq ok t))))
   ok)
 
-;; Запись dynamic-свойства: GetDynamicBlockProperties > PropertyNumberValue
+;; Р—Р°РїРёСЃСЊ dynamic-СЃРІРѕР№СЃС‚РІР°: GetDynamicBlockProperties > PropertyNumberValue
 (defun mark:ar-put-dim (obj keys val / r v lst item nm ok k)
   (setq ok nil)
   (setq r (vl-catch-all-apply 'vlax-invoke-method
@@ -3327,7 +3328,7 @@
                    (setq ok t))
                   ((mark:ax-put item "PropertyValue" (float val))
                    (setq ok t))))))))))
-  ;; фолбэк: прямая запись на объект
+  ;; С„РѕР»Р±СЌРє: РїСЂСЏРјР°СЏ Р·Р°РїРёСЃСЊ РЅР° РѕР±СЉРµРєС‚
   (if (null ok)
     (foreach k keys
       (if (null ok)
@@ -3335,7 +3336,7 @@
           (setq ok t)))))
   ok)
 
-;; rot — в ГРАДУСАХ (270 — горизонтальный ряд, 0 — вертикаль)
+;; rot вЂ” РІ Р“Р РђР”РЈРЎРђРҐ (270 вЂ” РіРѕСЂРёР·РѕРЅС‚Р°Р»СЊРЅС‹Р№ СЂСЏРґ, 0 вЂ” РІРµСЂС‚РёРєР°Р»СЊ)
 (defun mark:ar-insert (space x y txt rot / obj)
   (setq obj
     (vl-catch-all-apply 'vla-InsertBlock
@@ -3343,7 +3344,7 @@
             (vlax-3d-point (list (float x) (float y) 0.0))
             *mark:ar-block*
             1.0 1.0 1.0
-            ;; InsertBlock принимает РАДИАНЫ
+            ;; InsertBlock РїСЂРёРЅРёРјР°РµС‚ Р РђР”РРђРќР«
             (* (float rot) (/ pi 180.0)))))
   (cond
     ((vl-catch-all-error-p obj)
@@ -3359,17 +3360,17 @@
        nil))
     (t
      (progn
-       ;; страховка: выставить Rotation в градусах через свойство
+       ;; СЃС‚СЂР°С…РѕРІРєР°: РІС‹СЃС‚Р°РІРёС‚СЊ Rotation РІ РіСЂР°РґСѓСЃР°С… С‡РµСЂРµР· СЃРІРѕР№СЃС‚РІРѕ
        (mark:ax-put obj "Rotation" (* (float rot) (/ pi 180.0)))
        (if (not (mark:ar-set-attr obj *mark:ar-attr* txt))
          (progn
            (mark:out
-             (strcat "[WARN] Не записан атрибут \"" *mark:ar-attr*
-                     "\" (ожидалось: " txt ")"))
+             (strcat "[WARN] РќРµ Р·Р°РїРёСЃР°РЅ Р°С‚СЂРёР±СѓС‚ \"" *mark:ar-attr*
+                     "\" (РѕР¶РёРґР°Р»РѕСЃСЊ: " txt ")"))
            (mark:note-warning)))
        obj))))
 
-;; Пересечение интервалов (строгое; касание = можно в одну линию)
+;; РџРµСЂРµСЃРµС‡РµРЅРёРµ РёРЅС‚РµСЂРІР°Р»РѕРІ (СЃС‚СЂРѕРіРѕРµ; РєР°СЃР°РЅРёРµ = РјРѕР¶РЅРѕ РІ РѕРґРЅСѓ Р»РёРЅРёСЋ)
 (defun mark:ar-overlap? (tlist lo hi / hit iv)
   (setq hit nil)
   (foreach iv tlist
@@ -3395,13 +3396,13 @@
           i   (1+ i)))
   (reverse res))
 
-;; Упаковка рядовки — items: ((pos size text) …)
-;;  1) Все кандидаты: size v (максимальный первым).
-;;  2) First-fit: в первую линию, где нет наложения
-;;     (интервал [pos?size/2 ; pos+size/2], касание = можно).
-;;  3) Линия 0 > база; линия k?1 > k * *mark:ar-line* (150 мм).
-;; Пример: 1550,590,530,460,320 > ряд0:1550, ряд1:590+530+320, ряд2:460
-;; > ((k pos size text) …)
+;; РЈРїР°РєРѕРІРєР° СЂСЏРґРѕРІРєРё вЂ” items: ((pos size text) вЂ¦)
+;;  1) Р’СЃРµ РєР°РЅРґРёРґР°С‚С‹: size v (РјР°РєСЃРёРјР°Р»СЊРЅС‹Р№ РїРµСЂРІС‹Рј).
+;;  2) First-fit: РІ РїРµСЂРІСѓСЋ Р»РёРЅРёСЋ, РіРґРµ РЅРµС‚ РЅР°Р»РѕР¶РµРЅРёСЏ
+;;     (РёРЅС‚РµСЂРІР°Р» [pos?size/2 ; pos+size/2], РєР°СЃР°РЅРёРµ = РјРѕР¶РЅРѕ).
+;;  3) Р›РёРЅРёСЏ 0 > Р±Р°Р·Р°; Р»РёРЅРёСЏ k?1 > k * *mark:ar-line* (150 РјРј).
+;; РџСЂРёРјРµСЂ: 1550,590,530,460,320 > СЂСЏРґ0:1550, СЂСЏРґ1:590+530+320, СЂСЏРґ2:460
+;; > ((k pos size text) вЂ¦)
 (defun mark:ar-pack (items / sorted tracks out
                         item pos size lo hi k ok tlist)
   (setq sorted (vl-sort (append items nil)
@@ -3431,9 +3432,9 @@
   (setq e (vl-catch-all-apply 'vlax-vla-object->ename (list obj)))
   (if (vl-catch-all-error-p e) nil e))
 
-;; Ред. 48.28: префикс витража для имени группы рядовки — без
-;; лога. В МАРКАЗАП уже вычислен (МАРКАРОВКАЗАП, TEST 02/03); в
-;; одиночном МАРКАЗАПРЯД — тихо из «Атрибутов витража» выделения.
+;; Р РµРґ. 48.28: РїСЂРµС„РёРєСЃ РІРёС‚СЂР°Р¶Р° РґР»СЏ РёРјРµРЅРё РіСЂСѓРїРїС‹ СЂСЏРґРѕРІРєРё вЂ” Р±РµР·
+;; Р»РѕРіР°. Р’ РњРђР РљРђР—РђРџ СѓР¶Рµ РІС‹С‡РёСЃР»РµРЅ (РњРђР РљРђР РћР’РљРђР—РђРџ, TEST 02/03); РІ
+;; РѕРґРёРЅРѕС‡РЅРѕРј РњРђР РљРђР—РђРџР РЇР” вЂ” С‚РёС…Рѕ РёР· В«РђС‚СЂРёР±СѓС‚РѕРІ РІРёС‚СЂР°Р¶Р°В» РІС‹РґРµР»РµРЅРёСЏ.
 (defun mark:ar-prefix (/ g res)
   (cond
     (*mark:prefix-found* *mark:prefix*)
@@ -3446,32 +3447,38 @@
          "")))
     (t "")))
 
-;; Группа AutoCAD по списку enames; nil при <1 объекта
-;; Ред. 48.28: существующую группу НЕ удаляем и НЕ пересоздаём —
-;; новые вставки добавляются в неё (AppendItems): группировка
-;; старых рядовок сохраняется. Имя вызов даёт с суффиксом витража
-;; («Рядовка горизонтальная В-7»), поэтому прогоны разных витражей
-;; друг другу не мешают; legacy-группы без суффикса (созданы до
-;; 48.28) не трогаются вовсе.
+;; Р“СЂСѓРїРїР° AutoCAD РїРѕ СЃРїРёСЃРєСѓ enames; nil РїСЂРё <1 РѕР±СЉРµРєС‚Р°
+;; Р РµРґ. 48.28: СЃСѓС‰РµСЃС‚РІСѓСЋС‰СѓСЋ РіСЂСѓРїРїСѓ РќР• СѓРґР°Р»СЏРµРј Рё РќР• РїРµСЂРµСЃРѕР·РґР°С‘Рј вЂ”
+;; РЅРѕРІС‹Рµ РІСЃС‚Р°РІРєРё РґРѕР±Р°РІР»СЏСЋС‚СЃСЏ РІ РЅРµС‘ (AppendItems): РіСЂСѓРїРїРёСЂРѕРІРєР°
+;; СЃС‚Р°СЂС‹С… СЂСЏРґРѕРІРѕРє СЃРѕС…СЂР°РЅСЏРµС‚СЃСЏ. РРјСЏ РІС‹Р·РѕРІ РґР°С‘С‚ СЃ СЃСѓС„С„РёРєСЃРѕРј РІРёС‚СЂР°Р¶Р°
+;; (В«Р СЏРґРѕРІРєР° РіРѕСЂРёР·РѕРЅС‚Р°Р»СЊРЅР°СЏ Р’-7В»), РїРѕСЌС‚РѕРјСѓ РїСЂРѕРіРѕРЅС‹ СЂР°Р·РЅС‹С… РІРёС‚СЂР°Р¶РµР№
+;; РґСЂСѓРі РґСЂСѓРіСѓ РЅРµ РјРµС€Р°СЋС‚; legacy-РіСЂСѓРїРїС‹ Р±РµР· СЃСѓС„С„РёРєСЃР° (СЃРѕР·РґР°РЅС‹ РґРѕ
+;; 48.28) РЅРµ С‚СЂРѕРіР°СЋС‚СЃСЏ РІРѕРІСЃРµ.
+(setq *mark:ar-group-seq* 0)
+(defun mark:ar-new-group-name (base / n)
+  (setq *mark:ar-group-seq* (1+ *mark:ar-group-seq*)
+        n (getvar "MILLISECS"))
+  (strcat base " [MARKZ-" (itoa n) "-" (itoa *mark:ar-group-seq*) "]"))
+
 (defun mark:ar-make-group (name enames / doc groups old grp arr i n cnt)
   (if (and enames (> (length enames) 1))
     (progn
       (setq doc    (mark:ax-get (vlax-get-acad-object) "ActiveDocument")
             groups (if doc (mark:ax-get doc "Groups") nil))
       (if (null groups)
-        (mark:out "[WARN] Groups недоступны.")
+        (mark:out "[WARN] Groups РЅРµРґРѕСЃС‚СѓРїРЅС‹.")
         (progn
-          ;; существующая группа — добавить в неё, не пересоздавать
-          (setq old (mark:ax-invoke groups "Item" name)
-                grp (if old
-                      old
-                      (vl-catch-all-apply 'vla-Add (list groups name))))
+          ;; СЃСѓС‰РµСЃС‚РІСѓСЋС‰Р°СЏ РіСЂСѓРїРїР° вЂ” РґРѕР±Р°РІРёС‚СЊ РІ РЅРµС‘, РЅРµ РїРµСЂРµСЃРѕР·РґР°РІР°С‚СЊ
+          ;; Always create a fresh group; never append to a previous run.
+          (setq name (mark:ar-new-group-name name)
+                old  nil
+                grp  (vl-catch-all-apply 'vla-Add (list groups name)))
           (cond
             ((vl-catch-all-error-p grp)
-             (mark:out (strcat "[WARN] Группа \"" name "\": "
+             (mark:out (strcat "[WARN] Р“СЂСѓРїРїР° \"" name "\": "
                                (vl-catch-all-error-message grp))))
             ((null grp)
-             (mark:out (strcat "[WARN] Группа \"" name "\" не создана.")))
+             (mark:out (strcat "[WARN] Р“СЂСѓРїРїР° \"" name "\" РЅРµ СЃРѕР·РґР°РЅР°.")))
             (t
              (progn
                (setq n   (length enames)
@@ -3486,22 +3493,22 @@
                      (vl-catch-all-apply 'vlax-invoke-method
                        (list grp "AppendItems" arr)))
                  (mark:out
-                   (strcat "[WARN] Группа \"" name
-                           "\": объекты не добавлены.")))
+                   (strcat "[WARN] Р“СЂСѓРїРїР° \"" name
+                           "\": РѕР±СЉРµРєС‚С‹ РЅРµ РґРѕР±Р°РІР»РµРЅС‹.")))
                (setq cnt (mark:ax-get grp "Count"))
                (if (not (numberp cnt))
                  (setq cnt n))
                (if old
                  (mark:out
-                   (strcat "[INFO] Группа \"" name "\": добавлено "
-                           (itoa n) ", всего " (itoa cnt)
-                           " объект(ов)"))
+                   (strcat "[INFO] Р“СЂСѓРїРїР° \"" name "\": РґРѕР±Р°РІР»РµРЅРѕ "
+                           (itoa n) ", РІСЃРµРіРѕ " (itoa cnt)
+                           " РѕР±СЉРµРєС‚(РѕРІ)"))
                  (mark:out
-                   (strcat "[INFO] Группа \"" name "\": "
-                           (itoa cnt) " объект(ов)"))))))))))
+                   (strcat "[INFO] Р“СЂСѓРїРїР° \"" name "\": "
+                           (itoa cnt) " РѕР±СЉРµРєС‚(РѕРІ)"))))))))))
   nil)
 
-;;;--- Основной проход ---------------------------------------------------
+;;;--- РћСЃРЅРѕРІРЅРѕР№ РїСЂРѕС…РѕРґ ---------------------------------------------------
 
 (defun mark:ar-main (/ r recs doc space placed
                      y-base x-base cols rows
@@ -3512,7 +3519,7 @@
                      h-items v-items pl
                      ar-pfx ar-gh ar-gv)
   (mark:cmd-line
-    "МАРКАЗАПРЯД — рядовка из блоков «Ряд заполнений»: номера снизу, буквы справа.")
+    "РњРђР РљРђР—РђРџР РЇР” вЂ” СЂСЏРґРѕРІРєР° РёР· Р±Р»РѕРєРѕРІ В«Р СЏРґ Р·Р°РїРѕР»РЅРµРЅРёР№В»: РЅРѕРјРµСЂР° СЃРЅРёР·Сѓ, Р±СѓРєРІС‹ СЃРїСЂР°РІР°.")
   (mark:reset-state)
   (mark:ar-banner)
 
@@ -3521,37 +3528,37 @@
     (progn
       (if (null *mark:fills*)
         (progn
-          (mark:out "[ERROR] Заполнения не выбраны.")
+          (mark:out "[ERROR] Р—Р°РїРѕР»РЅРµРЅРёСЏ РЅРµ РІС‹Р±СЂР°РЅС‹.")
           (mark:note-error))
         (progn
           (setq recs (vl-catch-all-apply 'mark:ar-collect (list *mark:fills*)))
           (cond
             ((vl-catch-all-error-p recs)
              (progn
-               (mark:out "[ERROR] Сбой чтения заполнений:")
+               (mark:out "[ERROR] РЎР±РѕР№ С‡С‚РµРЅРёСЏ Р·Р°РїРѕР»РЅРµРЅРёР№:")
                (mark:out
                  (strcat "       "
                          (vl-catch-all-error-message recs)))
                (mark:note-error)))
             ((null recs)
-             (mark:out "[ERROR] Нет пригодных заполнений (Марка/W/H)."))
+             (mark:out "[ERROR] РќРµС‚ РїСЂРёРіРѕРґРЅС‹С… Р·Р°РїРѕР»РЅРµРЅРёР№ (РњР°СЂРєР°/W/H)."))
             (t
              (progn
                (mark:out
-                 (strcat "[INFO] Пригодных заполнений: "
+                 (strcat "[INFO] РџСЂРёРіРѕРґРЅС‹С… Р·Р°РїРѕР»РЅРµРЅРёР№: "
                          (itoa (length recs))))
                (mark:out
-                 (strcat "[INFO] Индексы рядовки: номер=секция ("
+                 (strcat "[INFO] РРЅРґРµРєСЃС‹ СЂСЏРґРѕРІРєРё: РЅРѕРјРµСЂ=СЃРµРєС†РёСЏ ("
                          (itoa (length *mark:widths*))
-                         "), буква=строка ("
+                         "), Р±СѓРєРІР°=СЃС‚СЂРѕРєР° ("
                          (itoa (length *mark:heights*))
                          ")."))
 
-               ;; ключи dynamic-свойств ряда: сначала как у заполнения,
-               ;; затем универсальные
-               ;; свойство «Ширина»/«Высота» блока Ряд — в приоритете
-               (setq keysW (cons "Ширина" (cons "Width" *mtab:w-keys*))
-                     keysH (cons "Высота" (cons "Height" *mtab:h-keys*)))
+               ;; РєР»СЋС‡Рё dynamic-СЃРІРѕР№СЃС‚РІ СЂСЏРґР°: СЃРЅР°С‡Р°Р»Р° РєР°Рє Сѓ Р·Р°РїРѕР»РЅРµРЅРёСЏ,
+               ;; Р·Р°С‚РµРј СѓРЅРёРІРµСЂСЃР°Р»СЊРЅС‹Рµ
+               ;; СЃРІРѕР№СЃС‚РІРѕ В«РЁРёСЂРёРЅР°В»/В«Р’С‹СЃРѕС‚Р°В» Р±Р»РѕРєР° Р СЏРґ вЂ” РІ РїСЂРёРѕСЂРёС‚РµС‚Рµ
+               (setq keysW (cons "РЁРёСЂРёРЅР°" (cons "Width" *mtab:w-keys*))
+                     keysH (cons "Р’С‹СЃРѕС‚Р°" (cons "Height" *mtab:h-keys*)))
 
                (setq doc    (mark:ax-get (vlax-get-acad-object)
                                          "ActiveDocument")
@@ -3567,19 +3574,19 @@
 
                (if (null space)
                  (progn
-                   (mark:out "[ERROR] ModelSpace недоступен.")
+                   (mark:out "[ERROR] ModelSpace РЅРµРґРѕСЃС‚СѓРїРµРЅ.")
                    (mark:note-error)))
 
                (if space
                  (progn
                    (if (and doc (not *mark:batch-undo*))
                      (mark:ax-invoke-ok doc "StartUndoMark" nil))
-                   ;; Ред. 48.25: старая рядовка НЕ трогается —
-                   ;; снятие отключено полностью (решение пользователя).
-                   ;; placed собран выше: занятые точки пропускает
-                   ;; ar-exists, новые блоки — только на свободные места.
+                   ;; Р РµРґ. 48.25: СЃС‚Р°СЂР°СЏ СЂСЏРґРѕРІРєР° РќР• С‚СЂРѕРіР°РµС‚СЃСЏ вЂ”
+                   ;; СЃРЅСЏС‚РёРµ РѕС‚РєР»СЋС‡РµРЅРѕ РїРѕР»РЅРѕСЃС‚СЊСЋ (СЂРµС€РµРЅРёРµ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ).
+                   ;; placed СЃРѕР±СЂР°РЅ РІС‹С€Рµ: Р·Р°РЅСЏС‚С‹Рµ С‚РѕС‡РєРё РїСЂРѕРїСѓСЃРєР°РµС‚
+                   ;; ar-exists, РЅРѕРІС‹Рµ Р±Р»РѕРєРё вЂ” С‚РѕР»СЊРєРѕ РЅР° СЃРІРѕР±РѕРґРЅС‹Рµ РјРµСЃС‚Р°.
 
-                   ;; ===== ГОРИЗОНТАЛЬ (номера по ширине) =====
+                   ;; ===== Р“РћР РР—РћРќРўРђР›Р¬ (РЅРѕРјРµСЂР° РїРѕ С€РёСЂРёРЅРµ) =====
                    (setq y-base nil)
                    (foreach r recs
                      (setq y0 (nth 7 r))
@@ -3587,23 +3594,23 @@
                        (setq y-base y0)))
                    (setq y-base (- (float y-base) *mark:ar-offset*))
                    (mark:out
-                     (strcat "[INFO] Горизонтальный ряд Y = "
+                     (strcat "[INFO] Р“РѕСЂРёР·РѕРЅС‚Р°Р»СЊРЅС‹Р№ СЂСЏРґ Y = "
                              (rtos y-base 2 1)))
 
-                   ;; кандидаты: (cx W НОМЕР) — столбцы по cx, подгруппы W
+                   ;; РєР°РЅРґРёРґР°С‚С‹: (cx W РќРћРњР•Р ) вЂ” СЃС‚РѕР»Р±С†С‹ РїРѕ cx, РїРѕРґРіСЂСѓРїРїС‹ W
                    (setq cols (mark:ar-group-idx recs 3 *mark:ar-tol*)
                          h-items nil)
                    (foreach g cols
                      (setq subs (mark:ar-subgroup g 9 *mark:ar-tol*))
                      (foreach s0 subs
-                       ;; номер — от заполнения ЭТОЙ подгруппы (своя ширина),
-                       ;; не от первого в колонке
+                       ;; РЅРѕРјРµСЂ вЂ” РѕС‚ Р·Р°РїРѕР»РЅРµРЅРёСЏ Р­РўРћР™ РїРѕРґРіСЂСѓРїРїС‹ (СЃРІРѕСЏ С€РёСЂРёРЅР°),
+                       ;; РЅРµ РѕС‚ РїРµСЂРІРѕРіРѕ РІ РєРѕР»РѕРЅРєРµ
                        (setq ref    (car s0)
                              number (nth 1 ref))
                        (setq h-items
                          (cons (list (nth 3 ref) (nth 9 ref) number)
                                h-items))))
-                   ;; упаковка: max W > ряд 0; наложения > ряд 1+ (по убыв.)
+                   ;; СѓРїР°РєРѕРІРєР°: max W > СЂСЏРґ 0; РЅР°Р»РѕР¶РµРЅРёСЏ > СЂСЏРґ 1+ (РїРѕ СѓР±С‹РІ.)
                    (foreach pl (mark:ar-pack h-items)
                      (setq k     (nth 0 pl)
                            x     (nth 1 pl)
@@ -3617,19 +3624,19 @@
                            (progn
                              (setq he    (mark:ar-vla->ename obj)
                                    h-ents (if he (cons he h-ents) h-ents))
-                             ;; (W/2 + 25): осевая + половина на сторону
+                             ;; (W/2 + 25): РѕСЃРµРІР°СЏ + РїРѕР»РѕРІРёРЅР° РЅР° СЃС‚РѕСЂРѕРЅСѓ
                              (if (not (mark:ar-put-dim obj keysW
                                               (+ (/ w 2.0) 25.0)))
                                (progn
                                  (mark:out
-                                   (strcat "[WARN] Ширина не задана ("
+                                   (strcat "[WARN] РЁРёСЂРёРЅР° РЅРµ Р·Р°РґР°РЅР° ("
                                            (rtos (+ (/ w 2.0) 25.0) 2 1)
                                            ")"))
                                  (mark:note-warning)))
                              (setq placed (cons (list x y) placed)
                                    cnt-h  (1+ cnt-h)))))))
 
-                   ;; ===== ВЕРТИКАЛЬ (буквы по высоте), справа =====
+                   ;; ===== Р’Р•Р РўРРљРђР›Р¬ (Р±СѓРєРІС‹ РїРѕ РІС‹СЃРѕС‚Рµ), СЃРїСЂР°РІР° =====
                    (setq x-base nil)
                    (foreach r recs
                      (setq x1 (nth 6 r))
@@ -3637,17 +3644,17 @@
                        (setq x-base x1)))
                    (setq x-base (+ (float x-base) *mark:ar-offset*))
                    (mark:out
-                     (strcat "[INFO] Вертикальный ряд X = "
+                     (strcat "[INFO] Р’РµСЂС‚РёРєР°Р»СЊРЅС‹Р№ СЂСЏРґ X = "
                              (rtos x-base 2 1)))
 
-                   ;; кандидаты: (cy H БУКВА) — строки по cy, подгруппы H
+                   ;; РєР°РЅРґРёРґР°С‚С‹: (cy H Р‘РЈРљР’Рђ) вЂ” СЃС‚СЂРѕРєРё РїРѕ cy, РїРѕРґРіСЂСѓРїРїС‹ H
                    (setq rows   (mark:ar-group-idx recs 4 *mark:ar-tol*)
                          v-items nil)
                    (foreach g rows
                      (setq subs (mark:ar-subgroup g 10 *mark:ar-tol*))
                      (foreach s0 subs
-                       ;; буква — от заполнения ЭТОЙ подгруппы (своя высота),
-                       ;; не от первого в строке
+                       ;; Р±СѓРєРІР° вЂ” РѕС‚ Р·Р°РїРѕР»РЅРµРЅРёСЏ Р­РўРћР™ РїРѕРґРіСЂСѓРїРїС‹ (СЃРІРѕСЏ РІС‹СЃРѕС‚Р°),
+                       ;; РЅРµ РѕС‚ РїРµСЂРІРѕРіРѕ РІ СЃС‚СЂРѕРєРµ
                        (setq ref    (car s0)
                              letter (if (mark:strp (nth 0 ref))
                                       (nth 0 ref)
@@ -3655,7 +3662,7 @@
                        (setq v-items
                          (cons (list (nth 4 ref) (nth 10 ref) letter)
                                v-items))))
-                   ;; упаковка: max H > колонка 0; наложения > 1+ (по убыв.)
+                   ;; СѓРїР°РєРѕРІРєР°: max H > РєРѕР»РѕРЅРєР° 0; РЅР°Р»РѕР¶РµРЅРёСЏ > 1+ (РїРѕ СѓР±С‹РІ.)
                    (foreach pl (mark:ar-pack v-items)
                      (setq k      (nth 0 pl)
                            y      (nth 1 pl)
@@ -3669,21 +3676,21 @@
                            (progn
                              (setq ve    (mark:ar-vla->ename obj)
                                    v-ents (if ve (cons ve v-ents) v-ents))
-                             ;; в «Ширина»: (H/2 + 25)
+                             ;; РІ В«РЁРёСЂРёРЅР°В»: (H/2 + 25)
                              (if (not (mark:ar-put-dim obj keysW
                                               (+ (/ h 2.0) 25.0)))
                                (progn
                                  (mark:out
-                                   (strcat "[WARN] Ширина не задана ("
+                                   (strcat "[WARN] РЁРёСЂРёРЅР° РЅРµ Р·Р°РґР°РЅР° ("
                                            (rtos (+ (/ h 2.0) 25.0) 2 1)
                                            ")"))
                                  (mark:note-warning)))
                              (setq placed (cons (list x y) placed)
                                    cnt-v  (1+ cnt-v)))))))
 
-                   ;; группы: горизонталь и вертикаль раздельно;
-                   ;; Ред. 48.28: имя с суффиксом витража — прогоны
-                   ;; разных витражей не расформировывают чужие группы
+                   ;; РіСЂСѓРїРїС‹: РіРѕСЂРёР·РѕРЅС‚Р°Р»СЊ Рё РІРµСЂС‚РёРєР°Р»СЊ СЂР°Р·РґРµР»СЊРЅРѕ;
+                   ;; Р РµРґ. 48.28: РёРјСЏ СЃ СЃСѓС„С„РёРєСЃРѕРј РІРёС‚СЂР°Р¶Р° вЂ” РїСЂРѕРіРѕРЅС‹
+                   ;; СЂР°Р·РЅС‹С… РІРёС‚СЂР°Р¶РµР№ РЅРµ СЂР°СЃС„РѕСЂРјРёСЂРѕРІС‹РІР°СЋС‚ С‡СѓР¶РёРµ РіСЂСѓРїРїС‹
                    (setq ar-pfx (mark:ar-prefix)
                          ar-gh  (if (and (mark:strp ar-pfx) (/= ar-pfx ""))
                                   (strcat *mark:ar-group-h* " " ar-pfx)
@@ -3698,35 +3705,35 @@
                      (mark:ax-invoke-ok doc "EndUndoMark" nil))
 
                    (mark:out
-                     (strcat "[INFO] Горизонтальных (номера): "
+                     (strcat "[INFO] Р“РѕСЂРёР·РѕРЅС‚Р°Р»СЊРЅС‹С… (РЅРѕРјРµСЂР°): "
                              (itoa cnt-h)))
                    (mark:out
-                     (strcat "[INFO] Вертикальных (буквы): "
+                     (strcat "[INFO] Р’РµСЂС‚РёРєР°Р»СЊРЅС‹С… (Р±СѓРєРІС‹): "
                              (itoa cnt-v)))
                    (mark:out
-                     (strcat "[INFO] Вставлено: "
+                     (strcat "[INFO] Р’СЃС‚Р°РІР»РµРЅРѕ: "
                              (itoa (+ cnt-h cnt-v)))))))))))))
 
-  (mark:out (strcat "Ошибок: " (itoa *mark:errors*)))
-  (mark:out (strcat "Предупреждений: " (itoa *mark:warnings*)))
+  (mark:out (strcat "РћС€РёР±РѕРє: " (itoa *mark:errors*)))
+  (mark:out (strcat "РџСЂРµРґСѓРїСЂРµР¶РґРµРЅРёР№: " (itoa *mark:warnings*)))
   (if (= *mark:errors* 0)
-    (mark:out "[INFO] Готово."))
+    (mark:out "[INFO] Р“РѕС‚РѕРІРѕ."))
   (princ))
 
 
 ;;;=====================================================================
-;;;  МАРКАЗАПБЛОК / MARKFILL — вставка «Заполнение в витраж» по ячейкам
-;;;  Режимы, в этом порядке:
-;;;    Сетка-мультилинии, Точка-мультилинии, Сетка-динамика,
-;;;    Точка-динамика, Полилинии
-;;;  Вставка: точный левый нижний угол. W/H блока — до миллиметра.
-;;;  Атрибуты обнуляются — пользователь заполняет сам.
+;;;  РњРђР РљРђР—РђРџР‘Р›РћРљ / MARKFILL вЂ” РІСЃС‚Р°РІРєР° В«Р—Р°РїРѕР»РЅРµРЅРёРµ РІ РІРёС‚СЂР°Р¶В» РїРѕ СЏС‡РµР№РєР°Рј
+;;;  Р РµР¶РёРјС‹, РІ СЌС‚РѕРј РїРѕСЂСЏРґРєРµ:
+;;;    РЎРµС‚РєР°-РјСѓР»СЊС‚РёР»РёРЅРёРё, РўРѕС‡РєР°-РјСѓР»СЊС‚РёР»РёРЅРёРё, РЎРµС‚РєР°-РґРёРЅР°РјРёРєР°,
+;;;    РўРѕС‡РєР°-РґРёРЅР°РјРёРєР°, РџРѕР»РёР»РёРЅРёРё
+;;;  Р’СЃС‚Р°РІРєР°: С‚РѕС‡РЅС‹Р№ Р»РµРІС‹Р№ РЅРёР¶РЅРёР№ СѓРіРѕР». W/H Р±Р»РѕРєР° вЂ” РґРѕ РјРёР»Р»РёРјРµС‚СЂР°.
+;;;  РђС‚СЂРёР±СѓС‚С‹ РѕР±РЅСѓР»СЏСЋС‚СЃСЏ вЂ” РїРѕР»СЊР·РѕРІР°С‚РµР»СЊ Р·Р°РїРѕР»РЅСЏРµС‚ СЃР°Рј.
 ;;;=====================================================================
 
-;; *mark:fill-tol* *mark:fill-slope* *mark:fill-window* — в шапке
-(setq *mark:mline-warns* 0)          ; счётчик warn MLINE (макс 3)
+;; *mark:fill-tol* *mark:fill-slope* *mark:fill-window* вЂ” РІ С€Р°РїРєРµ
+(setq *mark:mline-warns* 0)          ; СЃС‡С‘С‚С‡РёРє warn MLINE (РјР°РєСЃ 3)
 
-;;; ---- габарит сущности > (x0 y0 x1 y1) | nil --------------------------
+;;; ---- РіР°Р±Р°СЂРёС‚ СЃСѓС‰РЅРѕСЃС‚Рё > (x0 y0 x1 y1) | nil --------------------------
 
 (defun mark:cell-bb (e / ed typ obj r mn mx L0 L1
                        x0 y0 x1 y1 xs ys p)
@@ -3791,7 +3798,7 @@
   (setq obj (vl-catch-all-apply 'vlax-ename->vla-object (list e)))
   (if (or (vl-catch-all-error-p obj) (null obj)) nil obj))
 
-;;; ---- атрибуты обнулить ------------------------------------------------
+;;; ---- Р°С‚СЂРёР±СѓС‚С‹ РѕР±РЅСѓР»РёС‚СЊ ------------------------------------------------
 
 (defun mark:fill-clear-attrs-ename (e / ed cnt)
   (setq cnt 0)
@@ -3815,7 +3822,7 @@
     (mark:fill-clear-attrs-ename e)
     0))
 
-;;; ---- вставка + W/H ----------------------------------------------------
+;;; ---- РІСЃС‚Р°РІРєР° + W/H ----------------------------------------------------
 (defun mark:fill-block-there ()
   (if (tblsearch "BLOCK" *mark:block-fill*)
     t
@@ -3824,7 +3831,7 @@
         (progn
           (setq *mark:fill-miss* t)
           (mark:out
-            (strcat "[ERROR] В чертеже нет блока «" *mark:block-fill* "»."))))
+            (strcat "[ERROR] Р’ С‡РµСЂС‚РµР¶Рµ РЅРµС‚ Р±Р»РѕРєР° В«" *mark:block-fill* "В»."))))
       nil)))
 
 (defun mark:fill-attdefs (bname / rec e ed out)
@@ -3868,13 +3875,13 @@
                               (+ (float x) (if (and pt (car pt)) (float (car pt)) 0.0))
                               (+ (float y) (if (and pt (cadr pt)) (float (cadr pt)) 0.0))
                               0.0)
-                        (cons 2 (if tag tag "Марка"))
+                        (cons 2 (if tag tag "РњР°СЂРєР°"))
                         '(1 . "")
                         (cons 40 (if (numberp h) h 2.5))
                         (cons 70 (if (numberp flags) flags 0))
                         (cons 50 (if (numberp ang) ang 0.0)))))
               (entmakex '((0 . "SEQEND")))))
-          (mark:out "[INFO] Вставка через entmakex.")
+          (mark:out "[INFO] Р’СЃС‚Р°РІРєР° С‡РµСЂРµР· entmakex.")
           (vl-catch-all-apply 'vlax-ename->vla-object (list e)))))))
 
 (defun mark:fill-find-fill (/ ss i e nm best)
@@ -3903,7 +3910,7 @@
         (list copy
               (vl-catch-all-apply 'vla-get-InsertionPoint (list copy))
               (vlax-3d-point (list (float x) (float y) 0.0))))
-      (mark:out "[INFO] Вставка копией блока, который уже есть в чертеже.")
+      (mark:out "[INFO] Р’СЃС‚Р°РІРєР° РєРѕРїРёРµР№ Р±Р»РѕРєР°, РєРѕС‚РѕСЂС‹Р№ СѓР¶Рµ РµСЃС‚СЊ РІ С‡РµСЂС‚РµР¶Рµ.")
       copy)))
 
 (defun mark:fill-try-vla (space x y)
@@ -3915,7 +3922,7 @@
           0.0)))
 
 (defun mark:fill-end-undo (/ doc)
-  ;; Группу режима «точка» не закрываем: её закроет конец захода.
+  ;; Р“СЂСѓРїРїСѓ СЂРµР¶РёРјР° В«С‚РѕС‡РєР°В» РЅРµ Р·Р°РєСЂС‹РІР°РµРј: РµС‘ Р·Р°РєСЂРѕРµС‚ РєРѕРЅРµС† Р·Р°С…РѕРґР°.
   (if *mark:pt-undo*
     (setq *mark:fill-undo-off* t)
     (progn
@@ -3933,9 +3940,9 @@
                    (vl-catch-all-error-message obj)
                    nil))
        (if (and err (null *mark:fill-undo-off*)
-                (wcmatch (strcase err) "*FILER*,*ФАЙЛЕР*"))
+                (wcmatch (strcase err) "*FILER*,*Р¤РђР™Р›Р•Р *"))
          (progn
-           (mark:out "[INFO] Ошибка файлера внутри UNDO — повторяю вставку без группы.")
+           (mark:out "[INFO] РћС€РёР±РєР° С„Р°Р№Р»РµСЂР° РІРЅСѓС‚СЂРё UNDO вЂ” РїРѕРІС‚РѕСЂСЏСЋ РІСЃС‚Р°РІРєСѓ Р±РµР· РіСЂСѓРїРїС‹.")
            (mark:fill-end-undo)
            (setq obj (mark:fill-try-vla space x y)
                  err (if (vl-catch-all-error-p obj)
@@ -3950,7 +3957,7 @@
        (if (and obj (not (vl-catch-all-error-p obj)))
          obj
          (progn
-           (setq msg (if err err "блок не вставился"))
+           (setq msg (if err err "Р±Р»РѕРє РЅРµ РІСЃС‚Р°РІРёР»СЃСЏ"))
            (mark:out (strcat "[ERROR] INSERT: " msg))
            (mark:note-error)
            nil))))))
@@ -3962,36 +3969,36 @@
         okh (mark:ar-put-dim obj keysH (float h)))
   (if (not okw)
     (progn
-      (mark:out (strcat "[WARN] Ширина в свету не задана ("
+      (mark:out (strcat "[WARN] РЁРёСЂРёРЅР° РІ СЃРІРµС‚Сѓ РЅРµ Р·Р°РґР°РЅР° ("
                         (rtos w 2 1) ")"))
       (mark:note-warning)))
   (if (not okh)
     (progn
-      (mark:out (strcat "[WARN] Высота в свету не задана ("
+      (mark:out (strcat "[WARN] Р’С‹СЃРѕС‚Р° РІ СЃРІРµС‚Сѓ РЅРµ Р·Р°РґР°РЅР° ("
                         (rtos h 2 1) ")"))
       (mark:note-warning)))
   (and okw okh))
 
-;;; ---- список ячеек + дедуп --------------------------------------------
+;;; ---- СЃРїРёСЃРѕРє СЏС‡РµРµРє + РґРµРґСѓРї --------------------------------------------
 
 
-;; Маски имён проёмов (окна/двери) по EffectiveName блока.
-;; По умолчанию: «ОКНО», «створка», «ДВЕРЬ». Профильные заполнения
-;; («Кассета» и т.п.) под эти маски не попадают. Список можно дополнять
-;; прямо в чертеже, без правки кода:
-;;   (setq *mark:opening-masks* (append *mark:opening-masks* (list "*КПТ*")))
+;; РњР°СЃРєРё РёРјС‘РЅ РїСЂРѕС‘РјРѕРІ (РѕРєРЅР°/РґРІРµСЂРё) РїРѕ EffectiveName Р±Р»РѕРєР°.
+;; РџРѕ СѓРјРѕР»С‡Р°РЅРёСЋ: В«РћРљРќРћВ», В«СЃС‚РІРѕСЂРєР°В», В«Р”Р’Р•Р Р¬В». РџСЂРѕС„РёР»СЊРЅС‹Рµ Р·Р°РїРѕР»РЅРµРЅРёСЏ
+;; (В«РљР°СЃСЃРµС‚Р°В» Рё С‚.Рї.) РїРѕРґ СЌС‚Рё РјР°СЃРєРё РЅРµ РїРѕРїР°РґР°СЋС‚. РЎРїРёСЃРѕРє РјРѕР¶РЅРѕ РґРѕРїРѕР»РЅСЏС‚СЊ
+;; РїСЂСЏРјРѕ РІ С‡РµСЂС‚РµР¶Рµ, Р±РµР· РїСЂР°РІРєРё РєРѕРґР°:
+;;   (setq *mark:opening-masks* (append *mark:opening-masks* (list "*РљРџРў*")))
 (if (null *mark:opening-masks*)
   (setq *mark:opening-masks*
-    (list "*ОКН*" "*СТВОР*" "*ДВЕР*")))
+    (list "*РћРљРќ*" "*РЎРўР’РћР *" "*Р”Р’Р•Р *")))
 
-;; Маски-исключения: имена, которые НЕ считать проёмом, даже если они
-;; случайно совпали с маской выше (например, глухие заполнения).
+;; РњР°СЃРєРё-РёСЃРєР»СЋС‡РµРЅРёСЏ: РёРјРµРЅР°, РєРѕС‚РѕСЂС‹Рµ РќР• СЃС‡РёС‚Р°С‚СЊ РїСЂРѕС‘РјРѕРј, РґР°Р¶Рµ РµСЃР»Рё РѕРЅРё
+;; СЃР»СѓС‡Р°Р№РЅРѕ СЃРѕРІРїР°Р»Рё СЃ РјР°СЃРєРѕР№ РІС‹С€Рµ (РЅР°РїСЂРёРјРµСЂ, РіР»СѓС…РёРµ Р·Р°РїРѕР»РЅРµРЅРёСЏ).
 (if (null *mark:opening-skip-masks*)
-  (setq *mark:opening-skip-masks* (list "*КАССЕТ*")))
+  (setq *mark:opening-skip-masks* (list "*РљРђРЎРЎР•Рў*")))
 
-;; Допуск (мм) на «неполное заполнение» проёма: разница габарита проёма и
-;; ячейки меньше него считается погрешностью и НЕ вызывает предупреждение
-;; и подсветку. Можно менять в чертеже: (setq *mark:opening-fit-tol* 30.0)
+;; Р”РѕРїСѓСЃРє (РјРј) РЅР° В«РЅРµРїРѕР»РЅРѕРµ Р·Р°РїРѕР»РЅРµРЅРёРµВ» РїСЂРѕС‘РјР°: СЂР°Р·РЅРёС†Р° РіР°Р±Р°СЂРёС‚Р° РїСЂРѕС‘РјР° Рё
+;; СЏС‡РµР№РєРё РјРµРЅСЊС€Рµ РЅРµРіРѕ СЃС‡РёС‚Р°РµС‚СЃСЏ РїРѕРіСЂРµС€РЅРѕСЃС‚СЊСЋ Рё РќР• РІС‹Р·С‹РІР°РµС‚ РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёРµ
+;; Рё РїРѕРґСЃРІРµС‚РєСѓ. РњРѕР¶РЅРѕ РјРµРЅСЏС‚СЊ РІ С‡РµСЂС‚РµР¶Рµ: (setq *mark:opening-fit-tol* 30.0)
 (if (null *mark:opening-fit-tol*)
   (setq *mark:opening-fit-tol* 20.0))
 
@@ -4000,7 +4007,7 @@
   (if (= u "")
     nil
     (progn
-      ;; сначала явные исключения
+      ;; СЃРЅР°С‡Р°Р»Р° СЏРІРЅС‹Рµ РёСЃРєР»СЋС‡РµРЅРёСЏ
       (foreach m *mark:opening-skip-masks*
         (if (wcmatch u (strcase m)) (setq hit 'skip)))
       (if (eq hit 'skip)
@@ -4031,7 +4038,7 @@
         mn nil mx nil)
   (if (and (not (vl-catch-all-error-p obj)) obj)
     (progn
-      ;; GetBoundingBox является void-методом: успешный результат может быть nil.
+      ;; GetBoundingBox СЏРІР»СЏРµС‚СЃСЏ void-РјРµС‚РѕРґРѕРј: СѓСЃРїРµС€РЅС‹Р№ СЂРµР·СѓР»СЊС‚Р°С‚ РјРѕР¶РµС‚ Р±С‹С‚СЊ nil.
       (setq r (vl-catch-all-apply 'vla-GetBoundingBox (list obj 'mn 'mx)))
       (if (and (not (vl-catch-all-error-p r)) mn mx)
         (progn
@@ -4052,8 +4059,8 @@
     (progn
       (setq ip (mark:ax-get obj "InsertionPoint")
             pairs (mark:load-dyn-pairs obj)
-            w (mark:fill-dyn-number pairs (list "ШИРИН" "ДЛИН"))
-            h (mark:fill-dyn-number pairs (list "ВЫСОТ" "ДЛИН"))
+            w (mark:fill-dyn-number pairs (list "РЁРР РРќ" "Р”Р›РРќ"))
+            h (mark:fill-dyn-number pairs (list "Р’Р«РЎРћРў" "Р”Р›РРќ"))
             ip (mark:unwrap ip))
       (if (and (listp ip) (>= (length ip) 2) w h)
         (progn
@@ -4064,16 +4071,16 @@
         nil))))
 
 (defun mark:fill-bb-in-zone? (eb z)
-  ;; Пересекается ли габарит проёма с зоной сетки z (xmin ymin xmax ymax).
+  ;; РџРµСЂРµСЃРµРєР°РµС‚СЃСЏ Р»Рё РіР°Р±Р°СЂРёС‚ РїСЂРѕС‘РјР° СЃ Р·РѕРЅРѕР№ СЃРµС‚РєРё z (xmin ymin xmax ymax).
   (or (null z)
       (and eb
            (<= (nth 0 eb) (nth 2 z)) (>= (nth 2 eb) (nth 0 z))
            (<= (nth 1 eb) (nth 3 z)) (>= (nth 3 eb) (nth 1 z)))))
 
 (defun mark:fill-load-openings (/ ss i e ed nm eb out)
-  ;; Реальные габариты проёмов получаем напрямую через VLA. Если задана зона
-  ;; сетки (*mark:grid-zone*) — берём только проёмы, попадающие в неё
-  ;; (быстрее и без «мусора» из других видов). Подробный список НЕ печатаем.
+  ;; Р РµР°Р»СЊРЅС‹Рµ РіР°Р±Р°СЂРёС‚С‹ РїСЂРѕС‘РјРѕРІ РїРѕР»СѓС‡Р°РµРј РЅР°РїСЂСЏРјСѓСЋ С‡РµСЂРµР· VLA. Р•СЃР»Рё Р·Р°РґР°РЅР° Р·РѕРЅР°
+  ;; СЃРµС‚РєРё (*mark:grid-zone*) вЂ” Р±РµСЂС‘Рј С‚РѕР»СЊРєРѕ РїСЂРѕС‘РјС‹, РїРѕРїР°РґР°СЋС‰РёРµ РІ РЅРµС‘
+  ;; (Р±С‹СЃС‚СЂРµРµ Рё Р±РµР· В«РјСѓСЃРѕСЂР°В» РёР· РґСЂСѓРіРёС… РІРёРґРѕРІ). РџРѕРґСЂРѕР±РЅС‹Р№ СЃРїРёСЃРѕРє РќР• РїРµС‡Р°С‚Р°РµРј.
   (setq out nil
         ss (vl-catch-all-apply 'ssget (list "X" (list (cons 0 "INSERT")))))
   (if (and ss (not (vl-catch-all-error-p ss)))
@@ -4088,17 +4095,17 @@
           (progn
             (setq eb (mark:fill-vla-bb e))
             (if (null eb) (setq eb (mark:cell-bb e)))
-            ;; Если Bounding Box отсутствует — размеры из динамики.
+            ;; Р•СЃР»Рё Bounding Box РѕС‚СЃСѓС‚СЃС‚РІСѓРµС‚ вЂ” СЂР°Р·РјРµСЂС‹ РёР· РґРёРЅР°РјРёРєРё.
             (if (null eb) (setq eb (mark:fill-opening-dim-bb e)))
             (if (and eb (mark:fill-bb-in-zone? eb *mark:grid-zone*))
               (progn
-                ;; Тройка: имя проёма, габарит, ename блока (для подсветки).
+                ;; РўСЂРѕР№РєР°: РёРјСЏ РїСЂРѕС‘РјР°, РіР°Р±Р°СЂРёС‚, ename Р±Р»РѕРєР° (РґР»СЏ РїРѕРґСЃРІРµС‚РєРё).
                 (setq out (cons (list nm eb e) out))
-                ;; Полный список проёмов печатаем только в режимах сетки,
-                ;; где известна зона; в «Точка/Полилиния» хватает счётчика.
+                ;; РџРѕР»РЅС‹Р№ СЃРїРёСЃРѕРє РїСЂРѕС‘РјРѕРІ РїРµС‡Р°С‚Р°РµРј С‚РѕР»СЊРєРѕ РІ СЂРµР¶РёРјР°С… СЃРµС‚РєРё,
+                ;; РіРґРµ РёР·РІРµСЃС‚РЅР° Р·РѕРЅР°; РІ В«РўРѕС‡РєР°/РџРѕР»РёР»РёРЅРёСЏВ» С…РІР°С‚Р°РµС‚ СЃС‡С‘С‚С‡РёРєР°.
                 (if *mark:grid-zone*
                   (mark:out
-                    (strcat "[INFO] Проём: " (if nm nm "?")
+                    (strcat "[INFO] РџСЂРѕС‘Рј: " (if nm nm "?")
                             "  X " (rtos (nth 0 eb) 2 1)
                             ".." (rtos (nth 2 eb) 2 1)
                             "  Y " (rtos (nth 1 eb) 2 1)
@@ -4107,14 +4114,14 @@
                             "  H=" (rtos (- (nth 3 eb) (nth 1 eb)) 2 0)))))))))))
   (setq *mark:opening-bbs* out
         *mark:opening-loaded* t)
-  (mark:out (strcat "[INFO] Проёмов для фильтра: " (itoa (length out))))
+  (mark:out (strcat "[INFO] РџСЂРѕС‘РјРѕРІ РґР»СЏ С„РёР»СЊС‚СЂР°: " (itoa (length out))))
   out)
 
 
 (defun mark:fill-cell-opening? (bb / hit hit-eb hit-e item eb cx cy tol)
-  ;; Ячейка считается занятой проёмом, если ЦЕНТР ячейки попадает внутрь
-  ;; габарита окна/двери. Так проём захватывает только ту ячейку, в которой
-  ;; он реально стоит, а не соседние из-за небольшого «залезания» рамки.
+  ;; РЇС‡РµР№РєР° СЃС‡РёС‚Р°РµС‚СЃСЏ Р·Р°РЅСЏС‚РѕР№ РїСЂРѕС‘РјРѕРј, РµСЃР»Рё Р¦Р•РќРўР  СЏС‡РµР№РєРё РїРѕРїР°РґР°РµС‚ РІРЅСѓС‚СЂСЊ
+  ;; РіР°Р±Р°СЂРёС‚Р° РѕРєРЅР°/РґРІРµСЂРё. РўР°Рє РїСЂРѕС‘Рј Р·Р°С…РІР°С‚С‹РІР°РµС‚ С‚РѕР»СЊРєРѕ С‚Сѓ СЏС‡РµР№РєСѓ, РІ РєРѕС‚РѕСЂРѕР№
+  ;; РѕРЅ СЂРµР°Р»СЊРЅРѕ СЃС‚РѕРёС‚, Р° РЅРµ СЃРѕСЃРµРґРЅРёРµ РёР·-Р·Р° РЅРµР±РѕР»СЊС€РѕРіРѕ В«Р·Р°Р»РµР·Р°РЅРёСЏВ» СЂР°РјРєРё.
   (if (and bb (not *mark:opening-loaded*))
     (mark:fill-load-openings))
   (setq hit nil hit-eb nil hit-e nil)
@@ -4128,9 +4135,9 @@
                  (>= cx (nth 0 eb)) (<= cx (nth 2 eb))
                  (>= cy (nth 1 eb)) (<= cy (nth 3 eb)))
           (setq hit (car item) hit-eb eb hit-e (caddr item))))))
-  ;; Проём найден, но НЕ полностью накрывает ячейку (с учётом допуска на
-  ;; небольшие погрешности в размерах). Тогда: предупреждение + счётчик +
-  ;; запоминаем блок проёма, чтобы подсветить его после заполнения.
+  ;; РџСЂРѕС‘Рј РЅР°Р№РґРµРЅ, РЅРѕ РќР• РїРѕР»РЅРѕСЃС‚СЊСЋ РЅР°РєСЂС‹РІР°РµС‚ СЏС‡РµР№РєСѓ (СЃ СѓС‡С‘С‚РѕРј РґРѕРїСѓСЃРєР° РЅР°
+  ;; РЅРµР±РѕР»СЊС€РёРµ РїРѕРіСЂРµС€РЅРѕСЃС‚Рё РІ СЂР°Р·РјРµСЂР°С…). РўРѕРіРґР°: РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёРµ + СЃС‡С‘С‚С‡РёРє +
+  ;; Р·Р°РїРѕРјРёРЅР°РµРј Р±Р»РѕРє РїСЂРѕС‘РјР°, С‡С‚РѕР±С‹ РїРѕРґСЃРІРµС‚РёС‚СЊ РµРіРѕ РїРѕСЃР»Рµ Р·Р°РїРѕР»РЅРµРЅРёСЏ.
   (if (and hit hit-eb)
     (progn
       (setq tol (if (numberp *mark:opening-fit-tol*) *mark:opening-fit-tol* 20.0))
@@ -4140,12 +4147,12 @@
                     (>= (nth 3 hit-eb) (- (nth 3 bb) tol))))
         (progn
           (mark:out
-            (strcat "[WARN] Проём «" hit
-                    "» не полностью заполняет ячейку "
+            (strcat "[WARN] РџСЂРѕС‘Рј В«" hit
+                    "В» РЅРµ РїРѕР»РЅРѕСЃС‚СЊСЋ Р·Р°РїРѕР»РЅСЏРµС‚ СЏС‡РµР№РєСѓ "
                     (rtos (nth 0 bb) 2 1) "," (rtos (nth 1 bb) 2 1)
                     " (W=" (rtos (- (nth 2 bb) (nth 0 bb)) 2 0)
                     " H=" (rtos (- (nth 3 bb) (nth 1 bb)) 2 0)
-                    "). Ячейка пропущена как проёмная — проверьте вручную."))
+                    "). РЇС‡РµР№РєР° РїСЂРѕРїСѓС‰РµРЅР° РєР°Рє РїСЂРѕС‘РјРЅР°СЏ вЂ” РїСЂРѕРІРµСЂСЊС‚Рµ РІСЂСѓС‡РЅСѓСЋ."))
           (mark:note-warning)
           (if (and hit-e (not (member hit-e *mark:opening-partial*)))
             (setq *mark:opening-partial* (cons hit-e *mark:opening-partial*)))))))
@@ -4167,7 +4174,7 @@
                     (list (car by) (cadr by) 0.0)) tol)))
 
 (defun mark:fill-seg-components (segs / rest comps seed group changed out s g hit)
-  ;; Разделяем разорванные витражи до построения осей.
+  ;; Р Р°Р·РґРµР»СЏРµРј СЂР°Р·РѕСЂРІР°РЅРЅС‹Рµ РІРёС‚СЂР°Р¶Рё РґРѕ РїРѕСЃС‚СЂРѕРµРЅРёСЏ РѕСЃРµР№.
   (setq rest segs comps nil)
   (while rest
     (setq seed (car rest)
@@ -4196,7 +4203,7 @@
       (setq opening (mark:fill-cell-opening? bb))
       (if opening
         (progn
-          (mark:out (strcat "[INFO] Ячейка с блоком проёма " opening " — пропуск."))
+          (mark:out (strcat "[INFO] РЇС‡РµР№РєР° СЃ Р±Р»РѕРєРѕРј РїСЂРѕС‘РјР° " opening " вЂ” РїСЂРѕРїСѓСЃРє."))
           (list cells pts))
         (progn
           (setq x0 (nth 0 bb)
@@ -4214,14 +4221,14 @@
               (setq dup t)))
           (if dup
             (progn
-              (mark:out "[INFO] Ячейка уже в списке — пропуск.")
+              (mark:out "[INFO] РЇС‡РµР№РєР° СѓР¶Рµ РІ СЃРїРёСЃРєРµ вЂ” РїСЂРѕРїСѓСЃРє.")
               (list cells pts))
             (progn
               (setq cells (cons bb cells)
                     pts   (cons (list x0 y0) pts))
               (list cells pts))))))))
 
-;;; ---- вершины / точка в полигоне --------------------------------------
+;;; ---- РІРµСЂС€РёРЅС‹ / С‚РѕС‡РєР° РІ РїРѕР»РёРіРѕРЅРµ --------------------------------------
 
 (defun mark:fill-poly-verts (e / ed verts p)
   (setq ed (entget e))
@@ -4267,16 +4274,16 @@
     (setq i (1+ i)))
   (abs (* a 0.5)))
 
-;;; ---- РЕЖИМ 1: полилинии -----------------------------------------------
+;;; ---- Р Р•Р–РРњ 1: РїРѕР»РёР»РёРЅРёРё -----------------------------------------------
 
 
-;;; ---- Режимы 5/6: универсальная геометрия ----------------------------
+;;; ---- Р РµР¶РёРјС‹ 5/6: СѓРЅРёРІРµСЂСЃР°Р»СЊРЅР°СЏ РіРµРѕРјРµС‚СЂРёСЏ ----------------------------
 (defun mark:fill-all-ss (/ filter ss)
   (setq filter (list (cons 0 "INSERT,LINE,LWPOLYLINE,POLYLINE,MLINE,ARC")))
   (setq ss (vl-catch-all-apply 'ssget (list filter)))
   (if (or (vl-catch-all-error-p ss) (null ss)) nil ss))
 
-;; Дубликат вставки в одной точке — один каркас (копии блоков).
+;; Р”СѓР±Р»РёРєР°С‚ РІСЃС‚Р°РІРєРё РІ РѕРґРЅРѕР№ С‚РѕС‡РєРµ вЂ” РѕРґРёРЅ РєР°СЂРєР°СЃ (РєРѕРїРёРё Р±Р»РѕРєРѕРІ).
 (defun mark:fill-block-seen? (seen nm e / p hit q)
   (setq p (cdr (assoc 10 (entget e)))
         hit nil)
@@ -4289,7 +4296,7 @@
   hit)
 
 (defun mark:fill-lwpoly-closed? (e / ed)
-  ;; Замкнутая полилиния — контур ячейки (семантика 7-Полилиния).
+  ;; Р—Р°РјРєРЅСѓС‚Р°СЏ РїРѕР»РёР»РёРЅРёСЏ вЂ” РєРѕРЅС‚СѓСЂ СЏС‡РµР№РєРё (СЃРµРјР°РЅС‚РёРєР° 7-РџРѕР»РёР»РёРЅРёСЏ).
   (setq ed (if e (entget e) nil))
   (and ed
        (= "LWPOLYLINE" (cdr (assoc 0 ed)))
@@ -4301,8 +4308,8 @@
                                        polys n-poly n-polyo n-line
                                        bb msegs rblocks n-hidden
                                        vs2 out glaz)
-  (mark:out "5-Сетка-все-типы: каркас — блоки (динамика) и мультилинии; отрезки, дуги, полилинии — не каркас (Ред. 48.6).")
-  (mark:out "Выберите объекты каркаса рамкой. Enter — отмена.")
+  (mark:out "5-РЎРµС‚РєР°-РІСЃРµ-С‚РёРїС‹: РєР°СЂРєР°СЃ вЂ” Р±Р»РѕРєРё (РґРёРЅР°РјРёРєР°) Рё РјСѓР»СЊС‚РёР»РёРЅРёРё; РѕС‚СЂРµР·РєРё, РґСѓРіРё, РїРѕР»РёР»РёРЅРёРё вЂ” РЅРµ РєР°СЂРєР°СЃ (Р РµРґ. 48.6).")
+  (mark:out "Р’С‹Р±РµСЂРёС‚Рµ РѕР±СЉРµРєС‚С‹ РєР°СЂРєР°СЃР° СЂР°РјРєРѕР№. Enter вЂ” РѕС‚РјРµРЅР°.")
   (setq *mark:fill-geo* nil
         *mark:cell-hs*  nil)
   (setq ss (mark:fill-all-ss))
@@ -4310,10 +4317,10 @@
     (list cells pts 'cancel)
     (progn
       (mark:fill-type-stat ss)
-      ;; Разбор выбора: блоки -> каркас-вставки, остальное -> отрезки.
-      ;; Проёмы (окно/дверь) — не каркас: линии рамы заходят в световой
-      ;; проём и занижают ячейку (Ред. 47.6). Скрытые слои — тоже не
-      ;; каркас (Ред. 48.0): выключенный или замороженный слой пропускаем.
+      ;; Р Р°Р·Р±РѕСЂ РІС‹Р±РѕСЂР°: Р±Р»РѕРєРё -> РєР°СЂРєР°СЃ-РІСЃС‚Р°РІРєРё, РѕСЃС‚Р°Р»СЊРЅРѕРµ -> РѕС‚СЂРµР·РєРё.
+      ;; РџСЂРѕС‘РјС‹ (РѕРєРЅРѕ/РґРІРµСЂСЊ) вЂ” РЅРµ РєР°СЂРєР°СЃ: Р»РёРЅРёРё СЂР°РјС‹ Р·Р°С…РѕРґСЏС‚ РІ СЃРІРµС‚РѕРІРѕР№
+      ;; РїСЂРѕС‘Рј Рё Р·Р°РЅРёР¶Р°СЋС‚ СЏС‡РµР№РєСѓ (Р РµРґ. 47.6). РЎРєСЂС‹С‚С‹Рµ СЃР»РѕРё вЂ” С‚РѕР¶Рµ РЅРµ
+      ;; РєР°СЂРєР°СЃ (Р РµРґ. 48.0): РІС‹РєР»СЋС‡РµРЅРЅС‹Р№ РёР»Рё Р·Р°РјРѕСЂРѕР¶РµРЅРЅС‹Р№ СЃР»РѕР№ РїСЂРѕРїСѓСЃРєР°РµРј.
       (setq segs    nil
             blocks  nil
             seen    nil
@@ -4338,7 +4345,7 @@
           ((= typ "INSERT")
            (setq nm (mark:fill-eff-name e))
            (cond
-             ;; Ред. 48.3: «Атрибуты витража» — префикс для марок (TEST 02/03)
+             ;; Р РµРґ. 48.3: В«РђС‚СЂРёР±СѓС‚С‹ РІРёС‚СЂР°Р¶Р°В» вЂ” РїСЂРµС„РёРєСЃ РґР»СЏ РјР°СЂРѕРє (TEST 02/03)
              ((mark:blk-match? e *mark:block-glazing*)
               (setq glaz (cons e glaz)))
              ((mark:fill-skip-block? nm) nil)
@@ -4348,18 +4355,18 @@
              (t
               (setq blocks (cons (list 0.0 e) blocks)
                     seen   (cons (cons nm (cdr (assoc 10 ed))) seen))
-              ;; блоки-ригели: длины для шкалы «в свету» (зеркало MarkZV)
+              ;; Р±Р»РѕРєРё-СЂРёРіРµР»Рё: РґР»РёРЅС‹ РґР»СЏ С€РєР°Р»С‹ В«РІ СЃРІРµС‚СѓВ» (Р·РµСЂРєР°Р»Рѕ MarkZV)
               (if (and (mark:strp nm)
-                       (wcmatch (strcase nm) "*РИГЕЛЬ*"))
+                       (wcmatch (strcase nm) "*Р РР“Р•Р›Р¬*"))
                 (setq rblocks (cons e rblocks))))))
-          ;; Ред. 48.4: замкнутая полилиния — не каркас и не ячейка.
-          ;; Сетка — по динамике и мультилиниям (Ред. 48.6).
-          ;; контур полилинии — только режимы точки и 7-Полилиния.
+          ;; Р РµРґ. 48.4: Р·Р°РјРєРЅСѓС‚Р°СЏ РїРѕР»РёР»РёРЅРёСЏ вЂ” РЅРµ РєР°СЂРєР°СЃ Рё РЅРµ СЏС‡РµР№РєР°.
+          ;; РЎРµС‚РєР° вЂ” РїРѕ РґРёРЅР°РјРёРєРµ Рё РјСѓР»СЊС‚РёР»РёРЅРёСЏРј (Р РµРґ. 48.6).
+          ;; РєРѕРЅС‚СѓСЂ РїРѕР»РёР»РёРЅРёРё вЂ” С‚РѕР»СЊРєРѕ СЂРµР¶РёРјС‹ С‚РѕС‡РєРё Рё 7-РџРѕР»РёР»РёРЅРёСЏ.
           ((and (= typ "LWPOLYLINE") (mark:fill-lwpoly-closed? e))
            (setq n-poly (1+ n-poly)))
-          ;; Ред. 48.6: отрезки и дуги — не каркас (решение заказчика
-          ;; 2026-09-29): в режимах сетки каркас — только мультилинии
-          ;; и динамика; полуширина отрезка была допущением 25 мм.
+          ;; Р РµРґ. 48.6: РѕС‚СЂРµР·РєРё Рё РґСѓРіРё вЂ” РЅРµ РєР°СЂРєР°СЃ (СЂРµС€РµРЅРёРµ Р·Р°РєР°Р·С‡РёРєР°
+          ;; 2026-09-29): РІ СЂРµР¶РёРјР°С… СЃРµС‚РєРё РєР°СЂРєР°СЃ вЂ” С‚РѕР»СЊРєРѕ РјСѓР»СЊС‚РёР»РёРЅРёРё
+          ;; Рё РґРёРЅР°РјРёРєР°; РїРѕР»СѓС€РёСЂРёРЅР° РѕС‚СЂРµР·РєР° Р±С‹Р»Р° РґРѕРїСѓС‰РµРЅРёРµРј 25 РјРј.
           ((member typ '("LINE" "ARC"))
            (setq n-line (1+ n-line)))
           ((= typ "MLINE")
@@ -4367,68 +4374,68 @@
            (if (and r (not (vl-catch-all-error-p r)))
              (progn
                (setq segs (append r segs))
-               ;; шкала: только MLINE (зеркало MarkZV, *mk:seg-types*)
+               ;; С€РєР°Р»Р°: С‚РѕР»СЊРєРѕ MLINE (Р·РµСЂРєР°Р»Рѕ MarkZV, *mk:seg-types*)
                (setq msegs (append r msegs)))))
-          ;; Ред. 48.6: незамкнутая полилиния и старый POLYLINE — не
-          ;; каркас режима сетки; контур — режимы точки (2/6) и 7.
+          ;; Р РµРґ. 48.6: РЅРµР·Р°РјРєРЅСѓС‚Р°СЏ РїРѕР»РёР»РёРЅРёСЏ Рё СЃС‚Р°СЂС‹Р№ POLYLINE вЂ” РЅРµ
+          ;; РєР°СЂРєР°СЃ СЂРµР¶РёРјР° СЃРµС‚РєРё; РєРѕРЅС‚СѓСЂ вЂ” СЂРµР¶РёРјС‹ С‚РѕС‡РєРё (2/6) Рё 7.
           ((member typ '("LWPOLYLINE" "POLYLINE"))
            (setq n-polyo (1+ n-polyo)))))
       (if (> n-hidden 0)
         (mark:out
-          (strcat "[INFO] Пропущено на скрытых слоях: " (itoa n-hidden)
-                  " — не каркас.")))
+          (strcat "[INFO] РџСЂРѕРїСѓС‰РµРЅРѕ РЅР° СЃРєСЂС‹С‚С‹С… СЃР»РѕСЏС…: " (itoa n-hidden)
+                  " вЂ” РЅРµ РєР°СЂРєР°СЃ.")))
       (if (> n-open 0)
         (mark:out
-          (strcat "[INFO] Блоков проёма в выборе пропущено: " (itoa n-open)
-                  " — окно/дверь не каркас.")))
-      ;; Ред. 48.3: «Атрибуты витража» из выбора каркаса — префикс марок
+          (strcat "[INFO] Р‘Р»РѕРєРѕРІ РїСЂРѕС‘РјР° РІ РІС‹Р±РѕСЂРµ РїСЂРѕРїСѓС‰РµРЅРѕ: " (itoa n-open)
+                  " вЂ” РѕРєРЅРѕ/РґРІРµСЂСЊ РЅРµ РєР°СЂРєР°СЃ.")))
+      ;; Р РµРґ. 48.3: В«РђС‚СЂРёР±СѓС‚С‹ РІРёС‚СЂР°Р¶Р°В» РёР· РІС‹Р±РѕСЂР° РєР°СЂРєР°СЃР° вЂ” РїСЂРµС„РёРєСЃ РјР°СЂРѕРє
       (if glaz
         (progn
           (setq *mark:glazings* (reverse glaz))
           (mark:out
-            (strcat "[INFO] \"Атрибуты витража\": " (itoa (length glaz))
-                    " — префикс для марок."))))
+            (strcat "[INFO] \"РђС‚СЂРёР±СѓС‚С‹ РІРёС‚СЂР°Р¶Р°\": " (itoa (length glaz))
+                    " вЂ” РїСЂРµС„РёРєСЃ РґР»СЏ РјР°СЂРѕРє."))))
       (mark:out
-        (strcat "[INFO] Каркас: блоков " (itoa (length blocks))
-                ", отрезков " (itoa (length segs))))
+        (strcat "[INFO] РљР°СЂРєР°СЃ: Р±Р»РѕРєРѕРІ " (itoa (length blocks))
+                ", РѕС‚СЂРµР·РєРѕРІ " (itoa (length segs))))
       (setq boxes nil
             vs    nil
             hs    nil)
       (cond
-        ;; Только линии — дословно конвейер 1-Сетка-мультилинии:
-        ;; оси, Т-объединение, проверка замкнутости grid-valid.
+        ;; РўРѕР»СЊРєРѕ Р»РёРЅРёРё вЂ” РґРѕСЃР»РѕРІРЅРѕ РєРѕРЅРІРµР№РµСЂ 1-РЎРµС‚РєР°-РјСѓР»СЊС‚РёР»РёРЅРёРё:
+        ;; РѕСЃРё, Рў-РѕР±СЉРµРґРёРЅРµРЅРёРµ, РїСЂРѕРІРµСЂРєР° Р·Р°РјРєРЅСѓС‚РѕСЃС‚Рё grid-valid.
         ((null blocks)
          (if segs
            (progn
              (mark:out
-               "[INFO] Линейный каркас — расчёт как в 1-Сетка-мультилинии.")
+               "[INFO] Р›РёРЅРµР№РЅС‹Р№ РєР°СЂРєР°СЃ вЂ” СЂР°СЃС‡С‘С‚ РєР°Рє РІ 1-РЎРµС‚РєР°-РјСѓР»СЊС‚РёР»РёРЅРёРё.")
              (setq r (mark:fill-segs->cells segs))
              (mark:out
-               (strcat "[INFO] Сетка: осей X " (itoa (cadr r))
+               (strcat "[INFO] РЎРµС‚РєР°: РѕСЃРµР№ X " (itoa (cadr r))
                        " Y " (itoa (caddr r))
-                       "  ячеек " (itoa (length (car r)))))
+                       "  СЏС‡РµРµРє " (itoa (length (car r)))))
              (if (null (car r))
-               (mark:out "[INFO] Мало осей — увеличьте *mark:fill-tol*."))
-             ;; Ред. 48.31 (TZ п.40): оси из тех же отрезков — секции
-             ;; и Т-членения линейного каркаса считаются единым
-             ;; механизмом sec-columns / sec-geo-one, как в смешанном
-             ;; пути. Без импостов все вертикали — границы, секция
-             ;; равна своей ширине; вставки не меняются (тот же
-             ;; конвейер ячеек mark:fill-segs->cells).
+               (mark:out "[INFO] РњР°Р»Рѕ РѕСЃРµР№ вЂ” СѓРІРµР»РёС‡СЊС‚Рµ *mark:fill-tol*."))
+             ;; Р РµРґ. 48.31 (TZ Рї.40): РѕСЃРё РёР· С‚РµС… Р¶Рµ РѕС‚СЂРµР·РєРѕРІ вЂ” СЃРµРєС†РёРё
+             ;; Рё Рў-С‡Р»РµРЅРµРЅРёСЏ Р»РёРЅРµР№РЅРѕРіРѕ РєР°СЂРєР°СЃР° СЃС‡РёС‚Р°СЋС‚СЃСЏ РµРґРёРЅС‹Рј
+             ;; РјРµС…Р°РЅРёР·РјРѕРј sec-columns / sec-geo-one, РєР°Рє РІ СЃРјРµС€Р°РЅРЅРѕРј
+             ;; РїСѓС‚Рё. Р‘РµР· РёРјРїРѕСЃС‚РѕРІ РІСЃРµ РІРµСЂС‚РёРєР°Р»Рё вЂ” РіСЂР°РЅРёС†С‹, СЃРµРєС†РёСЏ
+             ;; СЂР°РІРЅР° СЃРІРѕРµР№ С€РёСЂРёРЅРµ; РІСЃС‚Р°РІРєРё РЅРµ РјРµРЅСЏСЋС‚СЃСЏ (С‚РѕС‚ Р¶Рµ
+             ;; РєРѕРЅРІРµР№РµСЂ СЏС‡РµРµРє mark:fill-segs->cells).
              (setq boxes (car r)
                    items (mark:fill-seg-items segs)
                    vs    (car items)
                    hs    (cadr items))
              (mark:out
-               (strcat "[INFO] Осей: вертикальных " (itoa (length vs))
-                       ", горизонтальных " (itoa (length hs)) ".")))))
-        ;; Блочный и смешанный каркас: единый расчёт осей — ячейка может
-        ;; быть собрана из блоков и линий (Ред. 47.7); оси нужны и для
-        ;; секций/ярусов (Ред. 48.0).
+               (strcat "[INFO] РћСЃРµР№: РІРµСЂС‚РёРєР°Р»СЊРЅС‹С… " (itoa (length vs))
+                       ", РіРѕСЂРёР·РѕРЅС‚Р°Р»СЊРЅС‹С… " (itoa (length hs)) ".")))))
+        ;; Р‘Р»РѕС‡РЅС‹Р№ Рё СЃРјРµС€Р°РЅРЅС‹Р№ РєР°СЂРєР°СЃ: РµРґРёРЅС‹Р№ СЂР°СЃС‡С‘С‚ РѕСЃРµР№ вЂ” СЏС‡РµР№РєР° РјРѕР¶РµС‚
+        ;; Р±С‹С‚СЊ СЃРѕР±СЂР°РЅР° РёР· Р±Р»РѕРєРѕРІ Рё Р»РёРЅРёР№ (Р РµРґ. 47.7); РѕСЃРё РЅСѓР¶РЅС‹ Рё РґР»СЏ
+        ;; СЃРµРєС†РёР№/СЏСЂСѓСЃРѕРІ (Р РµРґ. 48.0).
         (t
          (if segs
-           (mark:out "[INFO] Смешанный каркас: блоки и линии, единый расчёт осей.")
-           (mark:out "[INFO] Блочный каркас — расчёт как в 3-Сетка-динамика."))
+           (mark:out "[INFO] РЎРјРµС€Р°РЅРЅС‹Р№ РєР°СЂРєР°СЃ: Р±Р»РѕРєРё Рё Р»РёРЅРёРё, РµРґРёРЅС‹Р№ СЂР°СЃС‡С‘С‚ РѕСЃРµР№.")
+           (mark:out "[INFO] Р‘Р»РѕС‡РЅС‹Р№ РєР°СЂРєР°СЃ вЂ” СЂР°СЃС‡С‘С‚ РєР°Рє РІ 3-РЎРµС‚РєР°-РґРёРЅР°РјРёРєР°."))
          (setq axes  (mark:fill-owned-axes blocks)
                vs    (car axes)
                hs    (cadr axes)
@@ -4436,42 +4443,42 @@
                vs    (append vs (car items))
                hs    (append hs (cadr items)))
          (mark:out
-           (strcat "[INFO] Осей: вертикальных " (itoa (length vs))
-                   ", горизонтальных " (itoa (length hs)) "."))
+           (strcat "[INFO] РћСЃРµР№: РІРµСЂС‚РёРєР°Р»СЊРЅС‹С… " (itoa (length vs))
+                   ", РіРѕСЂРёР·РѕРЅС‚Р°Р»СЊРЅС‹С… " (itoa (length hs)) "."))
          (setq boxes (mark:fill-items->cells vs hs))))
-      ;; Секции/ярусы (Ред. 48.0): гео ячейки = (ширина секции,
-      ;; высота яруса). Границы секции — соседние неимпостные колонки,
-      ;; ярус — горизонтали, охватывающие секцию. Линейный каркас
-      ;; (Т-объединение) — собственная секция, как раньше.
+      ;; РЎРµРєС†РёРё/СЏСЂСѓСЃС‹ (Р РµРґ. 48.0): РіРµРѕ СЏС‡РµР№РєРё = (С€РёСЂРёРЅР° СЃРµРєС†РёРё,
+      ;; РІС‹СЃРѕС‚Р° СЏСЂСѓСЃР°). Р“СЂР°РЅРёС†С‹ СЃРµРєС†РёРё вЂ” СЃРѕСЃРµРґРЅРёРµ РЅРµРёРјРїРѕСЃС‚РЅС‹Рµ РєРѕР»РѕРЅРєРё,
+      ;; СЏСЂСѓСЃ вЂ” РіРѕСЂРёР·РѕРЅС‚Р°Р»Рё, РѕС…РІР°С‚С‹РІР°СЋС‰РёРµ СЃРµРєС†РёСЋ. Р›РёРЅРµР№РЅС‹Р№ РєР°СЂРєР°СЃ
+      ;; (Рў-РѕР±СЉРµРґРёРЅРµРЅРёРµ) вЂ” СЃРѕР±СЃС‚РІРµРЅРЅР°СЏ СЃРµРєС†РёСЏ, РєР°Рє СЂР°РЅСЊС€Рµ.
       (setq vs2 (if (and vs hs) (mark:sec-columns vs hs) nil))
       (setq out nil)
       (foreach bb boxes
         (setq out (cons (append bb (mark:sec-geo-one bb vs2 hs)) out)))
       (setq boxes (reverse out))
-      ;; Ред. 48.8 (З-1): высоты всех ячеек каркаса (включая проёмные) —
-      ;; источник ярусной шкалы: буквы не зависят от наличия заполнений.
+      ;; Р РµРґ. 48.8 (Р—-1): РІС‹СЃРѕС‚С‹ РІСЃРµС… СЏС‡РµРµРє РєР°СЂРєР°СЃР° (РІРєР»СЋС‡Р°СЏ РїСЂРѕС‘РјРЅС‹Рµ) вЂ”
+      ;; РёСЃС‚РѕС‡РЅРёРє СЏСЂСѓСЃРЅРѕР№ С€РєР°Р»С‹: Р±СѓРєРІС‹ РЅРµ Р·Р°РІРёСЃСЏС‚ РѕС‚ РЅР°Р»РёС‡РёСЏ Р·Р°РїРѕР»РЅРµРЅРёР№.
       (setq *mark:cell-hs* nil)
       (foreach bb boxes
         (if (numberp (nth 5 bb))
           (setq *mark:cell-hs* (cons (nth 5 bb) *mark:cell-hs*))))
-      ;; Ред. 48.4: замкнутые полилинии ячейками не стали — только лог.
+      ;; Р РµРґ. 48.4: Р·Р°РјРєРЅСѓС‚С‹Рµ РїРѕР»РёР»РёРЅРёРё СЏС‡РµР№РєР°РјРё РЅРµ СЃС‚Р°Р»Рё вЂ” С‚РѕР»СЊРєРѕ Р»РѕРі.
       (if (> n-poly 0)
         (mark:out
-          (strcat "[INFO] Замкнутых полилиний пропущено: " (itoa n-poly)
-                  " — не каркас и не ячейки.")))
-      ;; Ред. 48.6: пропущенные отрезки/дуги и полилинии — в лог.
+          (strcat "[INFO] Р—Р°РјРєРЅСѓС‚С‹С… РїРѕР»РёР»РёРЅРёР№ РїСЂРѕРїСѓС‰РµРЅРѕ: " (itoa n-poly)
+                  " вЂ” РЅРµ РєР°СЂРєР°СЃ Рё РЅРµ СЏС‡РµР№РєРё.")))
+      ;; Р РµРґ. 48.6: РїСЂРѕРїСѓС‰РµРЅРЅС‹Рµ РѕС‚СЂРµР·РєРё/РґСѓРіРё Рё РїРѕР»РёР»РёРЅРёРё вЂ” РІ Р»РѕРі.
       (if (> n-polyo 0)
         (mark:out
-          (strcat "[INFO] Незамкнутых полилиний пропущено: " (itoa n-polyo)
-                  " — не каркас режима сетки (контур — режимы 2/6/7).")))
+          (strcat "[INFO] РќРµР·Р°РјРєРЅСѓС‚С‹С… РїРѕР»РёР»РёРЅРёР№ РїСЂРѕРїСѓС‰РµРЅРѕ: " (itoa n-polyo)
+                  " вЂ” РЅРµ РєР°СЂРєР°СЃ СЂРµР¶РёРјР° СЃРµС‚РєРё (РєРѕРЅС‚СѓСЂ вЂ” СЂРµР¶РёРјС‹ 2/6/7).")))
       (if (> n-line 0)
         (mark:out
-          (strcat "[INFO] Отрезков и дуг пропущено: " (itoa n-line)
-                  " — не каркас (только мультилинии и динамика).")))
-      ;; Шкала Блок 1: длины ригелей в свету — зеркало MarkZV Ред. 3.7.
+          (strcat "[INFO] РћС‚СЂРµР·РєРѕРІ Рё РґСѓРі РїСЂРѕРїСѓС‰РµРЅРѕ: " (itoa n-line)
+                  " вЂ” РЅРµ РєР°СЂРєР°СЃ (С‚РѕР»СЊРєРѕ РјСѓР»СЊС‚РёР»РёРЅРёРё Рё РґРёРЅР°РјРёРєР°).")))
+      ;; РЁРєР°Р»Р° Р‘Р»РѕРє 1: РґР»РёРЅС‹ СЂРёРіРµР»РµР№ РІ СЃРІРµС‚Сѓ вЂ” Р·РµСЂРєР°Р»Рѕ MarkZV Р РµРґ. 3.7.
       (setq *mark:scale1* (mark:sec-scale1 msegs rblocks))
       (if *mark:sec-diag* (mark:sec-diag vs hs vs2))
-      ;; Фильтр проёмов: зона сетки, лог, пропуск ячеек с окнами/дверями.
+      ;; Р¤РёР»СЊС‚СЂ РїСЂРѕС‘РјРѕРІ: Р·РѕРЅР° СЃРµС‚РєРё, Р»РѕРі, РїСЂРѕРїСѓСЃРє СЏС‡РµРµРє СЃ РѕРєРЅР°РјРё/РґРІРµСЂСЏРјРё.
       (foreach bb (mark:fill-filter-opening-cells boxes)
         (setq r (mark:fill-add cells pts bb)
               cells (car r)
@@ -4498,7 +4505,7 @@
 
 (defun mark:fill-mode-all-point (cells pts / pt ptw win ss i e ed typ nm r segs
                                           best best-area a verts bb)
-  (setq pt (getpoint "\n6-Точка-все-типы: укажите точку внутри ячейки <Enter>: "))
+  (setq pt (getpoint "\n6-РўРѕС‡РєР°-РІСЃРµ-С‚РёРїС‹: СѓРєР°Р¶РёС‚Рµ С‚РѕС‡РєСѓ РІРЅСѓС‚СЂРё СЏС‡РµР№РєРё <Enter>: "))
   (if (null pt)
     (list cells pts 'cancel)
     (progn
@@ -4515,10 +4522,10 @@
       (if (null ss)
         (list cells pts)
         (progn
-          ;; Все типы — в один список отрезков: блоки дают текущую
-          ;; видимость (мультилиния в блоке — с полушириной), линии и
-          ;; полилинии — отрезки (у MLINE — полуширина). Смешанная
-          ;; ячейка «блок + линия» собирается из общего списка (Ред. 47.7).
+          ;; Р’СЃРµ С‚РёРїС‹ вЂ” РІ РѕРґРёРЅ СЃРїРёСЃРѕРє РѕС‚СЂРµР·РєРѕРІ: Р±Р»РѕРєРё РґР°СЋС‚ С‚РµРєСѓС‰СѓСЋ
+          ;; РІРёРґРёРјРѕСЃС‚СЊ (РјСѓР»СЊС‚РёР»РёРЅРёСЏ РІ Р±Р»РѕРєРµ вЂ” СЃ РїРѕР»СѓС€РёСЂРёРЅРѕР№), Р»РёРЅРёРё Рё
+          ;; РїРѕР»РёР»РёРЅРёРё вЂ” РѕС‚СЂРµР·РєРё (Сѓ MLINE вЂ” РїРѕР»СѓС€РёСЂРёРЅР°). РЎРјРµС€Р°РЅРЅР°СЏ
+          ;; СЏС‡РµР№РєР° В«Р±Р»РѕРє + Р»РёРЅРёСЏВ» СЃРѕР±РёСЂР°РµС‚СЃСЏ РёР· РѕР±С‰РµРіРѕ СЃРїРёСЃРєР° (Р РµРґ. 47.7).
           (setq segs nil
                 best nil
                 best-area nil
@@ -4536,8 +4543,8 @@
                  (progn
                    (setq r (mark:fill-segs-of-ins e))
                    (if r (setq segs (append r segs))))))
-              ;; Замкнутая полилиния: контур ячейки. Если точка внутри —
-              ;; это она (как в 2/7); рёбра идут в отрезки с hw 0.
+              ;; Р—Р°РјРєРЅСѓС‚Р°СЏ РїРѕР»РёР»РёРЅРёСЏ: РєРѕРЅС‚СѓСЂ СЏС‡РµР№РєРё. Р•СЃР»Рё С‚РѕС‡РєР° РІРЅСѓС‚СЂРё вЂ”
+              ;; СЌС‚Рѕ РѕРЅР° (РєР°Рє РІ 2/7); СЂС‘Р±СЂР° РёРґСѓС‚ РІ РѕС‚СЂРµР·РєРё СЃ hw 0.
               ((and (= typ "LWPOLYLINE") (mark:fill-lwpoly-closed? e))
                (setq r (vl-catch-all-apply 'mark:fill-extract-segs (list e)))
                (if (and r (not (vl-catch-all-error-p r)))
@@ -4553,50 +4560,50 @@
                (setq r (vl-catch-all-apply 'mark:fill-extract-segs (list e)))
                (if (and r (not (vl-catch-all-error-p r)))
                  (setq segs (append r segs))))
-              ;; Незамкнутая полилиния и старый POLYLINE: hw 0, без отступа.
+              ;; РќРµР·Р°РјРєРЅСѓС‚Р°СЏ РїРѕР»РёР»РёРЅРёСЏ Рё СЃС‚Р°СЂС‹Р№ POLYLINE: hw 0, Р±РµР· РѕС‚СЃС‚СѓРїР°.
               ((member typ '("LWPOLYLINE" "POLYLINE"))
                (setq r (vl-catch-all-apply 'mark:fill-extract-segs (list e)))
                (if (and r (not (vl-catch-all-error-p r)))
                  (setq segs (append (mark:fill-lines-hw0 r) segs))))))
           (mark:out
-            (strcat "[INFO] Отрезков каркаса рядом с точкой: "
+            (strcat "[INFO] РћС‚СЂРµР·РєРѕРІ РєР°СЂРєР°СЃР° СЂСЏРґРѕРј СЃ С‚РѕС‡РєРѕР№: "
                     (itoa (length segs))))
           (cond
-            ;; 1) Точка в замкнутой полилинии — контур ячейки без отступа
-            ;;    (как 2-Точка-мультилинии и 7-Полилиния).
+            ;; 1) РўРѕС‡РєР° РІ Р·Р°РјРєРЅСѓС‚РѕР№ РїРѕР»РёР»РёРЅРёРё вЂ” РєРѕРЅС‚СѓСЂ СЏС‡РµР№РєРё Р±РµР· РѕС‚СЃС‚СѓРїР°
+            ;;    (РєР°Рє 2-РўРѕС‡РєР°-РјСѓР»СЊС‚РёР»РёРЅРёРё Рё 7-РџРѕР»РёР»РёРЅРёСЏ).
             (best
              (setq bb (mark:cell-bb best))
              (if bb
                (progn
                  (mark:out
-                   "[INFO] Точка в замкнутой полилинии — контур без отступа.")
+                   "[INFO] РўРѕС‡РєР° РІ Р·Р°РјРєРЅСѓС‚РѕР№ РїРѕР»РёР»РёРЅРёРё вЂ” РєРѕРЅС‚СѓСЂ Р±РµР· РѕС‚СЃС‚СѓРїР°.")
                  (mark:fill-add cells pts bb))
                (progn
-                 (mark:out "[WARN] Габарит ячейки не взят.")
+                 (mark:out "[WARN] Р“Р°Р±Р°СЂРёС‚ СЏС‡РµР№РєРё РЅРµ РІР·СЏС‚.")
                  (list cells pts))))
             (t
-             ;; 2) Проверенная Точка-динамика: ячейка между блоками.
+             ;; 2) РџСЂРѕРІРµСЂРµРЅРЅР°СЏ РўРѕС‡РєР°-РґРёРЅР°РјРёРєР°: СЏС‡РµР№РєР° РјРµР¶РґСѓ Р±Р»РѕРєР°РјРё.
              (setq r (mark:fill-dyn-cell pt ptw cells pts))
-             ;; 3) Общий список отрезков: лучи, затем сетка и минимальная
-             ;;    ячейка под точкой (как в Точка-мультилинии).
+             ;; 3) РћР±С‰РёР№ СЃРїРёСЃРѕРє РѕС‚СЂРµР·РєРѕРІ: Р»СѓС‡Рё, Р·Р°С‚РµРј СЃРµС‚РєР° Рё РјРёРЅРёРјР°Р»СЊРЅР°СЏ
+             ;;    СЏС‡РµР№РєР° РїРѕРґ С‚РѕС‡РєРѕР№ (РєР°Рє РІ РўРѕС‡РєР°-РјСѓР»СЊС‚РёР»РёРЅРёРё).
              (if (or (null r) (null (car r)))
                (if (>= (length segs) 4)
                  (setq r (mark:fill-try-segs segs pt cells pts))))
              (if r r (list cells pts)))))))))
 
 (defun mark:fill-mode-poly (cells pts / sel e bb r)
-  (mark:out "Тыкайте в границы ячеек (замкнутые полилинии и т.п.).")
-  (mark:out "Enter — конец выбора.")
+  (mark:out "РўС‹РєР°Р№С‚Рµ РІ РіСЂР°РЅРёС†С‹ СЏС‡РµРµРє (Р·Р°РјРєРЅСѓС‚С‹Рµ РїРѕР»РёР»РёРЅРёРё Рё С‚.Рї.).")
+  (mark:out "Enter вЂ” РєРѕРЅРµС† РІС‹Р±РѕСЂР°.")
   (while
     (progn
       (setq sel
         (vl-catch-all-apply 'entsel
-          (list "\nГраница ячейки <Enter — конец>: ")))
+          (list "\nР“СЂР°РЅРёС†Р° СЏС‡РµР№РєРё <Enter вЂ” РєРѕРЅРµС†>: ")))
       (and (not (vl-catch-all-error-p sel)) sel))
     (setq e  (car sel)
           bb (mark:cell-bb e))
     (if (null bb)
-      (mark:out "[WARN] Не удалось взять габарит — пропуск.")
+      (mark:out "[WARN] РќРµ СѓРґР°Р»РѕСЃСЊ РІР·СЏС‚СЊ РіР°Р±Р°СЂРёС‚ вЂ” РїСЂРѕРїСѓСЃРє.")
       (progn
         (setq r   (mark:fill-add cells pts bb)
               cells (car r)
@@ -4604,19 +4611,19 @@
   (list cells pts))
 
 (defun mark:fill-mode-poly-one (cells pts / sel e bb r)
-  ;; Один клик = одна полилиния = сразу одна вставка (через points-loop).
+  ;; РћРґРёРЅ РєР»РёРє = РѕРґРЅР° РїРѕР»РёР»РёРЅРёСЏ = СЃСЂР°Р·Сѓ РѕРґРЅР° РІСЃС‚Р°РІРєР° (С‡РµСЂРµР· points-loop).
   (setq sel (vl-catch-all-apply 'entsel
-              (list "\nГраница ячейки (полилиния) <Enter — конец>: ")))
+              (list "\nР“СЂР°РЅРёС†Р° СЏС‡РµР№РєРё (РїРѕР»РёР»РёРЅРёСЏ) <Enter вЂ” РєРѕРЅРµС†>: ")))
   (if (or (vl-catch-all-error-p sel) (null sel))
     (progn
-      (mark:out "[INFO] Конец режима «7-Полилиния».")
+      (mark:out "[INFO] РљРѕРЅРµС† СЂРµР¶РёРјР° В«7-РџРѕР»РёР»РёРЅРёСЏВ».")
       (list nil nil 'cancel))
     (progn
       (setq e  (car sel)
             bb (mark:cell-bb e))
       (if (null bb)
         (progn
-          (mark:out "[WARN] Не удалось взять габарит — пропуск.")
+          (mark:out "[WARN] РќРµ СѓРґР°Р»РѕСЃСЊ РІР·СЏС‚СЊ РіР°Р±Р°СЂРёС‚ вЂ” РїСЂРѕРїСѓСЃРє.")
           (list cells pts))
         (progn
           (setq r     (mark:fill-add cells pts bb)
@@ -4624,10 +4631,10 @@
                 pts   (cadr r))
           (list cells pts))))))
 
-;;; ---- РЕЖИМ 2: точка внутри --------------------------------------------
+;;; ---- Р Р•Р–РРњ 2: С‚РѕС‡РєР° РІРЅСѓС‚СЂРё --------------------------------------------
 
 (defun mark:fill-ss-near (pt win / ss filter)
-  ;; 1) окно + фильтр типов
+  ;; 1) РѕРєРЅРѕ + С„РёР»СЊС‚СЂ С‚РёРїРѕРІ
   (setq filter (list (cons 0 "LINE,LWPOLYLINE,POLYLINE,MLINE,ARC")))
   (setq ss
     (vl-catch-all-apply 'ssget
@@ -4637,7 +4644,7 @@
             filter)))
   (if (or (vl-catch-all-error-p ss) (null ss))
     (progn
-      ;; 2) окно без фильтра
+      ;; 2) РѕРєРЅРѕ Р±РµР· С„РёР»СЊС‚СЂР°
       (setq ss
         (vl-catch-all-apply 'ssget
           (list "C"
@@ -4645,8 +4652,8 @@
                 (list (+ (car pt) win) (+ (cadr pt) win)))))
       (if (or (vl-catch-all-error-p ss) (null ss))
         (progn
-          (mark:out "[INFO] Окно пустое — берём все линии чертежа (X)…")
-          ;; 3) все нужные типы в чертеже (как штриховка ищет границы)
+          (mark:out "[INFO] РћРєРЅРѕ РїСѓСЃС‚РѕРµ вЂ” Р±РµСЂС‘Рј РІСЃРµ Р»РёРЅРёРё С‡РµСЂС‚РµР¶Р° (X)вЂ¦")
+          ;; 3) РІСЃРµ РЅСѓР¶РЅС‹Рµ С‚РёРїС‹ РІ С‡РµСЂС‚РµР¶Рµ (РєР°Рє С€С‚СЂРёС…РѕРІРєР° РёС‰РµС‚ РіСЂР°РЅРёС†С‹)
           (setq ss
             (vl-catch-all-apply 'ssget (list "X" filter)))
           (if (or (vl-catch-all-error-p ss) (null ss))
@@ -4658,7 +4665,7 @@
 (defun mark:fill-segs-near (ss pt win / i e r g typ mid d dx dy lim
                                msegs osegs mnear onear
                                mcnt ocnt base near)
-  ;; MLINE-предпочтение: если есть MLINE-сегменты — сетка только по ним
+  ;; MLINE-РїСЂРµРґРїРѕС‡С‚РµРЅРёРµ: РµСЃР»Рё РµСЃС‚СЊ MLINE-СЃРµРіРјРµРЅС‚С‹ вЂ” СЃРµС‚РєР° С‚РѕР»СЊРєРѕ РїРѕ РЅРёРј
   (setq msegs nil
         osegs nil
         mnear nil
@@ -4701,9 +4708,9 @@
       (setq base (append msegs osegs)
             near (append mnear onear))))
   (mark:out
-    (strcat "[INFO] Отрезков MLINE: " (itoa mcnt)
-            "  прочих: " (itoa ocnt)
-            "  близко: " (itoa (length near))))
+    (strcat "[INFO] РћС‚СЂРµР·РєРѕРІ MLINE: " (itoa mcnt)
+            "  РїСЂРѕС‡РёС…: " (itoa ocnt)
+            "  Р±Р»РёР·РєРѕ: " (itoa (length near))))
   (if (and near (>= (length near) 4))
     near
     base))
@@ -4726,43 +4733,43 @@
                25.0))
     (setq is-h (<= (- y1 y0) 10.0)
           is-v (<= (- x1 x0) 10.0))
-    ;; Горизонтальный отрезок над или под точкой, перекрывающий X точки
+    ;; Р“РѕСЂРёР·РѕРЅС‚Р°Р»СЊРЅС‹Р№ РѕС‚СЂРµР·РѕРє РЅР°Рґ РёР»Рё РїРѕРґ С‚РѕС‡РєРѕР№, РїРµСЂРµРєСЂС‹РІР°СЋС‰РёР№ X С‚РѕС‡РєРё
     (if (and is-h
              (<= (- x0 20.0) px)
              (>= (+ x1 20.0) px))
       (progn
         (setq sy (/ (+ y0 y1) 2.0))
         (if (<= sy py)
-          ;; Нижняя мультилиния -> верхняя полка внутреннего контура: sy + hw
+          ;; РќРёР¶РЅСЏСЏ РјСѓР»СЊС‚РёР»РёРЅРёСЏ -> РІРµСЂС…РЅСЏСЏ РїРѕР»РєР° РІРЅСѓС‚СЂРµРЅРЅРµРіРѕ РєРѕРЅС‚СѓСЂР°: sy + hw
           (if (or (null bottom) (> (+ sy hw) bottom))
             (setq bottom (+ sy hw)))
-          ;; Верхняя мультилиния -> нижняя полка внутреннего контура: sy - hw
+          ;; Р’РµСЂС…РЅСЏСЏ РјСѓР»СЊС‚РёР»РёРЅРёСЏ -> РЅРёР¶РЅСЏСЏ РїРѕР»РєР° РІРЅСѓС‚СЂРµРЅРЅРµРіРѕ РєРѕРЅС‚СѓСЂР°: sy - hw
           (if (or (null top) (< (- sy hw) top))
             (setq top (- sy hw))))))
-    ;; Вертикальный отрезок слева или справа от точки, перекрывающий Y точки
+    ;; Р’РµСЂС‚РёРєР°Р»СЊРЅС‹Р№ РѕС‚СЂРµР·РѕРє СЃР»РµРІР° РёР»Рё СЃРїСЂР°РІР° РѕС‚ С‚РѕС‡РєРё, РїРµСЂРµРєСЂС‹РІР°СЋС‰РёР№ Y С‚РѕС‡РєРё
     (if (and is-v
              (<= (- y0 20.0) py)
              (>= (+ y1 20.0) py))
       (progn
         (setq sx (/ (+ x0 x1) 2.0))
         (if (<= sx px)
-          ;; Левая мультилиния -> правая полка внутреннего контура: sx + hw
+          ;; Р›РµРІР°СЏ РјСѓР»СЊС‚РёР»РёРЅРёСЏ -> РїСЂР°РІР°СЏ РїРѕР»РєР° РІРЅСѓС‚СЂРµРЅРЅРµРіРѕ РєРѕРЅС‚СѓСЂР°: sx + hw
           (if (or (null left) (> (+ sx hw) left))
             (setq left (+ sx hw)))
-          ;; Правая мультилиния -> левая полка внутреннего контура: sx - hw
+          ;; РџСЂР°РІР°СЏ РјСѓР»СЊС‚РёР»РёРЅРёСЏ -> Р»РµРІР°СЏ РїРѕР»РєР° РІРЅСѓС‚СЂРµРЅРЅРµРіРѕ РєРѕРЅС‚СѓСЂР°: sx - hw
           (if (or (null right) (< (- sx hw) right))
             (setq right (- sx hw)))))))
   (if (and left right bottom top
            (> (- right left) 50.0)
            (> (- top bottom) 50.0))
-    ;; Координаты не округляем: база вставки — точный левый нижний угол.
+    ;; РљРѕРѕСЂРґРёРЅР°С‚С‹ РЅРµ РѕРєСЂСѓРіР»СЏРµРј: Р±Р°Р·Р° РІСЃС‚Р°РІРєРё вЂ” С‚РѕС‡РЅС‹Р№ Р»РµРІС‹Р№ РЅРёР¶РЅРёР№ СѓРіРѕР».
     (list left bottom right top)
     nil))
 
 
-;;; ---- каркас из блока под точкой (динамический блок тоже) ------------
-;; ssget не видит линии внутри INSERT. Сетка по выбранным MLINE/LINE не трогается.
-;; Матрица (a b c d e f): x' = a*x + b*y + c, y' = d*x + e*y + f.
+;;; ---- РєР°СЂРєР°СЃ РёР· Р±Р»РѕРєР° РїРѕРґ С‚РѕС‡РєРѕР№ (РґРёРЅР°РјРёС‡РµСЃРєРёР№ Р±Р»РѕРє С‚РѕР¶Рµ) ------------
+;; ssget РЅРµ РІРёРґРёС‚ Р»РёРЅРёРё РІРЅСѓС‚СЂРё INSERT. РЎРµС‚РєР° РїРѕ РІС‹Р±СЂР°РЅРЅС‹Рј MLINE/LINE РЅРµ С‚СЂРѕРіР°РµС‚СЃСЏ.
+;; РњР°С‚СЂРёС†Р° (a b c d e f): x' = a*x + b*y + c, y' = d*x + e*y + f.
 
 (defun mark:fill-mat-mul (p c / pa pb pc pd pe pf ca cb cc cd ce cf)
   (setq pa (nth 0 p) pb (nth 1 p) pc (nth 2 p)
@@ -4856,8 +4863,8 @@
     (mark:fill-verts-to-segs verts closed)
     nil))
 
-;; Отрезки в системе блока. LINE/ARC читаем сами: extract-segs для LINE
-;; берёт cadr после cdr и для сетки чертежа его не меняем.
+;; РћС‚СЂРµР·РєРё РІ СЃРёСЃС‚РµРјРµ Р±Р»РѕРєР°. LINE/ARC С‡РёС‚Р°РµРј СЃР°РјРё: extract-segs РґР»СЏ LINE
+;; Р±РµСЂС‘С‚ cadr РїРѕСЃР»Рµ cdr Рё РґР»СЏ СЃРµС‚РєРё С‡РµСЂС‚РµР¶Р° РµРіРѕ РЅРµ РјРµРЅСЏРµРј.
 (defun mark:fill-local-segs (e typ ed / p q)
   (cond
     ((= typ "LINE")
@@ -5069,12 +5076,12 @@
             out piece)
       (setq out (strcat out " " piece))))
   (mark:out
-    (strcat "[INFO] Блоков каркаса: " (itoa (length hits))
+    (strcat "[INFO] Р‘Р»РѕРєРѕРІ РєР°СЂРєР°СЃР°: " (itoa (length hits))
             (if out (strcat " (" out ")") ""))))
 
 (defun mark:fill-near-inserts (pt win / ss i e nm d hits)
   (mark:out
-    (strcat "[INFO] Ищу вставки в пределах " (rtos win 2 0) " от точки…"))
+    (strcat "[INFO] РС‰Сѓ РІСЃС‚Р°РІРєРё РІ РїСЂРµРґРµР»Р°С… " (rtos win 2 0) " РѕС‚ С‚РѕС‡РєРёвЂ¦"))
   (setq ss (vl-catch-all-apply 'ssget
              (list "X" (list (cons 0 "INSERT"))))
         hits nil)
@@ -5112,7 +5119,7 @@
   segs)
 
 (defun mark:fill-pick-frame (/ ss i e nm hits n-open)
-  (mark:out "[INFO] Выберите стойки и ригели рамкой. Enter — пропуск.")
+  (mark:out "[INFO] Р’С‹Р±РµСЂРёС‚Рµ СЃС‚РѕР№РєРё Рё СЂРёРіРµР»Рё СЂР°РјРєРѕР№. Enter вЂ” РїСЂРѕРїСѓСЃРє.")
   (setq ss (vl-catch-all-apply 'ssget
              (list (list (cons 0 "INSERT")))))
   (setq hits nil
@@ -5126,22 +5133,22 @@
               nm (mark:fill-eff-name e))
         (cond
           ((mark:fill-skip-block? nm) nil)
-          ;; Окно/дверь — заполнение, не каркас: линии рамы заходят
-          ;; в световой проём (нахлёст) и занижают ячейку. Каркас —
-          ;; только стойки, ригели и направляющие.
+          ;; РћРєРЅРѕ/РґРІРµСЂСЊ вЂ” Р·Р°РїРѕР»РЅРµРЅРёРµ, РЅРµ РєР°СЂРєР°СЃ: Р»РёРЅРёРё СЂР°РјС‹ Р·Р°С…РѕРґСЏС‚
+          ;; РІ СЃРІРµС‚РѕРІРѕР№ РїСЂРѕС‘Рј (РЅР°С…Р»С‘СЃС‚) Рё Р·Р°РЅРёР¶Р°СЋС‚ СЏС‡РµР№РєСѓ. РљР°СЂРєР°СЃ вЂ”
+          ;; С‚РѕР»СЊРєРѕ СЃС‚РѕР№РєРё, СЂРёРіРµР»Рё Рё РЅР°РїСЂР°РІР»СЏСЋС‰РёРµ.
           ((mark:fill-opening-block? nm)
            (setq n-open (1+ n-open)))
           (t (setq hits (cons (list 0.0 e) hits)))))))
   (if (> n-open 0)
     (mark:out
-      (strcat "[INFO] Блоков проёма в выборе пропущено: " (itoa n-open)
-              " — окно/дверь не каркас.")))
+      (strcat "[INFO] Р‘Р»РѕРєРѕРІ РїСЂРѕС‘РјР° РІ РІС‹Р±РѕСЂРµ РїСЂРѕРїСѓС‰РµРЅРѕ: " (itoa n-open)
+              " вЂ” РѕРєРЅРѕ/РґРІРµСЂСЊ РЅРµ РєР°СЂРєР°СЃ.")))
   (if hits
     (mark:fill-hit-report hits))
   hits)
 
 (defun mark:fill-insert-hits (ptu ptw / ss hits win)
-  ;; Пустая ячейка не лежит внутри габарита стойки. Берём все вставки рядом.
+  ;; РџСѓСЃС‚Р°СЏ СЏС‡РµР№РєР° РЅРµ Р»РµР¶РёС‚ РІРЅСѓС‚СЂРё РіР°Р±Р°СЂРёС‚Р° СЃС‚РѕР№РєРё. Р‘РµСЂС‘Рј РІСЃРµ РІСЃС‚Р°РІРєРё СЂСЏРґРѕРј.
   (setq win (if (and (numberp *mark:fill-window*) (> *mark:fill-window* 0.0))
               *mark:fill-window*
               5000.0)
@@ -5184,8 +5191,8 @@
             mat  (mark:fill-mat-of ed)
             segs (mark:fill-def-segs nm mat 0))
       (mark:out
-        (strcat "[INFO] Блок под точкой: «" (mark:fill-eff-name e)
-                "», отрезков " (itoa (length segs))))
+        (strcat "[INFO] Р‘Р»РѕРє РїРѕРґ С‚РѕС‡РєРѕР№: В«" (mark:fill-eff-name e)
+                "В», РѕС‚СЂРµР·РєРѕРІ " (itoa (length segs))))
       segs)))
 
 (defun mark:fill-seg-hw (s)
@@ -5195,7 +5202,7 @@
 
 (defun mark:fill-box-closed (segs box / x0 y0 x1 y1 tol s xa ya xb yb hw sx sy
                                   okL okR okB okT)
-  ;; Четыре стороны должны доходить до углов. Иначе это не ячейка.
+  ;; Р§РµС‚С‹СЂРµ СЃС‚РѕСЂРѕРЅС‹ РґРѕР»Р¶РЅС‹ РґРѕС…РѕРґРёС‚СЊ РґРѕ СѓРіР»РѕРІ. РРЅР°С‡Рµ СЌС‚Рѕ РЅРµ СЏС‡РµР№РєР°.
   (setq x0 (nth 0 box)
         y0 (nth 1 box)
         x1 (nth 2 box)
@@ -5231,32 +5238,32 @@
   (setq bb (mark:fill-cell-by-rays segs pt))
   (cond
     ((and bb (mark:fill-box-closed segs bb))
-     (mark:out "[INFO] Внутренний контур ячейки найден лучами.")
+     (mark:out "[INFO] Р’РЅСѓС‚СЂРµРЅРЅРёР№ РєРѕРЅС‚СѓСЂ СЏС‡РµР№РєРё РЅР°Р№РґРµРЅ Р»СѓС‡Р°РјРё.")
      (mark:fill-add cells pts bb))
     (bb
-     (mark:out "[INFO] Лучи нашли незамкнутый контур — заполнение не ставлю.")
+     (mark:out "[INFO] Р›СѓС‡Рё РЅР°С€Р»Рё РЅРµР·Р°РјРєРЅСѓС‚С‹Р№ РєРѕРЅС‚СѓСЂ вЂ” Р·Р°РїРѕР»РЅРµРЅРёРµ РЅРµ СЃС‚Р°РІР»СЋ.")
      nil)
     (t
      (setq r  (mark:fill-segs->cells segs)
            bb (mark:fill-smallest-cell (car r) pt))
      (mark:out
-       (strcat "[INFO] Сетка блока: осей X " (itoa (cadr r))
+       (strcat "[INFO] РЎРµС‚РєР° Р±Р»РѕРєР°: РѕСЃРµР№ X " (itoa (cadr r))
                " Y " (itoa (caddr r))
-               "  ячеек " (itoa (length (car r)))))
+               "  СЏС‡РµРµРє " (itoa (length (car r)))))
      (cond
        ((and bb (mark:fill-box-closed segs bb))
         (mark:fill-add cells pts bb))
        (bb
-        (mark:out "[INFO] Ячейка сетки не замкнута — пропуск.")
+        (mark:out "[INFO] РЇС‡РµР№РєР° СЃРµС‚РєРё РЅРµ Р·Р°РјРєРЅСѓС‚Р° вЂ” РїСЂРѕРїСѓСЃРє.")
         nil)
        (t nil)))))
 
 (defun mark:fill-mode-point (cells pts / pt ss i e verts bb
                                  best best-area a r segs win)
-  (setq pt (getpoint "\nТочка-мультилинии внутри ячейки <Enter — конец>: "))
+  (setq pt (getpoint "\nРўРѕС‡РєР°-РјСѓР»СЊС‚РёР»РёРЅРёРё РІРЅСѓС‚СЂРё СЏС‡РµР№РєРё <Enter вЂ” РєРѕРЅРµС†>: "))
   (if (null pt)
     (progn
-      (mark:out "[INFO] Конец режима «Точка-мультилинии».")
+      (mark:out "[INFO] РљРѕРЅРµС† СЂРµР¶РёРјР° В«РўРѕС‡РєР°-РјСѓР»СЊС‚РёР»РёРЅРёРёВ».")
       (list nil nil 'cancel))
     (progn
       (setq ss (vl-catch-all-apply 'ssget
@@ -5288,10 +5295,10 @@
                     pts   (cadr r))
               (list cells pts))
             (progn
-              (mark:out "[WARN] Габарит ячейки не взят.")
+              (mark:out "[WARN] Р“Р°Р±Р°СЂРёС‚ СЏС‡РµР№РєРё РЅРµ РІР·СЏС‚.")
               (list cells pts))))
         (progn
-          (mark:out "[INFO] Замкнутой полилинии нет — ищем по сетке линий…")
+          (mark:out "[INFO] Р—Р°РјРєРЅСѓС‚РѕР№ РїРѕР»РёР»РёРЅРёРё РЅРµС‚ вЂ” РёС‰РµРј РїРѕ СЃРµС‚РєРµ Р»РёРЅРёР№вЂ¦")
           (setq win (if (and (numberp *mark:fill-window*)
                              (> *mark:fill-window* 0.0))
                       *mark:fill-window*
@@ -5299,39 +5306,39 @@
           (setq ss (mark:fill-ss-near pt win))
           (if (null ss)
             (progn
-              (mark:out "[INFO] Линий не найдено (окно и X-выбор пусты).")
+              (mark:out "[INFO] Р›РёРЅРёР№ РЅРµ РЅР°Р№РґРµРЅРѕ (РѕРєРЅРѕ Рё X-РІС‹Р±РѕСЂ РїСѓСЃС‚С‹).")
               (list cells pts))
             (progn
               (mark:fill-type-stat ss)
               (setq segs (mark:fill-segs-near ss pt win))
               (if (null segs)
                 (progn
-                  (mark:out "[WARN] Отрезки не извлечены — см. типы выше.")
+                  (mark:out "[WARN] РћС‚СЂРµР·РєРё РЅРµ РёР·РІР»РµС‡РµРЅС‹ вЂ” СЃРј. С‚РёРїС‹ РІС‹С€Рµ.")
                   (list cells pts))
                 (progn
-                  ;; Сначала ищем непосредственный локальный внутренний контур лучами вокруг точки
+                  ;; РЎРЅР°С‡Р°Р»Р° РёС‰РµРј РЅРµРїРѕСЃСЂРµРґСЃС‚РІРµРЅРЅС‹Р№ Р»РѕРєР°Р»СЊРЅС‹Р№ РІРЅСѓС‚СЂРµРЅРЅРёР№ РєРѕРЅС‚СѓСЂ Р»СѓС‡Р°РјРё РІРѕРєСЂСѓРі С‚РѕС‡РєРё
                   (setq bb (mark:fill-cell-by-rays segs pt))
                   (if bb
                     (progn
-                      (mark:out "[INFO] Внутренний контур ячейки найден лучами.")
+                      (mark:out "[INFO] Р’РЅСѓС‚СЂРµРЅРЅРёР№ РєРѕРЅС‚СѓСЂ СЏС‡РµР№РєРё РЅР°Р№РґРµРЅ Р»СѓС‡Р°РјРё.")
                       (setq r    (mark:fill-add cells pts bb)
                             cells (car r)
                             pts   (cadr r))
                       (list cells pts))
                     (progn
-                      ;; Иначе расчет по общей сетке
+                      ;; РРЅР°С‡Рµ СЂР°СЃС‡РµС‚ РїРѕ РѕР±С‰РµР№ СЃРµС‚РєРµ
                       (setq r  (mark:fill-segs->cells segs)
                             bb (mark:fill-smallest-cell (car r) pt))
                       (mark:out
-                        (strcat "[INFO] Сетка: осей X " (itoa (cadr r))
+                        (strcat "[INFO] РЎРµС‚РєР°: РѕСЃРµР№ X " (itoa (cadr r))
                                 " Y " (itoa (caddr r))
-                                "  ячеек " (itoa (length (car r)))))
+                                "  СЏС‡РµРµРє " (itoa (length (car r)))))
                       (if (null bb)
                         (progn
-                          (mark:out "[INFO] Ячейка под точкой не найдена.")
+                          (mark:out "[INFO] РЇС‡РµР№РєР° РїРѕРґ С‚РѕС‡РєРѕР№ РЅРµ РЅР°Р№РґРµРЅР°.")
                           (if (< (cadr r) 2)
                             (mark:out
-                              "[INFO] Мало осей — увеличьте *mark:fill-window* или *mark:fill-tol*."))
+                              "[INFO] РњР°Р»Рѕ РѕСЃРµР№ вЂ” СѓРІРµР»РёС‡СЊС‚Рµ *mark:fill-window* РёР»Рё *mark:fill-tol*."))
                           (list cells pts))
                         (progn
                           (setq r    (mark:fill-add cells pts bb)
@@ -5339,15 +5346,15 @@
                                 pts   (cadr r))
                           (list cells pts))))))))))))))
 
-;;; ---- замкнутость ячеек сетки мультилиний ----------------------------
-;; Ячейка нужна только в замкнутом контуре: стойки на обеих осях
-;; перекрывают её по высоте целиком, ригели сверху и снизу — по ширине
-;; (стыки ригелей в допуск схлопываются). Иначе заполнение прилипает к
-;; разорванному/незамкнутому участку между мультилиниями: например, к
-;; линии парапета, до которой стойки не доходят, — и после объединения
-;; Т-стыков получается одна огромная ячейка на весь разрыв.
+;;; ---- Р·Р°РјРєРЅСѓС‚РѕСЃС‚СЊ СЏС‡РµРµРє СЃРµС‚РєРё РјСѓР»СЊС‚РёР»РёРЅРёР№ ----------------------------
+;; РЇС‡РµР№РєР° РЅСѓР¶РЅР° С‚РѕР»СЊРєРѕ РІ Р·Р°РјРєРЅСѓС‚РѕРј РєРѕРЅС‚СѓСЂРµ: СЃС‚РѕР№РєРё РЅР° РѕР±РµРёС… РѕСЃСЏС…
+;; РїРµСЂРµРєСЂС‹РІР°СЋС‚ РµС‘ РїРѕ РІС‹СЃРѕС‚Рµ С†РµР»РёРєРѕРј, СЂРёРіРµР»Рё СЃРІРµСЂС…Сѓ Рё СЃРЅРёР·Сѓ вЂ” РїРѕ С€РёСЂРёРЅРµ
+;; (СЃС‚С‹РєРё СЂРёРіРµР»РµР№ РІ РґРѕРїСѓСЃРє СЃС…Р»РѕРїС‹РІР°СЋС‚СЃСЏ). РРЅР°С‡Рµ Р·Р°РїРѕР»РЅРµРЅРёРµ РїСЂРёР»РёРїР°РµС‚ Рє
+;; СЂР°Р·РѕСЂРІР°РЅРЅРѕРјСѓ/РЅРµР·Р°РјРєРЅСѓС‚РѕРјСѓ СѓС‡Р°СЃС‚РєСѓ РјРµР¶РґСѓ РјСѓР»СЊС‚РёР»РёРЅРёСЏРјРё: РЅР°РїСЂРёРјРµСЂ, Рє
+;; Р»РёРЅРёРё РїР°СЂР°РїРµС‚Р°, РґРѕ РєРѕС‚РѕСЂРѕР№ СЃС‚РѕР№РєРё РЅРµ РґРѕС…РѕРґСЏС‚, вЂ” Рё РїРѕСЃР»Рµ РѕР±СЉРµРґРёРЅРµРЅРёСЏ
+;; Рў-СЃС‚С‹РєРѕРІ РїРѕР»СѓС‡Р°РµС‚СЃСЏ РѕРґРЅР° РѕРіСЂРѕРјРЅР°СЏ СЏС‡РµР№РєР° РЅР° РІРµСЃСЊ СЂР°Р·СЂС‹РІ.
 
-;; Каркас для проверок: стойки (ось y0 y1), ригели (ось x0 x1).
+;; РљР°СЂРєР°СЃ РґР»СЏ РїСЂРѕРІРµСЂРѕРє: СЃС‚РѕР№РєРё (РѕСЃСЊ y0 y1), СЂРёРіРµР»Рё (РѕСЃСЊ x0 x1).
 (defun mark:fill-frame-vh (segs / v h s a b c d)
   (setq v nil
         h nil)
@@ -5363,7 +5370,7 @@
        (setq h (cons (list (/ (+ c d) 2.0) a b) h)))))
   (list v h))
 
-;; Есть ли на оси ax стойка, перекрывающая высоту [lo..hi] целиком.
+;; Р•СЃС‚СЊ Р»Рё РЅР° РѕСЃРё ax СЃС‚РѕР№РєР°, РїРµСЂРµРєСЂС‹РІР°СЋС‰Р°СЏ РІС‹СЃРѕС‚Сѓ [lo..hi] С†РµР»РёРєРѕРј.
 (defun mark:fill-post-covers (posts ax lo hi / it hit)
   (setq hit nil)
   (foreach it posts
@@ -5374,7 +5381,7 @@
       (setq hit t)))
   hit)
 
-;; Закрывают ли ригели оси ay просвет [lo..hi] по ширине (стыки в допуск).
+;; Р—Р°РєСЂС‹РІР°СЋС‚ Р»Рё СЂРёРіРµР»Рё РѕСЃРё ay РїСЂРѕСЃРІРµС‚ [lo..hi] РїРѕ С€РёСЂРёРЅРµ (СЃС‚С‹РєРё РІ РґРѕРїСѓСЃРє).
 (defun mark:fill-rail-covers (rails ay lo hi / spans it)
   (setq spans nil)
   (foreach it rails
@@ -5382,8 +5389,8 @@
       (setq spans (cons (list (nth 1 it) (nth 2 it)) spans))))
   (mark:fill-covers spans lo hi *mark:fill-tol*))
 
-;; Прогон ячеек сетки: шире/выше предела — разрыв между участками;
-;; без полного перекрытия сторон — незамкнутый контур, заполнение не ставим.
+;; РџСЂРѕРіРѕРЅ СЏС‡РµРµРє СЃРµС‚РєРё: С€РёСЂРµ/РІС‹С€Рµ РїСЂРµРґРµР»Р° вЂ” СЂР°Р·СЂС‹РІ РјРµР¶РґСѓ СѓС‡Р°СЃС‚РєР°РјРё;
+;; Р±РµР· РїРѕР»РЅРѕРіРѕ РїРµСЂРµРєСЂС‹С‚РёСЏ СЃС‚РѕСЂРѕРЅ вЂ” РЅРµР·Р°РјРєРЅСѓС‚С‹Р№ РєРѕРЅС‚СѓСЂ, Р·Р°РїРѕР»РЅРµРЅРёРµ РЅРµ СЃС‚Р°РІРёРј.
 (defun mark:fill-grid-valid (cells segs / vh posts rails out cell
                                     ax0 ay0 ax1 ay1 cw ch n-gap n-open)
   (setq vh     (mark:fill-frame-vh segs)
@@ -5393,7 +5400,7 @@
         n-gap  0
         n-open 0)
   (foreach cell cells
-    ;; ячейка хранит внутренний контур: ось профиля = грань +- 25 мм
+    ;; СЏС‡РµР№РєР° С…СЂР°РЅРёС‚ РІРЅСѓС‚СЂРµРЅРЅРёР№ РєРѕРЅС‚СѓСЂ: РѕСЃСЊ РїСЂРѕС„РёР»СЏ = РіСЂР°РЅСЊ +- 25 РјРј
     (setq ax0 (- (nth 0 cell) 25.0)
           ay0 (- (nth 1 cell) 25.0)
           ax1 (+ (nth 2 cell) 25.0)
@@ -5411,8 +5418,8 @@
         (setq out (cons cell out)))))
   (if (> (+ n-gap n-open) 0)
     (mark:out
-      (strcat "[INFO] Пропущено ячеек: разрыв между участками " (itoa n-gap)
-              ", незамкнутый контур " (itoa n-open) ".")))
+      (strcat "[INFO] РџСЂРѕРїСѓС‰РµРЅРѕ СЏС‡РµРµРє: СЂР°Р·СЂС‹РІ РјРµР¶РґСѓ СѓС‡Р°СЃС‚РєР°РјРё " (itoa n-gap)
+              ", РЅРµР·Р°РјРєРЅСѓС‚С‹Р№ РєРѕРЅС‚СѓСЂ " (itoa n-open) ".")))
   (reverse out))
 
 (defun mark:fill-segs->cells (segs / xs ys sx sy x0 x1 y0 y1
@@ -5430,16 +5437,16 @@
        (setq ys (cons (/ (+ (nth 1 seg) (nth 3 seg)) 2.0) ys)))))
   (setq sx (mark:fill-axes-avg xs)
         sy (mark:fill-axes-avg ys))
-  ;; Фильтр ложных нулей
+  ;; Р¤РёР»СЊС‚СЂ Р»РѕР¶РЅС‹С… РЅСѓР»РµР№
   (if (and sy (> (length sy) 1) (< (car sy) 50.0) (> (cadr sy) 1000.0))
     (setq sy (cdr sy)))
   (if (and sx (> (length sx) 1) (< (car sx) 50.0) (> (cadr sx) 1000.0))
     (setq sx (cdr sx)))
-  ;; Оси не округляем: угол вставки сетки — точная координата.
+  ;; РћСЃРё РЅРµ РѕРєСЂСѓРіР»СЏРµРј: СѓРіРѕР» РІСЃС‚Р°РІРєРё СЃРµС‚РєРё вЂ” С‚РѕС‡РЅР°СЏ РєРѕРѕСЂРґРёРЅР°С‚Р°.
   (setq nxs (length sx)
         nys (length sy)
         out nil)
-  ;; Проходим по каждому вертикальному пролету [x0 .. x1]
+  ;; РџСЂРѕС…РѕРґРёРј РїРѕ РєР°Р¶РґРѕРјСѓ РІРµСЂС‚РёРєР°Р»СЊРЅРѕРјСѓ РїСЂРѕР»РµС‚Сѓ [x0 .. x1]
   (if (and (>= nxs 2) (>= nys 2))
     (progn
       (setq ix 0)
@@ -5448,7 +5455,7 @@
               x1 (nth (1+ ix) sx)
               mx (/ (+ x0 x1) 2.0)
               col-ys nil)
-        ;; Отбираем только те горизонтальные ригели, которые физически перекрывают центр пролета mx
+        ;; РћС‚Р±РёСЂР°РµРј С‚РѕР»СЊРєРѕ С‚Рµ РіРѕСЂРёР·РѕРЅС‚Р°Р»СЊРЅС‹Рµ СЂРёРіРµР»Рё, РєРѕС‚РѕСЂС‹Рµ С„РёР·РёС‡РµСЃРєРё РїРµСЂРµРєСЂС‹РІР°СЋС‚ С†РµРЅС‚СЂ РїСЂРѕР»РµС‚Р° mx
         (foreach seg segs
           (if (eq (mark:fill-axis seg) 'h)
             (progn
@@ -5461,15 +5468,15 @@
         (setq col-sy (mark:fill-axes-avg col-ys))
         (if (and col-sy (> (length col-sy) 1) (< (car col-sy) 50.0) (> (cadr col-sy) 1000.0))
           (setq col-sy (cdr col-sy)))
-        ;; ВАЖНО: если в этом пролете нет минимум 2 собственных ригелей — это пустой межвитражный разрыв!
-        ;; Никакого фолбэка на чужие глобальные ригели!
+        ;; Р’РђР–РќРћ: РµСЃР»Рё РІ СЌС‚РѕРј РїСЂРѕР»РµС‚Рµ РЅРµС‚ РјРёРЅРёРјСѓРј 2 СЃРѕР±СЃС‚РІРµРЅРЅС‹С… СЂРёРіРµР»РµР№ вЂ” СЌС‚Рѕ РїСѓСЃС‚РѕР№ РјРµР¶РІРёС‚СЂР°Р¶РЅС‹Р№ СЂР°Р·СЂС‹РІ!
+        ;; РќРёРєР°РєРѕРіРѕ С„РѕР»Р±СЌРєР° РЅР° С‡СѓР¶РёРµ РіР»РѕР±Р°Р»СЊРЅС‹Рµ СЂРёРіРµР»Рё!
         (if (and col-sy (>= (length col-sy) 2))
           (progn
             (setq iy 0)
             (while (< iy (1- (length col-sy)))
               (setq y0 (nth iy col-sy)
                     y1 (nth (1+ iy) col-sy))
-              ;; Проверяем, что стойки x0 и x1 физически соприкасаются с ячейкой [y0 .. y1]
+              ;; РџСЂРѕРІРµСЂСЏРµРј, С‡С‚Рѕ СЃС‚РѕР№РєРё x0 Рё x1 С„РёР·РёС‡РµСЃРєРё СЃРѕРїСЂРёРєР°СЃР°СЋС‚СЃСЏ СЃ СЏС‡РµР№РєРѕР№ [y0 .. y1]
               (setq has-v0 nil
                     has-v1 nil)
               (foreach seg segs
@@ -5483,7 +5490,7 @@
                       (progn
                         (if (<= (abs (- seg-x0 x0)) *mark:fill-tol*) (setq has-v0 t))
                         (if (<= (abs (- seg-x0 x1)) *mark:fill-tol*) (setq has-v1 t)))))))
-              ;; Создаем ячейку с отступом полуширины профиля 25 мм
+              ;; РЎРѕР·РґР°РµРј СЏС‡РµР№РєСѓ СЃ РѕС‚СЃС‚СѓРїРѕРј РїРѕР»СѓС€РёСЂРёРЅС‹ РїСЂРѕС„РёР»СЏ 25 РјРј
               (if (and has-v0 has-v1
                        (> (- x1 x0) 70.0)
                        (> (- y1 y0) 70.0))
@@ -5514,14 +5521,14 @@
             y1a (nth 3 a))
       (setq rest nil)
       (foreach b cand
-        ;; Проверяем, лежат ли ячейки на одном высотном уровне
+        ;; РџСЂРѕРІРµСЂСЏРµРј, Р»РµР¶Р°С‚ Р»Рё СЏС‡РµР№РєРё РЅР° РѕРґРЅРѕРј РІС‹СЃРѕС‚РЅРѕРј СѓСЂРѕРІРЅРµ
         (if (and (null merged)
                  (<= (abs (- y0a (nth 1 b))) 5.0)
                  (<= (abs (- y1a (nth 3 b))) 5.0))
           (progn
             (setq x0b (nth 0 b)
                   x1b (nth 2 b))
-            ;; Зазор между внутренними контурами ячеек (ширина профиля стойки ~50 мм)
+            ;; Р—Р°Р·РѕСЂ РјРµР¶РґСѓ РІРЅСѓС‚СЂРµРЅРЅРёРјРё РєРѕРЅС‚СѓСЂР°РјРё СЏС‡РµРµРє (С€РёСЂРёРЅР° РїСЂРѕС„РёР»СЏ СЃС‚РѕР№РєРё ~50 РјРј)
             (setq gap (min (abs (- x0b x1a)) (abs (- x0a x1b))))
             (if (<= gap (+ 50.0 (* 2.0 *mark:fill-tol*)))
               (progn
@@ -5530,7 +5537,7 @@
                               (/ (+ x1b x0a) 2.0))
                       my    (/ (+ y0a y1a) 2.0)
                       has-col nil)
-                ;; Проверяем, есть ли реальная стойка между этими двумя ячейками на высоте my
+                ;; РџСЂРѕРІРµСЂСЏРµРј, РµСЃС‚СЊ Р»Рё СЂРµР°Р»СЊРЅР°СЏ СЃС‚РѕР№РєР° РјРµР¶РґСѓ СЌС‚РёРјРё РґРІСѓРјСЏ СЏС‡РµР№РєР°РјРё РЅР° РІС‹СЃРѕС‚Рµ my
                 (foreach seg segs
                   (if (eq (mark:fill-axis seg) 'v)
                     (progn
@@ -5540,7 +5547,7 @@
                         (setq has-col t)))))
                 (if (not has-col)
                   (progn
-                    ;; Стойки между ячейками нет (Т-стык снизу!) — объединяем в одно широкое заполнение
+                    ;; РЎС‚РѕР№РєРё РјРµР¶РґСѓ СЏС‡РµР№РєР°РјРё РЅРµС‚ (Рў-СЃС‚С‹Рє СЃРЅРёР·Сѓ!) вЂ” РѕР±СЉРµРґРёРЅСЏРµРј РІ РѕРґРЅРѕ С€РёСЂРѕРєРѕРµ Р·Р°РїРѕР»РЅРµРЅРёРµ
                     (setq a (list (min x0a x0b) y0a (max x1a x1b) y1a)
                           merged  t
                           changed t))
@@ -5572,18 +5579,18 @@
                   best bb))))))
   best)
 
-;;; ---- РЕЖИМ 3: массив мультилиний > сетка ------------------------------
+;;; ---- Р Р•Р–РРњ 3: РјР°СЃСЃРёРІ РјСѓР»СЊС‚РёР»РёРЅРёР№ > СЃРµС‚РєР° ------------------------------
 
-;; отрезки из LINE / LWPOLYLINE > ((x0 y0 x1 y1) ...)
+;; РѕС‚СЂРµР·РєРё РёР· LINE / LWPOLYLINE > ((x0 y0 x1 y1) ...)
 (defun mark:fill-e-bb (e / obj r a b x0 y0 x1 y1)
-  ;; AABB через GetBoundingBox с отсечением аномалий (0,0)
+  ;; AABB С‡РµСЂРµР· GetBoundingBox СЃ РѕС‚СЃРµС‡РµРЅРёРµРј Р°РЅРѕРјР°Р»РёР№ (0,0)
   (setq obj (vl-catch-all-apply 'vlax-ename->vla-object (list e)))
   (if (or (vl-catch-all-error-p obj) (null obj))
     nil
     (progn
       (setq a nil
             b nil)
-      ;; vla-форма: vlax-invoke-method не гарантирует возврат по ссылке
+      ;; vla-С„РѕСЂРјР°: vlax-invoke-method РЅРµ РіР°СЂР°РЅС‚РёСЂСѓРµС‚ РІРѕР·РІСЂР°С‚ РїРѕ СЃСЃС‹Р»РєРµ
       (setq r (vl-catch-all-apply 'vla-GetBoundingBox
                  (list obj 'a 'b)))
       (if (or (vl-catch-all-error-p r) (null a) (null b))
@@ -5599,14 +5606,14 @@
                     y0 (float (cadr a))
                     x1 (float (car b))
                     y1 (float (cadr b)))
-              ;; Отсекаем артефакты: если y0 или x0 схлопнулись в 0.0 при координатах > 1000
+              ;; РћС‚СЃРµРєР°РµРј Р°СЂС‚РµС„Р°РєС‚С‹: РµСЃР»Рё y0 РёР»Рё x0 СЃС…Р»РѕРїРЅСѓР»РёСЃСЊ РІ 0.0 РїСЂРё РєРѕРѕСЂРґРёРЅР°С‚Р°С… > 1000
               (if (and (< y0 10.0) (> y1 1000.0))
                 (setq y0 y1))
               (if (and (< x0 10.0) (> x1 1000.0))
                 (setq x0 x1))
               (list x0 y0 x1 y1))))))))
 
-;;; ---- разбор вершин > отрезки -----------------------------------------
+;;; ---- СЂР°Р·Р±РѕСЂ РІРµСЂС€РёРЅ > РѕС‚СЂРµР·РєРё -----------------------------------------
 
 (defun mark:fill-verts-to-segs (verts closed / segs n i p0 p1)
   (setq segs nil
@@ -5632,13 +5639,13 @@
       (setq *mark:mline-warns* (1+ *mark:mline-warns*))
       (if (= *mark:mline-warns* 3)
         (mark:out
-          "[WARN] MLINE: далее предупреждения о вершинах не выводятся."))))
+          "[WARN] MLINE: РґР°Р»РµРµ РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёСЏ Рѕ РІРµСЂС€РёРЅР°С… РЅРµ РІС‹РІРѕРґСЏС‚СЃСЏ."))))
   nil)
 
-;; Фактическая полуширина мультилинии — из её габарита. Профили бывают не
-;; только 50 мм: жёсткие 25 мм по умолчанию занижают ячейку (стойка 40 мм
-;; даёт минус 5 мм с каждой стороны). Габарит берём в системе самого блока,
-;; матрица вставки затем масштабирует полуширину (mark:fill-segs-xform).
+;; Р¤Р°РєС‚РёС‡РµСЃРєР°СЏ РїРѕР»СѓС€РёСЂРёРЅР° РјСѓР»СЊС‚РёР»РёРЅРёРё вЂ” РёР· РµС‘ РіР°Р±Р°СЂРёС‚Р°. РџСЂРѕС„РёР»Рё Р±С‹РІР°СЋС‚ РЅРµ
+;; С‚РѕР»СЊРєРѕ 50 РјРј: Р¶С‘СЃС‚РєРёРµ 25 РјРј РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ Р·Р°РЅРёР¶Р°СЋС‚ СЏС‡РµР№РєСѓ (СЃС‚РѕР№РєР° 40 РјРј
+;; РґР°С‘С‚ РјРёРЅСѓСЃ 5 РјРј СЃ РєР°Р¶РґРѕР№ СЃС‚РѕСЂРѕРЅС‹). Р“Р°Р±Р°СЂРёС‚ Р±РµСЂС‘Рј РІ СЃРёСЃС‚РµРјРµ СЃР°РјРѕРіРѕ Р±Р»РѕРєР°,
+;; РјР°С‚СЂРёС†Р° РІСЃС‚Р°РІРєРё Р·Р°С‚РµРј РјР°СЃС€С‚Р°Р±РёСЂСѓРµС‚ РїРѕР»СѓС€РёСЂРёРЅСѓ (mark:fill-segs-xform).
 (defun mark:fill-mline-hw (e segs / bb ax w h)
   (setq bb (mark:fill-e-bb e)
         ax (if segs (mark:fill-axis (car segs)) nil))
@@ -5647,15 +5654,15 @@
       (setq w (- (nth 2 bb) (nth 0 bb))
             h (- (nth 3 bb) (nth 1 bb)))
       (cond
-        ;; прямая горизонтальная: толщина = высота габарита
+        ;; РїСЂСЏРјР°СЏ РіРѕСЂРёР·РѕРЅС‚Р°Р»СЊРЅР°СЏ: С‚РѕР»С‰РёРЅР° = РІС‹СЃРѕС‚Р° РіР°Р±Р°СЂРёС‚Р°
         ((and (eq ax 'h) (<= h (+ (* 3.0 *mark:fill-tol*) 10.0))) (/ h 2.0))
-        ;; прямая вертикальная: толщина = ширина габарита
+        ;; РїСЂСЏРјР°СЏ РІРµСЂС‚РёРєР°Р»СЊРЅР°СЏ: С‚РѕР»С‰РёРЅР° = С€РёСЂРёРЅР° РіР°Р±Р°СЂРёС‚Р°
         ((and (eq ax 'v) (<= w (+ (* 3.0 *mark:fill-tol*) 10.0))) (/ w 2.0))
-        ;; изогнутая или крупная — как раньше, без полуширины
+        ;; РёР·РѕРіРЅСѓС‚Р°СЏ РёР»Рё РєСЂСѓРїРЅР°СЏ вЂ” РєР°Рє СЂР°РЅСЊС€Рµ, Р±РµР· РїРѕР»СѓС€РёСЂРёРЅС‹
         (t nil)))
     nil))
 
-;; Отрезки мультилинии: ось из вершин, полуширина — пятым элементом.
+;; РћС‚СЂРµР·РєРё РјСѓР»СЊС‚РёР»РёРЅРёРё: РѕСЃСЊ РёР· РІРµСЂС€РёРЅ, РїРѕР»СѓС€РёСЂРёРЅР° вЂ” РїСЏС‚С‹Рј СЌР»РµРјРµРЅС‚РѕРј.
 (defun mark:fill-mline-segs-hw (e segs / hw out s)
   (setq hw  (mark:fill-mline-hw e segs)
         out nil)
@@ -5765,7 +5772,7 @@
            (progn
              (setq bb (mark:fill-e-bb e))
              (if (null bb)
-               (mark:mline-warn "нет вершин и нет габарита — пропуск.")
+               (mark:mline-warn "РЅРµС‚ РІРµСЂС€РёРЅ Рё РЅРµС‚ РіР°Р±Р°СЂРёС‚Р° вЂ” РїСЂРѕРїСѓСЃРє.")
                (progn
                  (setq x0 (nth 0 bb)
                        y0 (nth 1 bb)
@@ -5774,35 +5781,35 @@
                        w  (- x1 x0)
                        h  (- y1 y0))
                  (cond
-                   ;; Горизонтальная мультилиния (осевая по yc, полуширина h/2)
+                   ;; Р“РѕСЂРёР·РѕРЅС‚Р°Р»СЊРЅР°СЏ РјСѓР»СЊС‚РёР»РёРЅРёСЏ (РѕСЃРµРІР°СЏ РїРѕ yc, РїРѕР»СѓС€РёСЂРёРЅР° h/2)
                    ((and (>= w 10.0) (<= h (+ (* 3.0 tol) 10.0)))
                     (setq yc (/ (+ y0 y1) 2.0))
                     (setq segs (list (list x0 yc x1 yc (/ h 2.0)))))
-                   ;; Вертикальная мультилиния (осевая по xc, полуширина w/2)
+                   ;; Р’РµСЂС‚РёРєР°Р»СЊРЅР°СЏ РјСѓР»СЊС‚РёР»РёРЅРёСЏ (РѕСЃРµРІР°СЏ РїРѕ xc, РїРѕР»СѓС€РёСЂРёРЅР° w/2)
                    ((and (>= h 10.0) (<= w (+ (* 3.0 tol) 10.0)))
                     (setq xc (/ (+ x0 x1) 2.0))
                     (setq segs (list (list xc y0 xc y1 (/ w 2.0)))))
-                   ;; Крупный габарит
+                   ;; РљСЂСѓРїРЅС‹Р№ РіР°Р±Р°СЂРёС‚
                    ((and (> w 10.0) (> h 10.0))
                     (setq yc (/ (+ y0 y1) 2.0))
                     (setq segs (list (list x0 yc x1 yc 25.0))))
                    (t
                     (mark:mline-warn
-                      (strcat "габарит слишком мал ("
+                      (strcat "РіР°Р±Р°СЂРёС‚ СЃР»РёС€РєРѕРј РјР°Р» ("
                               (rtos w 2 1) "x" (rtos h 2 1) ").")))))))))
         (t nil))
       segs)))
 
-;; Русские имена типов для строки "[INFO] Типы:" (Ред. 48.12);
-;; незнакомый тип выводится как есть, латиницей.
+;; Р СѓСЃСЃРєРёРµ РёРјРµРЅР° С‚РёРїРѕРІ РґР»СЏ СЃС‚СЂРѕРєРё "[INFO] РўРёРїС‹:" (Р РµРґ. 48.12);
+;; РЅРµР·РЅР°РєРѕРјС‹Р№ С‚РёРї РІС‹РІРѕРґРёС‚СЃСЏ РєР°Рє РµСЃС‚СЊ, Р»Р°С‚РёРЅРёС†РµР№.
 (defun mark:type-ru (typ)
   (cond
-    ((member typ '("LWPOLYLINE" "POLYLINE")) "полилинии")
-    ((= typ "INSERT") "блоки")
-    ((= typ "MLINE") "мультилинии")
-    ((= typ "LINE") "отрезки")
-    ((= typ "ARC") "дуги")
-    ((= typ "CIRCLE") "окружности")
+    ((member typ '("LWPOLYLINE" "POLYLINE")) "РїРѕР»РёР»РёРЅРёРё")
+    ((= typ "INSERT") "Р±Р»РѕРєРё")
+    ((= typ "MLINE") "РјСѓР»СЊС‚РёР»РёРЅРёРё")
+    ((= typ "LINE") "РѕС‚СЂРµР·РєРё")
+    ((= typ "ARC") "РґСѓРіРё")
+    ((= typ "CIRCLE") "РѕРєСЂСѓР¶РЅРѕСЃС‚Рё")
     (t typ)))
 
 (defun mark:fill-type-stat (ss / i e ed typ acc pair out first piece)
@@ -5826,7 +5833,7 @@
         (setq first nil
               out   piece))
       (setq out (strcat out " " piece))))
-  (mark:out (strcat "[INFO] Типы: " (if out out "(пусто)")))
+  (mark:out (strcat "[INFO] РўРёРїС‹: " (if out out "(РїСѓСЃС‚Рѕ)")))
   nil)
 
 (defun mark:fill-axis (seg / dx dy adx ady ln)
@@ -5982,7 +5989,7 @@
         *mark:dyn-quiet* t
         *mark:no-expl-undo* t)
   (if (> n 0)
-    (mark:out (strcat "[INFO] Текущая видимость, блоков " (itoa n) "…")))
+    (mark:out (strcat "[INFO] РўРµРєСѓС‰Р°СЏ РІРёРґРёРјРѕСЃС‚СЊ, Р±Р»РѕРєРѕРІ " (itoa n) "вЂ¦")))
   (foreach hit hits
     (setq i (1+ i)
           ed (entget (cadr hit))
@@ -5992,7 +5999,7 @@
       (setq *mark:line-vis* (1+ *mark:line-vis*)))
     (if (and (> n 100) (= (rem i 250) 0))
       (mark:out
-        (strcat "[INFO] Читаю блоки: " (itoa i) " из " (itoa n))))
+        (strcat "[INFO] Р§РёС‚Р°СЋ Р±Р»РѕРєРё: " (itoa i) " РёР· " (itoa n))))
     (foreach s part
       (setq x0 (min (float (nth 0 s)) (float (nth 2 s)))
             y0 (min (float (nth 1 s)) (float (nth 3 s)))
@@ -6025,32 +6032,32 @@
           (and (numberp *mark:def-n*) (> *mark:def-n* 0))
           (and (numberp *mark:vis-n*) (> *mark:vis-n* 0)))
     (mark:out
-      (strcat "[INFO] Геометрия: текущая видимость "
+      (strcat "[INFO] Р“РµРѕРјРµС‚СЂРёСЏ: С‚РµРєСѓС‰Р°СЏ РІРёРґРёРјРѕСЃС‚СЊ "
               (itoa (if (numberp *mark:vis-n*) *mark:vis-n* 0))
-              ", разборка "
+              ", СЂР°Р·Р±РѕСЂРєР° "
               (itoa (if (numberp *mark:expl-n*) *mark:expl-n* 0))
               (if (and (numberp *mark:def-n*) (> *mark:def-n* 0))
-                (strcat ", мультилиния " (itoa *mark:def-n*))
+                (strcat ", РјСѓР»СЊС‚РёР»РёРЅРёСЏ " (itoa *mark:def-n*))
                 "")
               (if (and (numberp *mark:hid-n*) (> *mark:hid-n* 0))
-                (strcat ", скрыто " (itoa *mark:hid-n*))
+                (strcat ", СЃРєСЂС‹С‚Рѕ " (itoa *mark:hid-n*))
                 "")
               (if (and (numberp *mark:vis-open*) (> *mark:vis-open* 0))
-                ", фильтр пуст"
+                ", С„РёР»СЊС‚СЂ РїСѓСЃС‚"
                 ""))))
   (if (and (numberp *mark:copy-left*) (> *mark:copy-left* 0))
     (mark:out
-      (strcat "[WARN] Не удалены копии блоков: " (itoa *mark:copy-left*))))
+      (strcat "[WARN] РќРµ СѓРґР°Р»РµРЅС‹ РєРѕРїРёРё Р±Р»РѕРєРѕРІ: " (itoa *mark:copy-left*))))
   (mark:out
-    (strcat "[INFO] Отрезков каркаса: " (itoa (+ (length vs) (length hs)))
-            "  вертикальных " (itoa (length vs))
-            "  горизонтальных " (itoa (length hs))
+    (strcat "[INFO] РћС‚СЂРµР·РєРѕРІ РєР°СЂРєР°СЃР°: " (itoa (+ (length vs) (length hs)))
+            "  РІРµСЂС‚РёРєР°Р»СЊРЅС‹С… " (itoa (length vs))
+            "  РіРѕСЂРёР·РѕРЅС‚Р°Р»СЊРЅС‹С… " (itoa (length hs))
             (if (and (numberp *mark:line-vis*) (> *mark:line-vis* 0))
-              (strcat ". Видимых блоков из линий: " (itoa *mark:line-vis*)
-                      ", отступ 0")
+              (strcat ". Р’РёРґРёРјС‹С… Р±Р»РѕРєРѕРІ РёР· Р»РёРЅРёР№: " (itoa *mark:line-vis*)
+                      ", РѕС‚СЃС‚СѓРї 0")
               "")
             (if (and hwmin hwmax (numberp *mark:def-n*) (> *mark:def-n* 0))
-              (strcat "; полуширина мультилиний " (rtos hwmin 2 1)
+              (strcat "; РїРѕР»СѓС€РёСЂРёРЅР° РјСѓР»СЊС‚РёР»РёРЅРёР№ " (rtos hwmin 2 1)
                       (if (< hwmin hwmax)
                         (strcat ".." (rtos hwmax 2 1))
                         ""))
@@ -6058,10 +6065,10 @@
   (list vs hs))
 
 (defun mark:fill-seg-items (segs / vs hs s x0 y0 x1 y1 dx dy ln hw k)
-  ;; Отрезки линий -> элементы осей (ось y0 y1 hw владелец), тот же формат,
-  ;; что дают блоки в mark:fill-owned-axes. Владелец — уникальный
-  ;; отрицательный номер на отрезок: каркас из линий равноправен с
-  ;; блоками. Полуширина — из отрезка (MLINE), иначе 25 мм, как в 1/2.
+  ;; РћС‚СЂРµР·РєРё Р»РёРЅРёР№ -> СЌР»РµРјРµРЅС‚С‹ РѕСЃРµР№ (РѕСЃСЊ y0 y1 hw РІР»Р°РґРµР»РµС†), С‚РѕС‚ Р¶Рµ С„РѕСЂРјР°С‚,
+  ;; С‡С‚Рѕ РґР°СЋС‚ Р±Р»РѕРєРё РІ mark:fill-owned-axes. Р’Р»Р°РґРµР»РµС† вЂ” СѓРЅРёРєР°Р»СЊРЅС‹Р№
+  ;; РѕС‚СЂРёС†Р°С‚РµР»СЊРЅС‹Р№ РЅРѕРјРµСЂ РЅР° РѕС‚СЂРµР·РѕРє: РєР°СЂРєР°СЃ РёР· Р»РёРЅРёР№ СЂР°РІРЅРѕРїСЂР°РІРµРЅ СЃ
+  ;; Р±Р»РѕРєР°РјРё. РџРѕР»СѓС€РёСЂРёРЅР° вЂ” РёР· РѕС‚СЂРµР·РєР° (MLINE), РёРЅР°С‡Рµ 25 РјРј, РєР°Рє РІ 1/2.
   (setq vs nil
         hs nil
         k   0)
@@ -6093,8 +6100,8 @@
                                 Lcol Rcol xL xR w spanning iB nB
                                 bot top yB yT h gap boxes
                                 oL oR n-own n-open)
-  ;; Ячейка только если четыре стороны доходят до углов и
-  ;; противоположные стороны принадлежат разным владельцам.
+  ;; РЇС‡РµР№РєР° С‚РѕР»СЊРєРѕ РµСЃР»Рё С‡РµС‚С‹СЂРµ СЃС‚РѕСЂРѕРЅС‹ РґРѕС…РѕРґСЏС‚ РґРѕ СѓРіР»РѕРІ Рё
+  ;; РїСЂРѕС‚РёРІРѕРїРѕР»РѕР¶РЅС‹Рµ СЃС‚РѕСЂРѕРЅС‹ РїСЂРёРЅР°РґР»РµР¶Р°С‚ СЂР°Р·РЅС‹Рј РІР»Р°РґРµР»СЊС†Р°Рј.
   (setq *mark:h-bins* (mark:fill-index-hs hs)
         cols (mark:fill-cluster-items vs)
         gap (+ *mark:fill-tol* 25.0)
@@ -6147,7 +6154,7 @@
               (setq n-open (1+ n-open))
               (if (<= n-open 8)
                 (mark:out
-                  (strcat "  неполный контур: "
+                  (strcat "  РЅРµРїРѕР»РЅС‹Р№ РєРѕРЅС‚СѓСЂ: "
                           (mark:rjust (rtos xL 2 1) 12)
                           "," (mark:rjust (rtos yB 2 1) 12)
                           "  W=" (mark:rjust (rtos w 2 0) 5)
@@ -6156,7 +6163,7 @@
               (setq n-open (1+ n-open))
               (if (<= n-open 8)
                 (mark:out
-                  (strcat "  неполный контур: "
+                  (strcat "  РЅРµРїРѕР»РЅС‹Р№ РєРѕРЅС‚СѓСЂ: "
                           (mark:rjust (rtos xL 2 1) 12)
                           "," (mark:rjust (rtos yB 2 1) 12)
                           "  W=" (mark:rjust (rtos w 2 0) 5)
@@ -6174,23 +6181,23 @@
       (setq iR (1+ iR)))
     (setq iL (1+ iL)))
   (mark:out
-    (strcat "[INFO] Замкнутых ячеек: " (itoa (length boxes))
-            ". Отклонено кандидатов (не ячейки): один блок " (itoa n-own)
-            ", неполный контур " (itoa n-open) "."))
+    (strcat "[INFO] Р—Р°РјРєРЅСѓС‚С‹С… СЏС‡РµРµРє: " (itoa (length boxes))
+            ". РћС‚РєР»РѕРЅРµРЅРѕ РєР°РЅРґРёРґР°С‚РѕРІ (РЅРµ СЏС‡РµР№РєРё): РѕРґРёРЅ Р±Р»РѕРє " (itoa n-own)
+            ", РЅРµРїРѕР»РЅС‹Р№ РєРѕРЅС‚СѓСЂ " (itoa n-open) "."))
   (if (null boxes)
-    (mark:out "[INFO] Незамкнутый контур и камеры профиля не заполняю."))
+    (mark:out "[INFO] РќРµР·Р°РјРєРЅСѓС‚С‹Р№ РєРѕРЅС‚СѓСЂ Рё РєР°РјРµСЂС‹ РїСЂРѕС„РёР»СЏ РЅРµ Р·Р°РїРѕР»РЅСЏСЋ."))
   (reverse boxes))
 
 (defun mark:fill-closed-cells (hits / axes vs hs)
-  ;; Блоки каркаса -> замкнутые ячейки (как в 3-Сетка-динамика).
-  ;; Тело расчёта — mark:fill-items->cells, общее с 5-Сетка-все-типы.
+  ;; Р‘Р»РѕРєРё РєР°СЂРєР°СЃР° -> Р·Р°РјРєРЅСѓС‚С‹Рµ СЏС‡РµР№РєРё (РєР°Рє РІ 3-РЎРµС‚РєР°-РґРёРЅР°РјРёРєР°).
+  ;; РўРµР»Рѕ СЂР°СЃС‡С‘С‚Р° вЂ” mark:fill-items->cells, РѕР±С‰РµРµ СЃ 5-РЎРµС‚РєР°-РІСЃРµ-С‚РёРїС‹.
   (setq axes (mark:fill-owned-axes hits)
         vs (car axes)
         hs (cadr axes))
   (mark:fill-items->cells vs hs))
 
 (defun mark:fill-grid-zone (bbs / x0 y0 x1 y1)
-  ;; Общая зона сетки по всем ячейкам (xmin ymin xmax ymax).
+  ;; РћР±С‰Р°СЏ Р·РѕРЅР° СЃРµС‚РєРё РїРѕ РІСЃРµРј СЏС‡РµР№РєР°Рј (xmin ymin xmax ymax).
   (if (null bbs)
     nil
     (progn
@@ -6204,7 +6211,7 @@
       (list x0 y0 x1 y1))))
 
 (defun mark:fill-filter-opening-cells (bbs / out skipped bb)
-  ;; Ограничиваем загрузку проёмов зоной сетки — быстрее и без лишних видов.
+  ;; РћРіСЂР°РЅРёС‡РёРІР°РµРј Р·Р°РіСЂСѓР·РєСѓ РїСЂРѕС‘РјРѕРІ Р·РѕРЅРѕР№ СЃРµС‚РєРё вЂ” Р±С‹СЃС‚СЂРµРµ Рё Р±РµР· Р»РёС€РЅРёС… РІРёРґРѕРІ.
   (setq *mark:grid-zone* (mark:fill-grid-zone bbs))
   (setq out nil skipped 0)
   (foreach bb bbs
@@ -6212,16 +6219,16 @@
       (setq skipped (1+ skipped))
       (setq out (cons bb out))))
   (if (> skipped 0)
-    (mark:out (strcat "[INFO] Ячеек с окнами/дверями пропущено: "
+    (mark:out (strcat "[INFO] РЇС‡РµРµРє СЃ РѕРєРЅР°РјРё/РґРІРµСЂСЏРјРё РїСЂРѕРїСѓС‰РµРЅРѕ: "
                       (itoa skipped))))
   (reverse out))
 
 (defun mark:fill-mode-grid-dyn (cells pts / hits boxes bb r)
-  (mark:out "Сетка-динамика: выберите стойки и ригели. Только замкнутый контур.")
+  (mark:out "РЎРµС‚РєР°-РґРёРЅР°РјРёРєР°: РІС‹Р±РµСЂРёС‚Рµ СЃС‚РѕР№РєРё Рё СЂРёРіРµР»Рё. РўРѕР»СЊРєРѕ Р·Р°РјРєРЅСѓС‚С‹Р№ РєРѕРЅС‚СѓСЂ.")
   (setq hits (mark:fill-pick-frame))
   (if (null hits)
     (progn
-      (mark:out "[INFO] Выбор отменён.")
+      (mark:out "[INFO] Р’С‹Р±РѕСЂ РѕС‚РјРµРЅС‘РЅ.")
       (list cells pts))
     (progn
       (setq boxes (mark:fill-filter-opening-cells
@@ -6233,11 +6240,11 @@
       (list cells pts))))
 
 (defun mark:fill-mode-grid (cells pts / ss i e r segs total bb typ ed)
-  (mark:out "Сетка-мультилинии: выберите мультилинии. Блоки стоек не нужны.")
+  (mark:out "РЎРµС‚РєР°-РјСѓР»СЊС‚РёР»РёРЅРёРё: РІС‹Р±РµСЂРёС‚Рµ РјСѓР»СЊС‚РёР»РёРЅРёРё. Р‘Р»РѕРєРё СЃС‚РѕРµРє РЅРµ РЅСѓР¶РЅС‹.")
   (setq ss (vl-catch-all-apply 'ssget (list (list (cons 0 "MLINE,LINE,ARC")))))
   (if (or (vl-catch-all-error-p ss) (null ss))
     (progn
-      (mark:out "[INFO] Выбор отменён.")
+      (mark:out "[INFO] Р’С‹Р±РѕСЂ РѕС‚РјРµРЅС‘РЅ.")
       (list cells pts))
     (progn
       (setq i     (sslength ss)
@@ -6249,29 +6256,29 @@
               e   (ssname ss i)
               ed  (entget e)
               typ (if ed (cdr (assoc 0 ed)) nil))
-        ;; Игнорируем полилинии в режиме сетки
+        ;; РРіРЅРѕСЂРёСЂСѓРµРј РїРѕР»РёР»РёРЅРёРё РІ СЂРµР¶РёРјРµ СЃРµС‚РєРё
         (if (not (or (= typ "LWPOLYLINE") (= typ "POLYLINE")))
           (progn
             (setq r (vl-catch-all-apply 'mark:fill-extract-segs (list e)))
             (if (and (not (vl-catch-all-error-p r)) r)
               (setq segs (append segs r))))))
       (mark:out
-        (strcat "[INFO] Извлечено отрезков: " (itoa (length segs))
-                " из " (itoa total)))
+        (strcat "[INFO] РР·РІР»РµС‡РµРЅРѕ РѕС‚СЂРµР·РєРѕРІ: " (itoa (length segs))
+                " РёР· " (itoa total)))
       (if (null segs)
         (progn
-          (mark:out "[WARN] Отрезки не извлечены — см. типы выше.")
+          (mark:out "[WARN] РћС‚СЂРµР·РєРё РЅРµ РёР·РІР»РµС‡РµРЅС‹ вЂ” СЃРј. С‚РёРїС‹ РІС‹С€Рµ.")
           (list cells pts))
         (progn
           (setq r (mark:fill-segs->cells segs))
           (mark:out
-            (strcat "[INFO] Сетка: осей X " (itoa (cadr r))
+            (strcat "[INFO] РЎРµС‚РєР°: РѕСЃРµР№ X " (itoa (cadr r))
                     " Y " (itoa (caddr r))
-                    "  ячеек " (itoa (length (car r)))))
+                    "  СЏС‡РµРµРє " (itoa (length (car r)))))
           (if (null (car r))
             (progn
               (mark:out
-                "[INFO] Мало осей — увеличьте *mark:fill-tol*.")
+                "[INFO] РњР°Р»Рѕ РѕСЃРµР№ вЂ” СѓРІРµР»РёС‡СЊС‚Рµ *mark:fill-tol*.")
               (list cells pts))
             (progn
               (foreach bb (mark:fill-filter-opening-cells (car r))
@@ -6284,7 +6291,7 @@
                         w h obj lst cell t0 t1 t_ins)
   (if (null cells)
     (progn
-      (mark:out "[INFO] Нет ячеек — вставок нет.")
+      (mark:out "[INFO] РќРµС‚ СЏС‡РµРµРє вЂ” РІСЃС‚Р°РІРѕРє РЅРµС‚.")
       nil)
     (progn
       (setq doc   (mark:ax-get (vlax-get-acad-object) "ActiveDocument")
@@ -6293,7 +6300,7 @@
             lst   nil)
       (if (null space)
         (progn
-          (mark:out "[ERROR] ModelSpace недоступен.")
+          (mark:out "[ERROR] ModelSpace РЅРµРґРѕСЃС‚СѓРїРµРЅ.")
           (mark:note-error)
           nil)
         (progn
@@ -6304,7 +6311,7 @@
           (if (and doc (not *mark:batch-undo*))
             (mark:ax-invoke-ok doc "StartUndoMark" nil))
           (foreach cell cells
-            ;; Угол точный. Размер блока — кратно миллиметру.
+            ;; РЈРіРѕР» С‚РѕС‡РЅС‹Р№. Р Р°Р·РјРµСЂ Р±Р»РѕРєР° вЂ” РєСЂР°С‚РЅРѕ РјРёР»Р»РёРјРµС‚СЂСѓ.
             (setq x0 (float (nth 0 cell))
                   y0 (float (nth 1 cell))
                   x1 (float (nth 2 cell))
@@ -6322,17 +6329,17 @@
                 (if (and (not (vl-catch-all-error-p ins)) ins)
                   (progn
                     (setq lst (cons ins lst))
-                    ;; Ред. 48.0: гео ячейки для маркировки
+                    ;; Р РµРґ. 48.0: РіРµРѕ СЏС‡РµР№РєРё РґР»СЏ РјР°СЂРєРёСЂРѕРІРєРё
                     (if (and (nth 4 cell) (nth 5 cell))
                       (setq *mark:fill-geo*
                         (cons (cons ins (list (nth 4 cell) (nth 5 cell)))
                               *mark:fill-geo*)))))
                 (mark:out
-                  (strcat "  ячейка " (mark:rjust (itoa n) 3)
+                  (strcat "  СЏС‡РµР№РєР° " (mark:rjust (itoa n) 3)
                           ": " (mark:rjust (rtos x0 2 4) 12) "," (mark:rjust (rtos y0 2 4) 12)
                           "  W=" (mark:rjust (rtos w 2 0) 5)
                           "  H=" (mark:rjust (rtos h 2 0) 5)
-                          " ||| вставка " (mark:rjust (itoa n) 3)
+                          " ||| РІСЃС‚Р°РІРєР° " (mark:rjust (itoa n) 3)
                           ": W=" (mark:rjust (rtos w 2 0) 5)
                           "  H=" (mark:rjust (rtos h 2 0) 5))))))
           (setq t1 (getvar "MILLISECS")
@@ -6341,9 +6348,9 @@
             (mark:ax-invoke-ok doc "EndUndoMark" nil))
           (setq *mark:fill-undo-off* nil)
           (mark:out
-            (strcat "[INFO] Вставлено заполнений: " (itoa n)
-                    " (время вставки: " (rtos t_ins 2 2) " с, "
-                    "всего: " (rtos (/ (- (getvar "MILLISECS") t0) 1000.0) 2 2) " с)"))
+            (strcat "[INFO] Р’СЃС‚Р°РІР»РµРЅРѕ Р·Р°РїРѕР»РЅРµРЅРёР№: " (itoa n)
+                    " (РІСЂРµРјСЏ РІСЃС‚Р°РІРєРё: " (rtos t_ins 2 2) " СЃ, "
+                    "РІСЃРµРіРѕ: " (rtos (/ (- (getvar "MILLISECS") t0) 1000.0) 2 2) " СЃ)"))
           (reverse lst))))))
 
 (defun mark:fill-as-insert (e / ed)
@@ -6353,9 +6360,9 @@
     nil))
 
 (defun mark:fill-pick-insert (/ sel e ed nest parents p typ)
-  (mark:out "[INFO] Кликните линию каркаса блока, не пустую ячейку. Enter — пропуск.")
+  (mark:out "[INFO] РљР»РёРєРЅРёС‚Рµ Р»РёРЅРёСЋ РєР°СЂРєР°СЃР° Р±Р»РѕРєР°, РЅРµ РїСѓСЃС‚СѓСЋ СЏС‡РµР№РєСѓ. Enter вЂ” РїСЂРѕРїСѓСЃРє.")
   (setq sel (vl-catch-all-apply 'entsel
-              (list "\nЛиния блока <Enter — пропуск>: ")))
+              (list "\nР›РёРЅРёСЏ Р±Р»РѕРєР° <Enter вЂ” РїСЂРѕРїСѓСЃРє>: ")))
   (if (or (vl-catch-all-error-p sel) (null sel) (null (car sel)))
     nil
     (progn
@@ -6375,11 +6382,11 @@
         (progn
           (setq ed (entget (car sel))
                 typ (if ed (cdr (assoc 0 ed)) "?"))
-          (mark:out (strcat "[WARN] Это не блок (" typ "). Нужна линия каркаса."))
+          (mark:out (strcat "[WARN] Р­С‚Рѕ РЅРµ Р±Р»РѕРє (" typ "). РќСѓР¶РЅР° Р»РёРЅРёСЏ РєР°СЂРєР°СЃР°."))
           nil)))))
 
 (defun mark:fill-shown? (ent / obj en ed v)
-  ;; DXF 60 и Visible. Чужое состояние видимости в разборке невидимо.
+  ;; DXF 60 Рё Visible. Р§СѓР¶РѕРµ СЃРѕСЃС‚РѕСЏРЅРёРµ РІРёРґРёРјРѕСЃС‚Рё РІ СЂР°Р·Р±РѕСЂРєРµ РЅРµРІРёРґРёРјРѕ.
   (setq obj (if (= (type ent) 'VLA-OBJECT) ent (mark:ax-catch-vla ent))
         en  (cond
               ((= (type ent) 'ENAME) ent)
@@ -6423,7 +6430,7 @@
     (t nil)))
 
 (defun mark:fill-sweep-far (x y / ss i e echo n)
-  ;; Окно далеко от каркаса. Оригиналы сюда не попадают.
+  ;; РћРєРЅРѕ РґР°Р»РµРєРѕ РѕС‚ РєР°СЂРєР°СЃР°. РћСЂРёРіРёРЅР°Р»С‹ СЃСЋРґР° РЅРµ РїРѕРїР°РґР°СЋС‚.
   (setq echo (getvar "CMDECHO")
         n 0)
   (setvar "CMDECHO" 0)
@@ -6447,7 +6454,7 @@
 
 (defun mark:fill-exploded-segs (lst depth force-hid / segs hid ent en ed typ sub
                                      piece shown pair)
-  ;; (видимые . скрытые). Скрытые — другие состояния видимости.
+  ;; (РІРёРґРёРјС‹Рµ . СЃРєСЂС‹С‚С‹Рµ). РЎРєСЂС‹С‚С‹Рµ вЂ” РґСЂСѓРіРёРµ СЃРѕСЃС‚РѕСЏРЅРёСЏ РІРёРґРёРјРѕСЃС‚Рё.
   (setq segs nil
         hid nil)
   (if (and lst (listp lst) (< depth 3))
@@ -6490,7 +6497,7 @@
       (vl-catch-all-apply 'vla-Delete (list obj))
       (if (and en (not (vl-catch-all-error-p en)) (entget en))
         (vl-catch-all-apply 'entdel (list en)))
-      ;; Закрытый слой не отдаёт entdel. Открыть, стереть, закрыть обратно.
+      ;; Р—Р°РєСЂС‹С‚С‹Р№ СЃР»РѕР№ РЅРµ РѕС‚РґР°С‘С‚ entdel. РћС‚РєСЂС‹С‚СЊ, СЃС‚РµСЂРµС‚СЊ, Р·Р°РєСЂС‹С‚СЊ РѕР±СЂР°С‚РЅРѕ.
       (if (and en (not (vl-catch-all-error-p en)) (entget en))
         (progn
           (setq lay (cdr (assoc 8 (entget en)))
@@ -6510,8 +6517,8 @@
 
 
 (defun mark:fill-explode-segs (e / doc obj copy lst segs p0 dx dy moved fx fy pair)
-  ;; Копия в стороне и невидима: на каркасе её нет, даже если стирание сорвётся.
-  ;; Разборка даёт текущую видимость, не габарит всех состояний.
+  ;; РљРѕРїРёСЏ РІ СЃС‚РѕСЂРѕРЅРµ Рё РЅРµРІРёРґРёРјР°: РЅР° РєР°СЂРєР°СЃРµ РµС‘ РЅРµС‚, РґР°Р¶Рµ РµСЃР»Рё СЃС‚РёСЂР°РЅРёРµ СЃРѕСЂРІС‘С‚СЃСЏ.
+  ;; Р Р°Р·Р±РѕСЂРєР° РґР°С‘С‚ С‚РµРєСѓС‰СѓСЋ РІРёРґРёРјРѕСЃС‚СЊ, РЅРµ РіР°Р±Р°СЂРёС‚ РІСЃРµС… СЃРѕСЃС‚РѕСЏРЅРёР№.
   (setq doc (mark:ax-get (vlax-get-acad-object) "ActiveDocument")
         obj (mark:ax-catch-vla e)
         segs nil
@@ -6593,9 +6600,9 @@
   (reverse out))
 
 (defun mark:fill-segs-of-ins (e / pair ed nm mat segs)
-  ;; Мультилиния — из определения, с полушириной.
-  ;; Линии динблока — только текущая видимость. Полное определение
-  ;; содержит все состояния: это максимальный габарит, его не берём.
+  ;; РњСѓР»СЊС‚РёР»РёРЅРёСЏ вЂ” РёР· РѕРїСЂРµРґРµР»РµРЅРёСЏ, СЃ РїРѕР»СѓС€РёСЂРёРЅРѕР№.
+  ;; Р›РёРЅРёРё РґРёРЅР±Р»РѕРєР° вЂ” С‚РѕР»СЊРєРѕ С‚РµРєСѓС‰Р°СЏ РІРёРґРёРјРѕСЃС‚СЊ. РџРѕР»РЅРѕРµ РѕРїСЂРµРґРµР»РµРЅРёРµ
+  ;; СЃРѕРґРµСЂР¶РёС‚ РІСЃРµ СЃРѕСЃС‚РѕСЏРЅРёСЏ: СЌС‚Рѕ РјР°РєСЃРёРјР°Р»СЊРЅС‹Р№ РіР°Р±Р°СЂРёС‚, РµРіРѕ РЅРµ Р±РµСЂС‘Рј.
   (setq pair (assoc e *mark:seg-cache*))
   (if pair
     (cdr pair)
@@ -6613,14 +6620,14 @@
                   *mark:vis-n* (1+ (if (numberp *mark:vis-n*) *mark:vis-n* 0)))
             (setq segs nil))
           (if (and (null *mark:dyn-quiet*) (null segs))
-            (mark:out "[WARN] Текущая видимость не прочитана. Габарит всех состояний не беру."))))
+            (mark:out "[WARN] РўРµРєСѓС‰Р°СЏ РІРёРґРёРјРѕСЃС‚СЊ РЅРµ РїСЂРѕС‡РёС‚Р°РЅР°. Р“Р°Р±Р°СЂРёС‚ РІСЃРµС… СЃРѕСЃС‚РѕСЏРЅРёР№ РЅРµ Р±РµСЂСѓ."))))
       (if (null *mark:dyn-quiet*)
         (mark:out
-          (strcat "[INFO] Блок «" (mark:fill-eff-name e)
-                  "»: отрезков " (itoa (length segs))
+          (strcat "[INFO] Р‘Р»РѕРє В«" (mark:fill-eff-name e)
+                  "В»: РѕС‚СЂРµР·РєРѕРІ " (itoa (length segs))
                   (if (and nm (mark:fill-def-has-mline nm 0))
                     ""
-                    ", текущая видимость, отступ 0"))))
+                    ", С‚РµРєСѓС‰Р°СЏ РІРёРґРёРјРѕСЃС‚СЊ, РѕС‚СЃС‚СѓРї 0"))))
       (setq *mark:seg-cache* (cons (cons e segs) *mark:seg-cache*))
       segs)))
 
@@ -6629,23 +6636,23 @@
   (setq bb (mark:fill-cell-by-rays segs pt))
   (cond
     ((and bb (mark:fill-box-closed segs bb))
-     (mark:out "[INFO] Внутренний контур ячейки найден лучами.")
+     (mark:out "[INFO] Р’РЅСѓС‚СЂРµРЅРЅРёР№ РєРѕРЅС‚СѓСЂ СЏС‡РµР№РєРё РЅР°Р№РґРµРЅ Р»СѓС‡Р°РјРё.")
      (mark:fill-add cells pts bb))
     (bb
-     (mark:out "[INFO] Лучи нашли незамкнутый контур — заполнение не ставлю.")
+     (mark:out "[INFO] Р›СѓС‡Рё РЅР°С€Р»Рё РЅРµР·Р°РјРєРЅСѓС‚С‹Р№ РєРѕРЅС‚СѓСЂ вЂ” Р·Р°РїРѕР»РЅРµРЅРёРµ РЅРµ СЃС‚Р°РІР»СЋ.")
      nil)
     (t nil)))
 
 (defun mark:fill-hit-cell (hits pt cells pts / boxes bb)
-  ;; Та же ячейка, что в Сетка-динамика: стороны могут быть из нескольких линий.
+  ;; РўР° Р¶Рµ СЏС‡РµР№РєР°, С‡С‚Рѕ РІ РЎРµС‚РєР°-РґРёРЅР°РјРёРєР°: СЃС‚РѕСЂРѕРЅС‹ РјРѕРіСѓС‚ Р±С‹С‚СЊ РёР· РЅРµСЃРєРѕР»СЊРєРёС… Р»РёРЅРёР№.
   (setq boxes (mark:fill-closed-cells hits)
         bb (if boxes (mark:fill-smallest-cell boxes pt) nil))
   (cond
     (bb
-     (mark:out "[INFO] Ячейка из замкнутого контура блоков.")
+     (mark:out "[INFO] РЇС‡РµР№РєР° РёР· Р·Р°РјРєРЅСѓС‚РѕРіРѕ РєРѕРЅС‚СѓСЂР° Р±Р»РѕРєРѕРІ.")
      (mark:fill-add cells pts bb))
     (boxes
-     (mark:out "[INFO] Замкнутые ячейки есть, но точка вне их.")
+     (mark:out "[INFO] Р—Р°РјРєРЅСѓС‚С‹Рµ СЏС‡РµР№РєРё РµСЃС‚СЊ, РЅРѕ С‚РѕС‡РєР° РІРЅРµ РёС….")
      nil)
     (t nil)))
 
@@ -6657,7 +6664,7 @@
     (progn
       (setq segs (mark:fill-hits-segs hits))
       (mark:out
-        (strcat "[INFO] Отрезков каркаса: " (itoa (length segs))))
+        (strcat "[INFO] РћС‚СЂРµР·РєРѕРІ РєР°СЂРєР°СЃР°: " (itoa (length segs))))
       (if (>= (length segs) 4)
         (setq r (mark:fill-try-rays segs pt cells pts)))))
   r)
@@ -6741,7 +6748,7 @@
   (reverse out))
 
 (defun mark:fill-hit-rank (pt e / bb)
-  ;; Огромный габарит динблока не должен вытеснять соседние стойки.
+  ;; РћРіСЂРѕРјРЅС‹Р№ РіР°Р±Р°СЂРёС‚ РґРёРЅР±Р»РѕРєР° РЅРµ РґРѕР»Р¶РµРЅ РІС‹С‚РµСЃРЅСЏС‚СЊ СЃРѕСЃРµРґРЅРёРµ СЃС‚РѕР№РєРё.
   (setq bb (mark:cell-bb e))
   (if (and bb
            (or (> (abs (- (nth 2 bb) (nth 0 bb))) 8000.0)
@@ -6751,7 +6758,7 @@
 
 (defun mark:fill-dyn-candidates (pt win / ss i e nm d hits n-open)
   (mark:out
-    (strcat "[INFO] Ищу вставки в пределах " (rtos win 2 0) " мм…"))
+    (strcat "[INFO] РС‰Сѓ РІСЃС‚Р°РІРєРё РІ РїСЂРµРґРµР»Р°С… " (rtos win 2 0) " РјРјвЂ¦"))
   (setq ss (vl-catch-all-apply 'ssget
              (list "X" (list (cons 0 "INSERT"))))
         hits nil
@@ -6765,7 +6772,7 @@
               nm (mark:fill-eff-name e))
         (cond
           ((mark:fill-skip-block? nm) nil)
-          ;; Окно/дверь — заполнение, не каркас (как в Сетке-динамика).
+          ;; РћРєРЅРѕ/РґРІРµСЂСЊ вЂ” Р·Р°РїРѕР»РЅРµРЅРёРµ, РЅРµ РєР°СЂРєР°СЃ (РєР°Рє РІ РЎРµС‚РєРµ-РґРёРЅР°РјРёРєР°).
           ((mark:fill-opening-block? nm)
            (setq n-open (1+ n-open)))
           (t
@@ -6783,15 +6790,15 @@
     1.0e12))
 
 (defun mark:fill-dyn-pick (hits)
-  ;; Габарит динблока больше ячейки. По площади не отсекать — иначе беру 0.
+  ;; Р“Р°Р±Р°СЂРёС‚ РґРёРЅР±Р»РѕРєР° Р±РѕР»СЊС€Рµ СЏС‡РµР№РєРё. РџРѕ РїР»РѕС‰Р°РґРё РЅРµ РѕС‚СЃРµРєР°С‚СЊ вЂ” РёРЅР°С‡Рµ Р±РµСЂСѓ 0.
   (mark:fill-hits-take hits 80))
 
 (defun mark:fill-dyn-cell (ptu ptw cells pts / all hits r)
-  ;; Ячейка — пустота между вставками, не одна стойка.
+  ;; РЇС‡РµР№РєР° вЂ” РїСѓСЃС‚РѕС‚Р° РјРµР¶РґСѓ РІСЃС‚Р°РІРєР°РјРё, РЅРµ РѕРґРЅР° СЃС‚РѕР№РєР°.
   (setq r nil)
   (if *mark:dyn-set*
     (progn
-      (mark:out "[INFO] Пробую прежний каркас.")
+      (mark:out "[INFO] РџСЂРѕР±СѓСЋ РїСЂРµР¶РЅРёР№ РєР°СЂРєР°СЃ.")
       (setq r (mark:fill-dyn-from *mark:dyn-set* ptw cells pts)
             hits *mark:dyn-set*)))
   (if (null r)
@@ -6799,11 +6806,11 @@
       (setq all (mark:fill-dyn-candidates ptw 6000.0)
             hits (mark:fill-dyn-pick all))
       (mark:out
-        (strcat "[INFO] В пределах 6000 мм: " (itoa (length all))
-                ", беру " (itoa (length hits))
+        (strcat "[INFO] Р’ РїСЂРµРґРµР»Р°С… 6000 РјРј: " (itoa (length all))
+                ", Р±РµСЂСѓ " (itoa (length hits))
                 (if (and (numberp *mark:dyn-open-skip*)
                          (> *mark:dyn-open-skip* 0))
-                  (strcat "; проёмов пропущено: "
+                  (strcat "; РїСЂРѕС‘РјРѕРІ РїСЂРѕРїСѓС‰РµРЅРѕ: "
                           (itoa *mark:dyn-open-skip*))
                   "")))
       (mark:fill-hit-report hits)
@@ -6813,14 +6820,14 @@
       (setq *mark:dyn-set* hits)
       r)
     (progn
-      (mark:out "[INFO] Ячейка между блоками каркаса не собрана.")
+      (mark:out "[INFO] РЇС‡РµР№РєР° РјРµР¶РґСѓ Р±Р»РѕРєР°РјРё РєР°СЂРєР°СЃР° РЅРµ СЃРѕР±СЂР°РЅР°.")
       (list cells pts))))
 
 (defun mark:fill-mode-dyn (cells pts / pt)
-  (setq pt (getpoint "\nТочка-динамика внутри ячейки <Enter — конец>: "))
+  (setq pt (getpoint "\nРўРѕС‡РєР°-РґРёРЅР°РјРёРєР° РІРЅСѓС‚СЂРё СЏС‡РµР№РєРё <Enter вЂ” РєРѕРЅРµС†>: "))
   (if (null pt)
     (progn
-      (mark:out "[INFO] Конец режима «Точка-динамика».")
+      (mark:out "[INFO] РљРѕРЅРµС† СЂРµР¶РёРјР° В«РўРѕС‡РєР°-РґРёРЅР°РјРёРєР°В».")
       (list nil nil 'cancel))
     (mark:fill-dyn-cell pt (mark:fill-pt-wcs pt) cells pts)))
 
@@ -6842,7 +6849,7 @@
   (princ))
 
 (defun mark:fill-points-loop (modefn start done / going r n ins one acc-cells acc-pts doc)
-  ;; Один UNDO на весь заход: все вставки режима «точка».
+  ;; РћРґРёРЅ UNDO РЅР° РІРµСЃСЊ Р·Р°С…РѕРґ: РІСЃРµ РІСЃС‚Р°РІРєРё СЂРµР¶РёРјР° В«С‚РѕС‡РєР°В».
   (setq *mark:pt-olderr* *error*
         *error* mark:fill-pt-err
         doc (mark:ax-get (vlax-get-acad-object) "ActiveDocument")
@@ -6858,7 +6865,7 @@
         acc-cells nil
         acc-pts   nil)
   (mark:out start)
-  (mark:out "[INFO] UNDO снимет все вставки этого захода разом.")
+  (mark:out "[INFO] UNDO СЃРЅРёРјРµС‚ РІСЃРµ РІСЃС‚Р°РІРєРё СЌС‚РѕРіРѕ Р·Р°С…РѕРґР° СЂР°Р·РѕРј.")
   (while going
     (setq r (apply modefn (list acc-cells acc-pts)))
     (cond
@@ -6878,46 +6885,46 @@
   ins)
 
 (defun mark:fill-ask-mode (/ kw mode)
-  ;; Два ключа на «Точка» или «Сетка» нельзя: AutoCAD берёт первый.
-  ;; Поэтому динамика в списке с цифрой. Команда Точка-динамика — отдельно.
-  (mark:out "Точка-динамика: команда, либо 4, либо Д. Буква Т — Точка-мультилинии.")
-  (initget (strcat "1-Сетка-мультилинии 2-Точка-мультилинии "
-                   "3-Сетка-динамика 4-Точка-динамика 5-Сетка-все-типы 6-Точка-все-типы 7-Полилиния "
-                   "Динамика-точка Мультилинии-точка 1 2 3 4 5 6 7 P"))
+  ;; Р”РІР° РєР»СЋС‡Р° РЅР° В«РўРѕС‡РєР°В» РёР»Рё В«РЎРµС‚РєР°В» РЅРµР»СЊР·СЏ: AutoCAD Р±РµСЂС‘С‚ РїРµСЂРІС‹Р№.
+  ;; РџРѕСЌС‚РѕРјСѓ РґРёРЅР°РјРёРєР° РІ СЃРїРёСЃРєРµ СЃ С†РёС„СЂРѕР№. РљРѕРјР°РЅРґР° РўРѕС‡РєР°-РґРёРЅР°РјРёРєР° вЂ” РѕС‚РґРµР»СЊРЅРѕ.
+  (mark:out "РўРѕС‡РєР°-РґРёРЅР°РјРёРєР°: РєРѕРјР°РЅРґР°, Р»РёР±Рѕ 4, Р»РёР±Рѕ Р”. Р‘СѓРєРІР° Рў вЂ” РўРѕС‡РєР°-РјСѓР»СЊС‚РёР»РёРЅРёРё.")
+  (initget (strcat "1-РЎРµС‚РєР°-РјСѓР»СЊС‚РёР»РёРЅРёРё 2-РўРѕС‡РєР°-РјСѓР»СЊС‚РёР»РёРЅРёРё "
+                   "3-РЎРµС‚РєР°-РґРёРЅР°РјРёРєР° 4-РўРѕС‡РєР°-РґРёРЅР°РјРёРєР° 5-РЎРµС‚РєР°-РІСЃРµ-С‚РёРїС‹ 6-РўРѕС‡РєР°-РІСЃРµ-С‚РёРїС‹ 7-РџРѕР»РёР»РёРЅРёСЏ "
+                   "Р”РёРЅР°РјРёРєР°-С‚РѕС‡РєР° РњСѓР»СЊС‚РёР»РёРЅРёРё-С‚РѕС‡РєР° 1 2 3 4 5 6 7 P"))
   (setq kw (getkword
-    "\nРежим [1-Сетка-мультилинии/2-Точка-мультилинии/3-Сетка-динамика/4-Точка-динамика/5-Сетка-все-типы/6-Точка-все-типы/7-Полилиния] <1-Сетка-мультилинии>: "))
+    "\nР РµР¶РёРј [1-РЎРµС‚РєР°-РјСѓР»СЊС‚РёР»РёРЅРёРё/2-РўРѕС‡РєР°-РјСѓР»СЊС‚РёР»РёРЅРёРё/3-РЎРµС‚РєР°-РґРёРЅР°РјРёРєР°/4-РўРѕС‡РєР°-РґРёРЅР°РјРёРєР°/5-РЎРµС‚РєР°-РІСЃРµ-С‚РёРїС‹/6-РўРѕС‡РєР°-РІСЃРµ-С‚РёРїС‹/7-РџРѕР»РёР»РёРЅРёСЏ] <1-РЎРµС‚РєР°-РјСѓР»СЊС‚РёР»РёРЅРёРё>: "))
   (cond
-    ((or (null kw) (= kw "1-Сетка-мультилинии") (= kw "1"))
+    ((or (null kw) (= kw "1-РЎРµС‚РєР°-РјСѓР»СЊС‚РёР»РёРЅРёРё") (= kw "1"))
      (setq mode "1"))
-    ((or (= kw "2-Точка-мультилинии") (= kw "Мультилинии-точка") (= kw "2"))
+    ((or (= kw "2-РўРѕС‡РєР°-РјСѓР»СЊС‚РёР»РёРЅРёРё") (= kw "РњСѓР»СЊС‚РёР»РёРЅРёРё-С‚РѕС‡РєР°") (= kw "2"))
      (setq mode "2"))
-    ((or (= kw "3-Сетка-динамика") (= kw "3"))
+    ((or (= kw "3-РЎРµС‚РєР°-РґРёРЅР°РјРёРєР°") (= kw "3"))
      (setq mode "3"))
-    ((or (= kw "4-Точка-динамика") (= kw "4")
-         (= kw "Динамика-точка") (= kw "Д"))
+    ((or (= kw "4-РўРѕС‡РєР°-РґРёРЅР°РјРёРєР°") (= kw "4")
+         (= kw "Р”РёРЅР°РјРёРєР°-С‚РѕС‡РєР°") (= kw "Р”"))
      (setq mode "4"))
-    ((or (= kw "5-Сетка-все-типы") (= kw "5"))
+    ((or (= kw "5-РЎРµС‚РєР°-РІСЃРµ-С‚РёРїС‹") (= kw "5"))
      (setq mode "5"))
-    ((or (= kw "6-Точка-все-типы") (= kw "6"))
+    ((or (= kw "6-РўРѕС‡РєР°-РІСЃРµ-С‚РёРїС‹") (= kw "6"))
      (setq mode "6"))
-    ((or (= kw "7-Полилиния") (= kw "7") (= kw "P"))
+    ((or (= kw "7-РџРѕР»РёР»РёРЅРёСЏ") (= kw "7") (= kw "P"))
      (setq mode "P"))
     (t (setq mode "1")))
   (mark:out
-    (strcat "[INFO] Ключ: " (if kw kw "<Enter>")
+    (strcat "[INFO] РљР»СЋС‡: " (if kw kw "<Enter>")
             " = "
-            (cond ((= mode "2") "Точка-мультилинии")
-                  ((= mode "3") "Сетка-динамика")
-                  ((= mode "5") "Сетка-все-типы")
-                  ((= mode "6") "Точка-все-типы")
-                  ((= mode "4") "Точка-динамика")
-                  ((= mode "1") "Сетка-мультилинии")
-                  ((= mode "P") "7-Полилиния")
-                  (t "Сетка-мультилинии"))))
+            (cond ((= mode "2") "РўРѕС‡РєР°-РјСѓР»СЊС‚РёР»РёРЅРёРё")
+                  ((= mode "3") "РЎРµС‚РєР°-РґРёРЅР°РјРёРєР°")
+                  ((= mode "5") "РЎРµС‚РєР°-РІСЃРµ-С‚РёРїС‹")
+                  ((= mode "6") "РўРѕС‡РєР°-РІСЃРµ-С‚РёРїС‹")
+                  ((= mode "4") "РўРѕС‡РєР°-РґРёРЅР°РјРёРєР°")
+                  ((= mode "1") "РЎРµС‚РєР°-РјСѓР»СЊС‚РёР»РёРЅРёРё")
+                  ((= mode "P") "7-РџРѕР»РёР»РёРЅРёСЏ")
+                  (t "РЎРµС‚РєР°-РјСѓР»СЊС‚РёР»РёРЅРёРё"))))
   mode)
 
 (defun mark:fill-highlight-partial (/ ss e n)
-  ;; Подсветить блоки окон/дверей, не полностью заполняющие свои ячейки.
+  ;; РџРѕРґСЃРІРµС‚РёС‚СЊ Р±Р»РѕРєРё РѕРєРѕРЅ/РґРІРµСЂРµР№, РЅРµ РїРѕР»РЅРѕСЃС‚СЊСЋ Р·Р°РїРѕР»РЅСЏСЋС‰РёРµ СЃРІРѕРё СЏС‡РµР№РєРё.
   (setq n (length *mark:opening-partial*))
   (if (> n 0)
     (progn
@@ -6928,33 +6935,33 @@
           (ssadd e ss)))
       (sssetfirst nil ss)
       (mark:out
-        (strcat "[INFO] Подсвечено проёмов с неполным заполнением: "
-                (itoa n) ". Проверьте выделенные окна/двери."))))
+        (strcat "[INFO] РџРѕРґСЃРІРµС‡РµРЅРѕ РїСЂРѕС‘РјРѕРІ СЃ РЅРµРїРѕР»РЅС‹Рј Р·Р°РїРѕР»РЅРµРЅРёРµРј: "
+                (itoa n) ". РџСЂРѕРІРµСЂСЊС‚Рµ РІС‹РґРµР»РµРЅРЅС‹Рµ РѕРєРЅР°/РґРІРµСЂРё."))))
   (princ))
 
 (defun mark:fill-main (/ kw mode cells pts r t_geom_start t_geom ins-list forced)
   (setq forced *mark:fill-force*
         *mark:fill-force* nil)
   (mark:cmd-line
-    "МАРКАЗАПБЛОК — вставка «Заполнение в витраж». Список: 1-Сетка-мультилинии, 2-Точка-мультилинии, 3-Сетка-динамика, 4-Точка-динамика, 5-Сетка-все-типы, 6-Точка-все-типы, 7-Полилиния. Марки не пишет.")
+    "РњРђР РљРђР—РђРџР‘Р›РћРљ вЂ” РІСЃС‚Р°РІРєР° В«Р—Р°РїРѕР»РЅРµРЅРёРµ РІ РІРёС‚СЂР°Р¶В». РЎРїРёСЃРѕРє: 1-РЎРµС‚РєР°-РјСѓР»СЊС‚РёР»РёРЅРёРё, 2-РўРѕС‡РєР°-РјСѓР»СЊС‚РёР»РёРЅРёРё, 3-РЎРµС‚РєР°-РґРёРЅР°РјРёРєР°, 4-РўРѕС‡РєР°-РґРёРЅР°РјРёРєР°, 5-РЎРµС‚РєР°-РІСЃРµ-С‚РёРїС‹, 6-РўРѕС‡РєР°-РІСЃРµ-С‚РёРїС‹, 7-РџРѕР»РёР»РёРЅРёСЏ. РњР°СЂРєРё РЅРµ РїРёС€РµС‚.")
   (mark:reset-state)
   (setq *mark:opening-bbs*     nil
         *mark:opening-loaded*  nil
         *mark:opening-partial* nil
         *mark:grid-zone*       nil)
   (mark:banner)
-  (mark:out "МАРКАЗАПБЛОК — вставка «Заполнение в витраж» по ячейкам")
+  (mark:out "РњРђР РљРђР—РђРџР‘Р›РћРљ вЂ” РІСЃС‚Р°РІРєР° В«Р—Р°РїРѕР»РЅРµРЅРёРµ РІ РІРёС‚СЂР°Р¶В» РїРѕ СЏС‡РµР№РєР°Рј")
   (setq mode (if forced forced (mark:fill-ask-mode)))
   (if forced
     (mark:out
-      (strcat "[INFO] Команда = "
-              (cond ((= mode "2") "Точка-мультилинии")
-                    ((= mode "3") "Сетка-динамика")
-                  ((= mode "5") "Сетка-все-типы")
-                  ((= mode "6") "Точка-все-типы")
-                    ((= mode "4") "Точка-динамика")
-                    ((= mode "1") "Полилинии")
-                    (t "Сетка-мультилинии")))))
+      (strcat "[INFO] РљРѕРјР°РЅРґР° = "
+              (cond ((= mode "2") "РўРѕС‡РєР°-РјСѓР»СЊС‚РёР»РёРЅРёРё")
+                    ((= mode "3") "РЎРµС‚РєР°-РґРёРЅР°РјРёРєР°")
+                  ((= mode "5") "РЎРµС‚РєР°-РІСЃРµ-С‚РёРїС‹")
+                  ((= mode "6") "РўРѕС‡РєР°-РІСЃРµ-С‚РёРїС‹")
+                    ((= mode "4") "РўРѕС‡РєР°-РґРёРЅР°РјРёРєР°")
+                    ((= mode "1") "РџРѕР»РёР»РёРЅРёРё")
+                    (t "РЎРµС‚РєР°-РјСѓР»СЊС‚РёР»РёРЅРёРё")))))
   (setq cells nil
         pts   nil
         ins-list nil
@@ -6964,8 +6971,8 @@
      (setq ins-list
        (mark:fill-points-loop
          'mark:fill-mode-point
-         "[INFO] Точка-мультилинии: ячейка за ячейкой. Enter — конец."
-         "[INFO] Режим «Точка-мультилинии» завершён. Вставлено: ")))
+         "[INFO] РўРѕС‡РєР°-РјСѓР»СЊС‚РёР»РёРЅРёРё: СЏС‡РµР№РєР° Р·Р° СЏС‡РµР№РєРѕР№. Enter вЂ” РєРѕРЅРµС†."
+         "[INFO] Р РµР¶РёРј В«РўРѕС‡РєР°-РјСѓР»СЊС‚РёР»РёРЅРёРёВ» Р·Р°РІРµСЂС€С‘РЅ. Р’СЃС‚Р°РІР»РµРЅРѕ: ")))
     ((= mode "4")
      (setq *mark:dyn-ins* nil
            *mark:dyn-set* nil
@@ -6973,8 +6980,8 @@
            ins-list
        (mark:fill-points-loop
          'mark:fill-mode-dyn
-         "[INFO] Точка-динамика: ячейка из блоков каркаса. Enter — конец."
-         "[INFO] Режим «Точка-динамика» завершён. Вставлено: "))
+         "[INFO] РўРѕС‡РєР°-РґРёРЅР°РјРёРєР°: СЏС‡РµР№РєР° РёР· Р±Р»РѕРєРѕРІ РєР°СЂРєР°СЃР°. Enter вЂ” РєРѕРЅРµС†."
+         "[INFO] Р РµР¶РёРј В«РўРѕС‡РєР°-РґРёРЅР°РјРёРєР°В» Р·Р°РІРµСЂС€С‘РЅ. Р’СЃС‚Р°РІР»РµРЅРѕ: "))
      (setq *mark:dyn-ins* nil
            *mark:dyn-set* nil
            *mark:dyn-bb*  nil))
@@ -6985,7 +6992,7 @@
            t_geom   (/ (- (getvar "MILLISECS") t_geom_start) 1000.0)
            ins-list (mark:fill-apply cells pts))
      (if cells
-       (mark:out (strcat "[ТАЙМИНГ] Расчет геометрии сетки: " (rtos t_geom 2 2) " с"))))
+       (mark:out (strcat "[РўРђР™РњРРќР“] Р Р°СЃС‡РµС‚ РіРµРѕРјРµС‚СЂРёРё СЃРµС‚РєРё: " (rtos t_geom 2 2) " СЃ"))))
     ((= mode "1")
      (setq r        (mark:fill-mode-grid cells pts)
            cells    (car r)
@@ -6993,43 +7000,43 @@
            t_geom   (/ (- (getvar "MILLISECS") t_geom_start) 1000.0)
            ins-list (mark:fill-apply cells pts))
      (if cells
-       (mark:out (strcat "[ТАЙМИНГ] Расчет геометрии сетки: " (rtos t_geom 2 2) " с"))))
+       (mark:out (strcat "[РўРђР™РњРРќР“] Р Р°СЃС‡РµС‚ РіРµРѕРјРµС‚СЂРёРё СЃРµС‚РєРё: " (rtos t_geom 2 2) " СЃ"))))
     ((= mode "5")
      (setq r (mark:fill-mode-all-grid cells pts)
            cells (car r) pts (cadr r)
            t_geom (/ (- (getvar "MILLISECS") t_geom_start) 1000.0)
            ins-list (mark:fill-apply cells pts))
      (if cells
-       (mark:out (strcat "[ТАЙМИНГ] Расчет геометрии сетки: " (rtos t_geom 2 2) " с"))))
+       (mark:out (strcat "[РўРђР™РњРРќР“] Р Р°СЃС‡РµС‚ РіРµРѕРјРµС‚СЂРёРё СЃРµС‚РєРё: " (rtos t_geom 2 2) " СЃ"))))
     ((= mode "6")
      (setq ins-list
        (mark:fill-points-loop
          'mark:fill-mode-all-point
-         "[INFO] 6-Точка-все-типы: точки внутри ячеек. Enter — завершение."
-         "[INFO] Точка-все-типы завершена. Вставлено: ")))
+         "[INFO] 6-РўРѕС‡РєР°-РІСЃРµ-С‚РёРїС‹: С‚РѕС‡РєРё РІРЅСѓС‚СЂРё СЏС‡РµРµРє. Enter вЂ” Р·Р°РІРµСЂС€РµРЅРёРµ."
+         "[INFO] РўРѕС‡РєР°-РІСЃРµ-С‚РёРїС‹ Р·Р°РІРµСЂС€РµРЅР°. Р’СЃС‚Р°РІР»РµРЅРѕ: ")))
     (t
      (setq ins-list
        (mark:fill-points-loop
          'mark:fill-mode-poly-one
-         "[INFO] 7-Полилиния: тыкайте в полилинии-границы ячеек. Каждая — сразу вставка. Enter — конец."
-         "[INFO] Режим «7-Полилиния» завершён. Вставлено: "))))
-  (mark:out (strcat "Ошибок: " (itoa *mark:errors*)))
-  (mark:out (strcat "Предупреждений: " (itoa *mark:warnings*)))
-  ;; После заполнения — подсветить проёмы, не полностью занявшие ячейки.
+         "[INFO] 7-РџРѕР»РёР»РёРЅРёСЏ: С‚С‹РєР°Р№С‚Рµ РІ РїРѕР»РёР»РёРЅРёРё-РіСЂР°РЅРёС†С‹ СЏС‡РµРµРє. РљР°Р¶РґР°СЏ вЂ” СЃСЂР°Р·Сѓ РІСЃС‚Р°РІРєР°. Enter вЂ” РєРѕРЅРµС†."
+         "[INFO] Р РµР¶РёРј В«7-РџРѕР»РёР»РёРЅРёСЏВ» Р·Р°РІРµСЂС€С‘РЅ. Р’СЃС‚Р°РІР»РµРЅРѕ: "))))
+  (mark:out (strcat "РћС€РёР±РѕРє: " (itoa *mark:errors*)))
+  (mark:out (strcat "РџСЂРµРґСѓРїСЂРµР¶РґРµРЅРёР№: " (itoa *mark:warnings*)))
+  ;; РџРѕСЃР»Рµ Р·Р°РїРѕР»РЅРµРЅРёСЏ вЂ” РїРѕРґСЃРІРµС‚РёС‚СЊ РїСЂРѕС‘РјС‹, РЅРµ РїРѕР»РЅРѕСЃС‚СЊСЋ Р·Р°РЅСЏРІС€РёРµ СЏС‡РµР№РєРё.
   (mark:fill-highlight-partial)
   (setq *mark:fills* ins-list)
   (princ))
 ;;;=====================================================================
-;;;  Ред. 48.29: НЕСКОЛЬКО ВИТРАЖЕЙ В ОДНОМ ПРОГОНЕ (МАРКАЗАП)
-;;;  Кластеризация заполнений по связности: зазор между прямоугольниками
-;;;  меньше *mark:vz-gap* — один витраж (проёмные ячейки не разрывают).
-;;;  Блоки «Атрибуты витража» привязываются к ближайшему кластеру; при
-;;;  двух и более в кластере — WARN, берётся ближайший к центру.
-;;;  Витраж без блока — марки без префикса (TEST 02 NOT FOUND).
-;;;  Один кластер — поведение и лог побайтово как раньше (48.28).
+;;;  Р РµРґ. 48.29: РќР•РЎРљРћР›Р¬РљРћ Р’РРўР РђР–Р•Р™ Р’ РћР”РќРћРњ РџР РћР“РћРќР• (РњРђР РљРђР—РђРџ)
+;;;  РљР»Р°СЃС‚РµСЂРёР·Р°С†РёСЏ Р·Р°РїРѕР»РЅРµРЅРёР№ РїРѕ СЃРІСЏР·РЅРѕСЃС‚Рё: Р·Р°Р·РѕСЂ РјРµР¶РґСѓ РїСЂСЏРјРѕСѓРіРѕР»СЊРЅРёРєР°РјРё
+;;;  РјРµРЅСЊС€Рµ *mark:vz-gap* вЂ” РѕРґРёРЅ РІРёС‚СЂР°Р¶ (РїСЂРѕС‘РјРЅС‹Рµ СЏС‡РµР№РєРё РЅРµ СЂР°Р·СЂС‹РІР°СЋС‚).
+;;;  Р‘Р»РѕРєРё В«РђС‚СЂРёР±СѓС‚С‹ РІРёС‚СЂР°Р¶Р°В» РїСЂРёРІСЏР·С‹РІР°СЋС‚СЃСЏ Рє Р±Р»РёР¶Р°Р№С€РµРјСѓ РєР»Р°СЃС‚РµСЂСѓ; РїСЂРё
+;;;  РґРІСѓС… Рё Р±РѕР»РµРµ РІ РєР»Р°СЃС‚РµСЂРµ вЂ” WARN, Р±РµСЂС‘С‚СЃСЏ Р±Р»РёР¶Р°Р№С€РёР№ Рє С†РµРЅС‚СЂСѓ.
+;;;  Р’РёС‚СЂР°Р¶ Р±РµР· Р±Р»РѕРєР° вЂ” РјР°СЂРєРё Р±РµР· РїСЂРµС„РёРєСЃР° (TEST 02 NOT FOUND).
+;;;  РћРґРёРЅ РєР»Р°СЃС‚РµСЂ вЂ” РїРѕРІРµРґРµРЅРёРµ Рё Р»РѕРі РїРѕР±Р°Р№С‚РѕРІРѕ РєР°Рє СЂР°РЅСЊС€Рµ (48.28).
 ;;;=====================================================================
 
-;; Связаны ли прямоугольники (зазор меньше порога по ОБЕИМ осям)
+;; РЎРІСЏР·Р°РЅС‹ Р»Рё РїСЂСЏРјРѕСѓРіРѕР»СЊРЅРёРєРё (Р·Р°Р·РѕСЂ РјРµРЅСЊС€Рµ РїРѕСЂРѕРіР° РїРѕ РћР‘Р•РРњ РѕСЃСЏРј)
 (defun mark:vz-near? (a b / ax0 ay0 ax1 ay1 bx0 by0 bx1 by1 dx dy)
   (setq ax0 (nth 0 a) ay0 (nth 1 a) ax1 (nth 2 a) ay1 (nth 3 a)
         bx0 (nth 0 b) by0 (nth 1 b) bx1 (nth 2 b) by1 (nth 3 b)
@@ -7044,7 +7051,7 @@
       (setq out (cons x out))))
   (reverse out))
 
-;; Минимальный X кластера — порядок витражей «слева направо»
+;; РњРёРЅРёРјР°Р»СЊРЅС‹Р№ X РєР»Р°СЃС‚РµСЂР° вЂ” РїРѕСЂСЏРґРѕРє РІРёС‚СЂР°Р¶РµР№ В«СЃР»РµРІР° РЅР°РїСЂР°РІРѕВ»
 (defun mark:vz-minx (cluster / m bb x)
   (setq m nil)
   (foreach e cluster
@@ -7056,7 +7063,7 @@
           (setq m x)))))
   (if m m 1.0e12))
 
-;; Кластеры заполнений: связные компоненты bbox, слева направо
+;; РљР»Р°СЃС‚РµСЂС‹ Р·Р°РїРѕР»РЅРµРЅРёР№: СЃРІСЏР·РЅС‹Рµ РєРѕРјРїРѕРЅРµРЅС‚С‹ bbox, СЃР»РµРІР° РЅР°РїСЂР°РІРѕ
 (defun mark:vz-clusters (fills / bbs nobb rest cur queue e0 bb0 hit out e bb r)
   (setq bbs  nil
         nobb nil)
@@ -7072,7 +7079,7 @@
           rest  (cdr rest)
           queue cur)
     (while queue
-      ;; e0 — запись (ename x0 y0 x1 y1) из очереди: bbox уже при ней
+      ;; e0 вЂ” Р·Р°РїРёСЃСЊ (ename x0 y0 x1 y1) РёР· РѕС‡РµСЂРµРґРё: bbox СѓР¶Рµ РїСЂРё РЅРµР№
       (setq e0    (car queue)
             queue (cdr queue)
             bb0   (cdr e0)
@@ -7085,19 +7092,19 @@
       (setq rest  (mark:vz-remove-list rest hit)
             queue (append queue hit)))
     (setq out (cons (mapcar 'car cur) out)))
-  ;; без bbox — отдельные кластеры в конец
+  ;; Р±РµР· bbox вЂ” РѕС‚РґРµР»СЊРЅС‹Рµ РєР»Р°СЃС‚РµСЂС‹ РІ РєРѕРЅРµС†
   (foreach e nobb
     (setq out (cons (list e) out)))
   (vl-sort out
     '(lambda (a b) (< (mark:vz-minx a) (mark:vz-minx b)))))
 
-;; Расстояние точки до прямоугольника (0 — точка внутри)
+;; Р Р°СЃСЃС‚РѕСЏРЅРёРµ С‚РѕС‡РєРё РґРѕ РїСЂСЏРјРѕСѓРіРѕР»СЊРЅРёРєР° (0 вЂ” С‚РѕС‡РєР° РІРЅСѓС‚СЂРё)
 (defun mark:vz-dist (pt bb / dx dy)
   (setq dx (max 0.0 (- (nth 0 bb) (car pt)) (- (car pt) (nth 2 bb)))
         dy (max 0.0 (- (nth 1 bb) (cadr pt)) (- (cadr pt) (nth 3 bb))))
   (sqrt (+ (* dx dx) (* dy dy))))
 
-;; Объединённый bbox кластера
+;; РћР±СЉРµРґРёРЅС‘РЅРЅС‹Р№ bbox РєР»Р°СЃС‚РµСЂР°
 (defun mark:vz-cbb (cluster / x0 y0 x1 y1 bb e f)
   (setq x0 nil y0 nil x1 nil y1 nil f nil)
   (foreach e cluster
@@ -7111,7 +7118,7 @@
         (setq f t))))
   (if f (list x0 y0 x1 y1) (list 0.0 0.0 0.0 0.0)))
 
-;; Ближайший к центру прямоугольника блок
+;; Р‘Р»РёР¶Р°Р№С€РёР№ Рє С†РµРЅС‚СЂСѓ РїСЂСЏРјРѕСѓРіРѕР»СЊРЅРёРєР° Р±Р»РѕРє
 (defun mark:vz-nearest (blks cbb / cx cy best bd d pt)
   (setq cx (/ (+ (nth 0 cbb) (nth 2 cbb)) 2.0)
         cy (/ (+ (nth 1 cbb) (nth 3 cbb)) 2.0)
@@ -7139,19 +7146,19 @@
     (setq out (if out (strcat out sep x) x)))
   out)
 
-;; Имя витража для шапки блока лога
+;; РРјСЏ РІРёС‚СЂР°Р¶Р° РґР»СЏ С€Р°РїРєРё Р±Р»РѕРєР° Р»РѕРіР°
 (defun mark:vz-title (blocks / g res)
   (cond
-    ((null blocks) "без блока \"Атрибуты витража\"")
+    ((null blocks) "Р±РµР· Р±Р»РѕРєР° \"РђС‚СЂРёР±СѓС‚С‹ РІРёС‚СЂР°Р¶Р°\"")
     (t
      (progn
        (setq g   (car blocks)
              res (mark:find-attr g *mark:attr-vitrage*))
        (if (and (car res) (mark:strp (cadr res)) (/= (mark:trim (cadr res)) ""))
          (mark:trim (cadr res))
-         "\"Атрибуты витража\" без значения")))))
+         "\"РђС‚СЂРёР±СѓС‚С‹ РІРёС‚СЂР°Р¶Р°\" Р±РµР· Р·РЅР°С‡РµРЅРёСЏ")))))
 
-;; Подмена состояния под кластер: fills, glazings, префикс, fill-geo
+;; РџРѕРґРјРµРЅР° СЃРѕСЃС‚РѕСЏРЅРёСЏ РїРѕРґ РєР»Р°СЃС‚РµСЂ: fills, glazings, РїСЂРµС„РёРєСЃ, fill-geo
 (defun mark:vz-set (c ageo / out)
   (setq *mark:fills*        (car c)
         *mark:glazings*     (cadr c)
@@ -7163,7 +7170,7 @@
       (setq out (cons rec out))))
   (setq *mark:fill-geo* (reverse out)))
 
-;; Префикс кластера: значение «Витраж» его блока ("" без блока)
+;; РџСЂРµС„РёРєСЃ РєР»Р°СЃС‚РµСЂР°: Р·РЅР°С‡РµРЅРёРµ В«Р’РёС‚СЂР°Р¶В» РµРіРѕ Р±Р»РѕРєР° ("" Р±РµР· Р±Р»РѕРєР°)
 (defun mark:vz-pfx-of (blocks / g res)
   (if blocks
     (progn
@@ -7174,15 +7181,15 @@
         ""))
     ""))
 
-;; Имена витражей по порядку кластеров (для шапки лога)
+;; РРјРµРЅР° РІРёС‚СЂР°Р¶РµР№ РїРѕ РїРѕСЂСЏРґРєСѓ РєР»Р°СЃС‚РµСЂРѕРІ (РґР»СЏ С€Р°РїРєРё Р»РѕРіР°)
 (defun mark:vz-names (cls / out p)
   (setq out nil)
   (foreach c cls
     (setq p (mark:vz-pfx-of (cadr c)))
-    (setq out (cons (if (= p "") "без блока" p) out)))
+    (setq out (cons (if (= p "") "Р±РµР· Р±Р»РѕРєР°" p) out)))
   (reverse out))
 
-;; Карта ename -> префикс витража (совместная маркировка)
+;; РљР°СЂС‚Р° ename -> РїСЂРµС„РёРєСЃ РІРёС‚СЂР°Р¶Р° (СЃРѕРІРјРµСЃС‚РЅР°СЏ РјР°СЂРєРёСЂРѕРІРєР°)
 (defun mark:vz-map-build (cls / map)
   (setq map nil)
   (foreach c cls
@@ -7190,13 +7197,13 @@
       (setq map (cons (cons e (mark:vz-pfx-of (cadr c))) map))))
   (reverse map))
 
-;; Префикс записи: из карты, иначе общий *mark:prefix*
+;; РџСЂРµС„РёРєСЃ Р·Р°РїРёСЃРё: РёР· РєР°СЂС‚С‹, РёРЅР°С‡Рµ РѕР±С‰РёР№ *mark:prefix*
 (defun mark:vz-rec-pfx (r / e p)
   (setq e (mark:rec-get r 'ename)
         p (if *mark:vz-map* (cdr (assoc e *mark:vz-map*)) nil))
   (if p p *mark:prefix*))
 
-;; Уникальные префиксы карты (для ИТОГ и TEST 03)
+;; РЈРЅРёРєР°Р»СЊРЅС‹Рµ РїСЂРµС„РёРєСЃС‹ РєР°СЂС‚С‹ (РґР»СЏ РРўРћР“ Рё TEST 03)
 (defun mark:vz-map-pfxs (/ out)
   (setq out nil)
   (foreach p *mark:vz-map*
@@ -7204,8 +7211,8 @@
       (setq out (cons (cdr p) out))))
   (reverse out))
 
-;; Кластеры + привязка блоков «Атрибуты витража».
-;; Возвращает ((fills blocks) ...), слева направо.
+;; РљР»Р°СЃС‚РµСЂС‹ + РїСЂРёРІСЏР·РєР° Р±Р»РѕРєРѕРІ В«РђС‚СЂРёР±СѓС‚С‹ РІРёС‚СЂР°Р¶Р°В».
+;; Р’РѕР·РІСЂР°С‰Р°РµС‚ ((fills blocks) ...), СЃР»РµРІР° РЅР°РїСЂР°РІРѕ.
 (defun mark:vz-split (fills glazings / cls res c g pt d best bd r blks out)
   (setq cls (mark:vz-clusters fills)
         res nil)
@@ -7236,8 +7243,8 @@
       (t
        (progn
          (mark:out
-           (strcat "[WARN] Витраж: " (itoa (length blks))
-                   " блока \"Атрибуты витража\" — взят ближайший к центру."))
+           (strcat "[WARN] Р’РёС‚СЂР°Р¶: " (itoa (length blks))
+                   " Р±Р»РѕРєР° \"РђС‚СЂРёР±СѓС‚С‹ РІРёС‚СЂР°Р¶Р°\" вЂ” РІР·СЏС‚ Р±Р»РёР¶Р°Р№С€РёР№ Рє С†РµРЅС‚СЂСѓ."))
          (mark:note-warning)
          (setq out
            (cons (list (car r)
@@ -7245,8 +7252,8 @@
                  out))))))
   (reverse out))
 
-;; Этап МАРКАРОВКАЗАП по витражам: один кластер — как раньше
-;; (лог прежний); несколько — полный блок диагностики per витраж
+;; Р­С‚Р°Рї РњРђР РљРђР РћР’РљРђР—РђРџ РїРѕ РІРёС‚СЂР°Р¶Р°Рј: РѕРґРёРЅ РєР»Р°СЃС‚РµСЂ вЂ” РєР°Рє СЂР°РЅСЊС€Рµ
+;; (Р»РѕРі РїСЂРµР¶РЅРёР№); РЅРµСЃРєРѕР»СЊРєРѕ вЂ” РїРѕР»РЅС‹Р№ Р±Р»РѕРє РґРёР°РіРЅРѕСЃС‚РёРєРё per РІРёС‚СЂР°Р¶
 (defun mark:vz-marks (/ af ag ageo cls n i c was-reuse ans)
   (if (and (not *mark:reuse-sel*) (null *mark:fills*))
     (mark:select))
@@ -7262,53 +7269,53 @@
             *mark:vz-mode* nil)
       (setq was-reuse       *mark:reuse-sel*
             *mark:reuse-sel* t)
-      ;; Ред. 48.30: несколько витражей — спрашиваем режим маркировки
+      ;; Р РµРґ. 48.30: РЅРµСЃРєРѕР»СЊРєРѕ РІРёС‚СЂР°Р¶РµР№ вЂ” СЃРїСЂР°С€РёРІР°РµРј СЂРµР¶РёРј РјР°СЂРєРёСЂРѕРІРєРё
       (if (> n 1)
         (progn
           (mark:out "")
           (mark:out
-            (strcat "[INFO] Витражей в выборе: " (itoa n)
+            (strcat "[INFO] Р’РёС‚СЂР°Р¶РµР№ РІ РІС‹Р±РѕСЂРµ: " (itoa n)
                     " (" (mark:vz-join (mark:vz-names cls) ", ") ")"))
-          (initget "Совместная Раздельная")
+          (initget "РЎРѕРІРјРµСЃС‚РЅР°СЏ Р Р°Р·РґРµР»СЊРЅР°СЏ")
           (setq ans (getkword
-                      "\nМаркировка нескольких витражей [Совместная/Раздельная] <Совместная>: "))
+                      "\nРњР°СЂРєРёСЂРѕРІРєР° РЅРµСЃРєРѕР»СЊРєРёС… РІРёС‚СЂР°Р¶РµР№ [РЎРѕРІРјРµСЃС‚РЅР°СЏ/Р Р°Р·РґРµР»СЊРЅР°СЏ] <РЎРѕРІРјРµСЃС‚РЅР°СЏ>: "))
           (setq *mark:vz-mode*
-                (if (member ans '("Раздельная")) "separate" "joint"))
+                (if (member ans '("Р Р°Р·РґРµР»СЊРЅР°СЏ")) "separate" "joint"))
           (mark:out "")
           (mark:out
             (if (= *mark:vz-mode* "joint")
-              "[INFO] Совместная: шкалы секций и строк общие на все витражи, марки с префиксами витражей."
-              "[INFO] Раздельная: каждому витражу свои шкалы секций и строк."))))
+              "[INFO] РЎРѕРІРјРµСЃС‚РЅР°СЏ: С€РєР°Р»С‹ СЃРµРєС†РёР№ Рё СЃС‚СЂРѕРє РѕР±С‰РёРµ РЅР° РІСЃРµ РІРёС‚СЂР°Р¶Рё, РјР°СЂРєРё СЃ РїСЂРµС„РёРєСЃР°РјРё РІРёС‚СЂР°Р¶РµР№."
+              "[INFO] Р Р°Р·РґРµР»СЊРЅР°СЏ: РєР°Р¶РґРѕРјСѓ РІРёС‚СЂР°Р¶Сѓ СЃРІРѕРё С€РєР°Р»С‹ СЃРµРєС†РёР№ Рё СЃС‚СЂРѕРє."))))
       (cond
-        ;; совместная: один расчёт на всё выделение, per-витражный префикс
+        ;; СЃРѕРІРјРµСЃС‚РЅР°СЏ: РѕРґРёРЅ СЂР°СЃС‡С‘С‚ РЅР° РІСЃС‘ РІС‹РґРµР»РµРЅРёРµ, per-РІРёС‚СЂР°Р¶РЅС‹Р№ РїСЂРµС„РёРєСЃ
         ((= *mark:vz-mode* "joint")
          (progn
            (setq *mark:vz-map* (mark:vz-map-build cls))
            (mark:main)))
-        ;; раздельная: полный блок диагностики per витраж
+        ;; СЂР°Р·РґРµР»СЊРЅР°СЏ: РїРѕР»РЅС‹Р№ Р±Р»РѕРє РґРёР°РіРЅРѕСЃС‚РёРєРё per РІРёС‚СЂР°Р¶
         ((= *mark:vz-mode* "separate")
          (progn
            (mark:out "")
            (mark:out
-             (strcat "[INFO] Витражей в выборе: " (itoa n)))
+             (strcat "[INFO] Р’РёС‚СЂР°Р¶РµР№ РІ РІС‹Р±РѕСЂРµ: " (itoa n)))
            (foreach c cls
              (setq i (1+ i))
              (mark:out "")
              (mark:out
-               (strcat "--- Витраж " (itoa i) " из " (itoa n) ": "
+               (strcat "--- Р’РёС‚СЂР°Р¶ " (itoa i) " РёР· " (itoa n) ": "
                        (mark:vz-title (cadr c))
-                       " — заполнений " (itoa (length (car c))) " ---"))
+                       " вЂ” Р·Р°РїРѕР»РЅРµРЅРёР№ " (itoa (length (car c))) " ---"))
              (mark:vz-set c ageo)
              (mark:main))))
-        ;; один витраж — прежний путь (лог побайтово)
+        ;; РѕРґРёРЅ РІРёС‚СЂР°Р¶ вЂ” РїСЂРµР¶РЅРёР№ РїСѓС‚СЊ (Р»РѕРі РїРѕР±Р°Р№С‚РѕРІРѕ)
         (t (mark:main)))
       (setq *mark:reuse-sel* was-reuse
             *mark:fills*     af
             *mark:glazings*  ag
             *mark:fill-geo*  ageo))))
 
-;; Этап МАРКАЗАПРЯД по витражам: каждому — свои базы рядовки
-;; (Y снизу и X справа своего габарита) и своя группа
+;; Р­С‚Р°Рї РњРђР РљРђР—РђРџР РЇР” РїРѕ РІРёС‚СЂР°Р¶Р°Рј: РєР°Р¶РґРѕРјСѓ вЂ” СЃРІРѕРё Р±Р°Р·С‹ СЂСЏРґРѕРІРєРё
+;; (Y СЃРЅРёР·Сѓ Рё X СЃРїСЂР°РІР° СЃРІРѕРµРіРѕ РіР°Р±Р°СЂРёС‚Р°) Рё СЃРІРѕСЏ РіСЂСѓРїРїР°
 (defun mark:vz-rows (/ af ag ageo cls n i c)
   (if *mark:fills*
     (progn
@@ -7323,12 +7330,12 @@
         (progn
           (mark:out "")
           (mark:out
-            (strcat "[INFO] Витражей в выборе: " (itoa n)))
+            (strcat "[INFO] Р’РёС‚СЂР°Р¶РµР№ РІ РІС‹Р±РѕСЂРµ: " (itoa n)))
           (foreach c cls
             (setq i (1+ i))
             (mark:out "")
             (mark:out
-              (strcat "--- Витраж " (itoa i) " из " (itoa n) ": "
+              (strcat "--- Р’РёС‚СЂР°Р¶ " (itoa i) " РёР· " (itoa n) ": "
                       (mark:vz-title (cadr c)) " ---"))
             (mark:vz-set c ageo)
             (mark:ar-main))))
@@ -7336,33 +7343,33 @@
             *mark:glazings* ag
             *mark:fill-geo* ageo))))
 
-;; Ред. 48.26: этап ведомости в МАРКАЗАП — устойчив к Esc.
-;; Группировка рядовок выполняется раньше — на этапе МАРКАЗАПРЯД
-;; (mark:ar-make-group в конце mark:ar-main), до ведомости. Но Esc
-;; на вопросах «Создать таблицу AutoCAD?» / «Экспорт в XLS?»
-;; прерывал весь пакет a-all: EndUndoMark не закрывался, флаги
-;; *mark:reuse-sel* / *mark:batch-undo* оставались взведёнными, и
-;; один U откатывал разом вставки, марки, рядовку и ГРУППЫ.
-;; Теперь отмена ведомости — штатный выход: всё созданное
-;; сохраняется, маркер закрывается, флаги сбрасываются.
+;; Р РµРґ. 48.26: СЌС‚Р°Рї РІРµРґРѕРјРѕСЃС‚Рё РІ РњРђР РљРђР—РђРџ вЂ” СѓСЃС‚РѕР№С‡РёРІ Рє Esc.
+;; Р“СЂСѓРїРїРёСЂРѕРІРєР° СЂСЏРґРѕРІРѕРє РІС‹РїРѕР»РЅСЏРµС‚СЃСЏ СЂР°РЅСЊС€Рµ вЂ” РЅР° СЌС‚Р°РїРµ РњРђР РљРђР—РђРџР РЇР”
+;; (mark:ar-make-group РІ РєРѕРЅС†Рµ mark:ar-main), РґРѕ РІРµРґРѕРјРѕСЃС‚Рё. РќРѕ Esc
+;; РЅР° РІРѕРїСЂРѕСЃР°С… В«РЎРѕР·РґР°С‚СЊ С‚Р°Р±Р»РёС†Сѓ AutoCAD?В» / В«Р­РєСЃРїРѕСЂС‚ РІ XLS?В»
+;; РїСЂРµСЂС‹РІР°Р» РІРµСЃСЊ РїР°РєРµС‚ a-all: EndUndoMark РЅРµ Р·Р°РєСЂС‹РІР°Р»СЃСЏ, С„Р»Р°РіРё
+;; *mark:reuse-sel* / *mark:batch-undo* РѕСЃС‚Р°РІР°Р»РёСЃСЊ РІР·РІРµРґС‘РЅРЅС‹РјРё, Рё
+;; РѕРґРёРЅ U РѕС‚РєР°С‚С‹РІР°Р» СЂР°Р·РѕРј РІСЃС‚Р°РІРєРё, РјР°СЂРєРё, СЂСЏРґРѕРІРєСѓ Рё Р“Р РЈРџРџР«.
+;; РўРµРїРµСЂСЊ РѕС‚РјРµРЅР° РІРµРґРѕРјРѕСЃС‚Рё вЂ” С€С‚Р°С‚РЅС‹Р№ РІС‹С…РѕРґ: РІСЃС‘ СЃРѕР·РґР°РЅРЅРѕРµ
+;; СЃРѕС…СЂР°РЅСЏРµС‚СЃСЏ, РјР°СЂРєРµСЂ Р·Р°РєСЂС‹РІР°РµС‚СЃСЏ, С„Р»Р°РіРё СЃР±СЂР°СЃС‹РІР°СЋС‚СЃСЏ.
 (defun mark:a-table-stage (/ r)
   (setq r (vl-catch-all-apply 'mtab:main nil))
   (if (vl-catch-all-error-p r)
     (mark:out
-      "[INFO] Ведомость отменена (Esc) — вставки, марки, рядовка и группы сохранены.")
+      "[INFO] Р’РµРґРѕРјРѕСЃС‚СЊ РѕС‚РјРµРЅРµРЅР° (Esc) вЂ” РІСЃС‚Р°РІРєРё, РјР°СЂРєРё, СЂСЏРґРѕРІРєР° Рё РіСЂСѓРїРїС‹ СЃРѕС…СЂР°РЅРµРЅС‹.")
     r))
 
 (defun mark:a-all (/ kw mode doc r cells pts new-fills)
   (mark:cmd-line
-    "МАРКАЗАП — полный цикл. Сетка: вставка, марки, рядовка, ведомость. Заполнения: без вставки.")
+    "РњРђР РљРђР—РђРџ вЂ” РїРѕР»РЅС‹Р№ С†РёРєР». РЎРµС‚РєР°: РІСЃС‚Р°РІРєР°, РјР°СЂРєРё, СЂСЏРґРѕРІРєР°, РІРµРґРѕРјРѕСЃС‚СЊ. Р—Р°РїРѕР»РЅРµРЅРёСЏ: Р±РµР· РІСЃС‚Р°РІРєРё.")
   (mark:reset-state)
   (mark:out "========================================")
-  (mark:out (strcat " МАРКАЗАП — универсальный пакет  " *mark:rev*))
+  (mark:out (strcat " РњРђР РљРђР—РђРџ вЂ” СѓРЅРёРІРµСЂСЃР°Р»СЊРЅС‹Р№ РїР°РєРµС‚  " *mark:rev*))
   (mark:out "========================================")
-  (initget "Сетка Заполнения С З S Z 1 2")
-  (setq kw (getkword "\nИсточник [Сетка/Заполнения] <Сетка>: "))
+  (initget "РЎРµС‚РєР° Р—Р°РїРѕР»РЅРµРЅРёСЏ РЎ Р— S Z 1 2")
+  (setq kw (getkword "\nРСЃС‚РѕС‡РЅРёРє [РЎРµС‚РєР°/Р—Р°РїРѕР»РЅРµРЅРёСЏ] <РЎРµС‚РєР°>: "))
   (cond
-    ((or (null kw) (= kw "Сетка") (= kw "С") (= kw "S") (= kw "1"))
+    ((or (null kw) (= kw "РЎРµС‚РєР°") (= kw "РЎ") (= kw "S") (= kw "1"))
      (setq mode "grid"))
     (t
      (setq mode "blocks")))
@@ -7372,13 +7379,13 @@
   (setq *mark:batch-undo* t)
   (if (eq mode "grid")
     (progn
-      ;; ВАРИАНТ 1: ПО СЕТКЕ (полный цикл: МАРКАЗАПБЛОК -> МАРКАРОВКАЗАП -> МАРКАЗАПРЯД -> МАРКАЗАПТАБЛ)
-      (mark:out "[ЭТАП 1/4] МАРКАЗАПБЛОК — раскладка по сетке, режим 5-Сетка-все-типы...")
+      ;; Р’РђР РРђРќРў 1: РџРћ РЎР•РўРљР• (РїРѕР»РЅС‹Р№ С†РёРєР»: РњРђР РљРђР—РђРџР‘Р›РћРљ -> РњРђР РљРђР РћР’РљРђР—РђРџ -> РњРђР РљРђР—РђРџР РЇР” -> РњРђР РљРђР—РђРџРўРђР‘Р›)
+      (mark:out "[Р­РўРђРџ 1/4] РњРђР РљРђР—РђРџР‘Р›РћРљ вЂ” СЂР°СЃРєР»Р°РґРєР° РїРѕ СЃРµС‚РєРµ, СЂРµР¶РёРј 5-РЎРµС‚РєР°-РІСЃРµ-С‚РёРїС‹...")
       (setq r (mark:fill-mode-all-grid nil nil)
             cells (car r)
             pts   (cadr r))
       (if (null cells)
-        (mark:out "[INFO] Сетка не выбрана или ячеек нет — пакет прерван.")
+        (mark:out "[INFO] РЎРµС‚РєР° РЅРµ РІС‹Р±СЂР°РЅР° РёР»Рё СЏС‡РµРµРє РЅРµС‚ вЂ” РїР°РєРµС‚ РїСЂРµСЂРІР°РЅ.")
         (progn
           (setq new-fills (mark:fill-apply cells pts))
           (if new-fills
@@ -7386,41 +7393,41 @@
               (setq *mark:fills* new-fills
                     *mark:reuse-sel* t
                     *mark:sel-total* (length new-fills))
-              ;; МАРКАРОВКАЗАП
-              (mark:out "[ЭТАП 2/4] МАРКАРОВКАЗАП — маркировка заполнений...")
+              ;; РњРђР РљРђР РћР’РљРђР—РђРџ
+              (mark:out "[Р­РўРђРџ 2/4] РњРђР РљРђР РћР’РљРђР—РђРџ вЂ” РјР°СЂРєРёСЂРѕРІРєР° Р·Р°РїРѕР»РЅРµРЅРёР№...")
               (mark:vz-marks)
-              ;; МАРКАЗАПРЯД
-              (mark:out "[ЭТАП 3/4] МАРКАЗАПРЯД — расстановка рядовки...")
+              ;; РњРђР РљРђР—РђРџР РЇР”
+              (mark:out "[Р­РўРђРџ 3/4] РњРђР РљРђР—РђРџР РЇР” вЂ” СЂР°СЃСЃС‚Р°РЅРѕРІРєР° СЂСЏРґРѕРІРєРё...")
               (mark:vz-rows)
-              ;; МАРКАЗАПТАБЛ
-              (mark:out "[ЭТАП 4/4] МАРКАЗАПТАБЛ — ведомость заполнения...")
+              ;; РњРђР РљРђР—РђРџРўРђР‘Р›
+              (mark:out "[Р­РўРђРџ 4/4] РњРђР РљРђР—РђРџРўРђР‘Р› вЂ” РІРµРґРѕРјРѕСЃС‚СЊ Р·Р°РїРѕР»РЅРµРЅРёСЏ...")
               (mark:a-table-stage))))))
     (progn
-      ;; ВАРИАНТ 2: ИЗ ГОТОВЫХ БЛОКОВ (МАРКАРОВКАЗАП -> МАРКАЗАПРЯД -> МАРКАЗАПТАБЛ)
-      (mark:out "[ЭТАП 1/3] МАРКАРОВКАЗАП — маркировка готовых блоков...")
+      ;; Р’РђР РРђРќРў 2: РР— Р“РћРўРћР’Р«РҐ Р‘Р›РћРљРћР’ (РњРђР РљРђР РћР’РљРђР—РђРџ -> РњРђР РљРђР—РђРџР РЇР” -> РњРђР РљРђР—РђРџРўРђР‘Р›)
+      (mark:out "[Р­РўРђРџ 1/3] РњРђР РљРђР РћР’РљРђР—РђРџ вЂ” РјР°СЂРєРёСЂРѕРІРєР° РіРѕС‚РѕРІС‹С… Р±Р»РѕРєРѕРІ...")
       (setq *mark:reuse-sel* nil)
       (mark:vz-marks)
       (if *mark:fills*
         (progn
           (setq *mark:reuse-sel* t)
-          (mark:out "[ЭТАП 2/3] МАРКАЗАПРЯД — расстановка рядовки...")
+          (mark:out "[Р­РўРђРџ 2/3] РњРђР РљРђР—РђРџР РЇР” вЂ” СЂР°СЃСЃС‚Р°РЅРѕРІРєР° СЂСЏРґРѕРІРєРё...")
           (mark:vz-rows)
-          (mark:out "[ЭТАП 3/3] МАРКАЗАПТАБЛ — ведомость заполнения...")
+          (mark:out "[Р­РўРђРџ 3/3] РњРђР РљРђР—РђРџРўРђР‘Р› вЂ” РІРµРґРѕРјРѕСЃС‚СЊ Р·Р°РїРѕР»РЅРµРЅРёСЏ...")
           (mark:a-table-stage))
-        (mark:out "[INFO] Нет заполнений для обработки — пакет прерван."))))
+        (mark:out "[INFO] РќРµС‚ Р·Р°РїРѕР»РЅРµРЅРёР№ РґР»СЏ РѕР±СЂР°Р±РѕС‚РєРё вЂ” РїР°РєРµС‚ РїСЂРµСЂРІР°РЅ."))))
   (if doc
     (mark:ax-invoke-ok doc "EndUndoMark" nil))
   (setq *mark:reuse-sel*  nil
         *mark:batch-undo* nil)
   (princ))
 ;;;=====================================================================
-;;;  РЕД. 48.0: СЕКЦИИ, ЯРУСЫ, ПОДЫНДЕКСЫ, ШКАЛА «В СВЕТУ»
-;;;  Синхронизация с MarkZV (SYNC_MARKZV.md): цифра марки = цифра
-;;;  ригеля той же длины в свету; подындекс ширины .1/.2/.3;
-;;;  подындекс высоты — точка + строчная литера (.а/.б); стм/снд.
+;;;  Р Р•Р”. 48.0: РЎР•РљР¦РР, РЇР РЈРЎР«, РџРћР”Р«РќР”Р•РљРЎР«, РЁРљРђР›Рђ В«Р’ РЎР’Р•РўРЈВ»
+;;;  РЎРёРЅС…СЂРѕРЅРёР·Р°С†РёСЏ СЃ MarkZV (SYNC_MARKZV.md): С†РёС„СЂР° РјР°СЂРєРё = С†РёС„СЂР°
+;;;  СЂРёРіРµР»СЏ С‚РѕР№ Р¶Рµ РґР»РёРЅС‹ РІ СЃРІРµС‚Сѓ; РїРѕРґС‹РЅРґРµРєСЃ С€РёСЂРёРЅС‹ .1/.2/.3;
+;;;  РїРѕРґС‹РЅРґРµРєСЃ РІС‹СЃРѕС‚С‹ вЂ” С‚РѕС‡РєР° + СЃС‚СЂРѕС‡РЅР°СЏ Р»РёС‚РµСЂР° (.Р°/.Р±); СЃС‚Рј/СЃРЅРґ.
 ;;;=====================================================================
 
-;; Слой выключен или заморожен — объект скрыт, не каркас
+;; РЎР»РѕР№ РІС‹РєР»СЋС‡РµРЅ РёР»Рё Р·Р°РјРѕСЂРѕР¶РµРЅ вЂ” РѕР±СЉРµРєС‚ СЃРєСЂС‹С‚, РЅРµ РєР°СЂРєР°СЃ
 (defun mark:ent-hidden? (e / ed nm d c f)
   (setq ed (if e (entget e) nil)
         nm (if ed (cdr (assoc 8 ed)) nil))
@@ -7432,19 +7439,19 @@
          (and (numberp f) (= 1 (logand 1 f)))))
     (t nil)))
 
-;; Видим ли объект: DXF 60, VLA Visible и слой
+;; Р’РёРґРёРј Р»Рё РѕР±СЉРµРєС‚: DXF 60, VLA Visible Рё СЃР»РѕР№
 (defun mark:ent-visible? (e)
   (and (mark:fill-shown? e)
        (not (mark:ent-hidden? e))))
 
-;; Конец вертикального элемента попадает в горизонтальный: допуск по
-;; оси 55 = полуширина 25 + допуск 30 (шов «по грани» даёт 25..50);
-;; без wide — строго внутри пролёта, wide — и у торца
-;; (зеркало mk:beam-hit; Ред. 48.11, 48.13)
+;; РљРѕРЅРµС† РІРµСЂС‚РёРєР°Р»СЊРЅРѕРіРѕ СЌР»РµРјРµРЅС‚Р° РїРѕРїР°РґР°РµС‚ РІ РіРѕСЂРёР·РѕРЅС‚Р°Р»СЊРЅС‹Р№: РґРѕРїСѓСЃРє РїРѕ
+;; РѕСЃРё 55 = РїРѕР»СѓС€РёСЂРёРЅР° 25 + РґРѕРїСѓСЃРє 30 (С€РѕРІ В«РїРѕ РіСЂР°РЅРёВ» РґР°С‘С‚ 25..50);
+;; Р±РµР· wide вЂ” СЃС‚СЂРѕРіРѕ РІРЅСѓС‚СЂРё РїСЂРѕР»С‘С‚Р°, wide вЂ” Рё Сѓ С‚РѕСЂС†Р°
+;; (Р·РµСЂРєР°Р»Рѕ mk:beam-hit; Р РµРґ. 48.11, 48.13)
 (defun mark:sec-end-hit (x y hs wide / hit h e1 e2)
-  ;; wide: допуск и к торцу горизонтали (Ред. 48.11, Т-членения).
-  ;; y-допуск 55, не 30: ствол «по грани» даёт 25..50 от оси
-  ;; горизонтали — тридцати не хватало (Ред. 48.13, колонка 1700).
+  ;; wide: РґРѕРїСѓСЃРє Рё Рє С‚РѕСЂС†Сѓ РіРѕСЂРёР·РѕРЅС‚Р°Р»Рё (Р РµРґ. 48.11, Рў-С‡Р»РµРЅРµРЅРёСЏ).
+  ;; y-РґРѕРїСѓСЃРє 55, РЅРµ 30: СЃС‚РІРѕР» В«РїРѕ РіСЂР°РЅРёВ» РґР°С‘С‚ 25..50 РѕС‚ РѕСЃРё
+  ;; РіРѕСЂРёР·РѕРЅС‚Р°Р»Рё вЂ” С‚СЂРёРґС†Р°С‚Рё РЅРµ С…РІР°С‚Р°Р»Рѕ (Р РµРґ. 48.13, РєРѕР»РѕРЅРєР° 1700).
   (setq hit nil)
   (foreach h hs
     (if (null hit)
@@ -7460,20 +7467,20 @@
           (setq hit t)))))
   hit)
 
-;; Импост («т») — вертикаль, не являющаяся опорой (SYNC §3): ригель
-;; проходит над/под ней не прерываясь — конец вертикали строго в
-;; середине пролёта ригеля (sec-end-hit, wide=nil). Хотя бы один конец;
-;; опора-стойка — вертикаль, к которой ригели примыкают только
-;; торцами. Правило 48.11 требовало пару «строгий + торцевой» —
-;; полновысотный импост (низ вообще без горизонталей) оставался
-;; границей: столбец 1700 в В-7. Ред. 48.17 по данным МАРКАЗАПГЕО
-;; 48.16: на В-7 и ТБ-1 меняется ровно одна вертикаль (ось 68520.3,
-;; граница становится импостом).
+;; РРјРїРѕСЃС‚ (В«С‚В») вЂ” РІРµСЂС‚РёРєР°Р»СЊ, РЅРµ СЏРІР»СЏСЋС‰Р°СЏСЃСЏ РѕРїРѕСЂРѕР№ (SYNC В§3): СЂРёРіРµР»СЊ
+;; РїСЂРѕС…РѕРґРёС‚ РЅР°Рґ/РїРѕРґ РЅРµР№ РЅРµ РїСЂРµСЂС‹РІР°СЏСЃСЊ вЂ” РєРѕРЅРµС† РІРµСЂС‚РёРєР°Р»Рё СЃС‚СЂРѕРіРѕ РІ
+;; СЃРµСЂРµРґРёРЅРµ РїСЂРѕР»С‘С‚Р° СЂРёРіРµР»СЏ (sec-end-hit, wide=nil). РҐРѕС‚СЏ Р±С‹ РѕРґРёРЅ РєРѕРЅРµС†;
+;; РѕРїРѕСЂР°-СЃС‚РѕР№РєР° вЂ” РІРµСЂС‚РёРєР°Р»СЊ, Рє РєРѕС‚РѕСЂРѕР№ СЂРёРіРµР»Рё РїСЂРёРјС‹РєР°СЋС‚ С‚РѕР»СЊРєРѕ
+;; С‚РѕСЂС†Р°РјРё. РџСЂР°РІРёР»Рѕ 48.11 С‚СЂРµР±РѕРІР°Р»Рѕ РїР°СЂСѓ В«СЃС‚СЂРѕРіРёР№ + С‚РѕСЂС†РµРІРѕР№В» вЂ”
+;; РїРѕР»РЅРѕРІС‹СЃРѕС‚РЅС‹Р№ РёРјРїРѕСЃС‚ (РЅРёР· РІРѕРѕР±С‰Рµ Р±РµР· РіРѕСЂРёР·РѕРЅС‚Р°Р»РµР№) РѕСЃС‚Р°РІР°Р»СЃСЏ
+;; РіСЂР°РЅРёС†РµР№: СЃС‚РѕР»Р±РµС† 1700 РІ Р’-7. Р РµРґ. 48.17 РїРѕ РґР°РЅРЅС‹Рј РњРђР РљРђР—РђРџР“Р•Рћ
+;; 48.16: РЅР° Р’-7 Рё РўР‘-1 РјРµРЅСЏРµС‚СЃСЏ СЂРѕРІРЅРѕ РѕРґРЅР° РІРµСЂС‚РёРєР°Р»СЊ (РѕСЃСЊ 68520.3,
+;; РіСЂР°РЅРёС†Р° СЃС‚Р°РЅРѕРІРёС‚СЃСЏ РёРјРїРѕСЃС‚РѕРј).
 (defun mark:sec-impost? (v hs)
   (or (mark:sec-end-hit (nth 0 v) (nth 1 v) hs nil)
       (mark:sec-end-hit (nth 0 v) (nth 2 v) hs nil)))
 
-;; Стойки-границы секций: неимпостные вертикальные элементы
+;; РЎС‚РѕР№РєРё-РіСЂР°РЅРёС†С‹ СЃРµРєС†РёР№: РЅРµРёРјРїРѕСЃС‚РЅС‹Рµ РІРµСЂС‚РёРєР°Р»СЊРЅС‹Рµ СЌР»РµРјРµРЅС‚С‹
 (defun mark:sec-columns (vs hs / out v)
   (setq out nil)
   (foreach v vs
@@ -7481,28 +7488,28 @@
       (setq out (cons v out))))
   (reverse out))
 
-;; [DIAG] Компактный разбор секционной геометрии: одна строка на
-;; горизонталь и на вертикаль — статус (стойка-граница/импост),
-;; вердикты sec-end-hit для низа и верха (строго/торец) и прогноз
-;; правила-кандидата «импост = хотя бы один строгий конец» (Ред. 48.16;
-;; в 48.14–48.15 был детальный построчный разбор концов — блок на
-;; 89 вертикалей не копировался из консоли целиком). Включается
-;; командой МАРКАЗАПГЕО, печатается один раз и сбрасывает флаг сама.
-;; Только печать — расчёты не меняет.
+;; [DIAG] РљРѕРјРїР°РєС‚РЅС‹Р№ СЂР°Р·Р±РѕСЂ СЃРµРєС†РёРѕРЅРЅРѕР№ РіРµРѕРјРµС‚СЂРёРё: РѕРґРЅР° СЃС‚СЂРѕРєР° РЅР°
+;; РіРѕСЂРёР·РѕРЅС‚Р°Р»СЊ Рё РЅР° РІРµСЂС‚РёРєР°Р»СЊ вЂ” СЃС‚Р°С‚СѓСЃ (СЃС‚РѕР№РєР°-РіСЂР°РЅРёС†Р°/РёРјРїРѕСЃС‚),
+;; РІРµСЂРґРёРєС‚С‹ sec-end-hit РґР»СЏ РЅРёР·Р° Рё РІРµСЂС…Р° (СЃС‚СЂРѕРіРѕ/С‚РѕСЂРµС†) Рё РїСЂРѕРіРЅРѕР·
+;; РїСЂР°РІРёР»Р°-РєР°РЅРґРёРґР°С‚Р° В«РёРјРїРѕСЃС‚ = С…РѕС‚СЏ Р±С‹ РѕРґРёРЅ СЃС‚СЂРѕРіРёР№ РєРѕРЅРµС†В» (Р РµРґ. 48.16;
+;; РІ 48.14вЂ“48.15 Р±С‹Р» РґРµС‚Р°Р»СЊРЅС‹Р№ РїРѕСЃС‚СЂРѕС‡РЅС‹Р№ СЂР°Р·Р±РѕСЂ РєРѕРЅС†РѕРІ вЂ” Р±Р»РѕРє РЅР°
+;; 89 РІРµСЂС‚РёРєР°Р»РµР№ РЅРµ РєРѕРїРёСЂРѕРІР°Р»СЃСЏ РёР· РєРѕРЅСЃРѕР»Рё С†РµР»РёРєРѕРј). Р’РєР»СЋС‡Р°РµС‚СЃСЏ
+;; РєРѕРјР°РЅРґРѕР№ РњРђР РљРђР—РђРџР“Р•Рћ, РїРµС‡Р°С‚Р°РµС‚СЃСЏ РѕРґРёРЅ СЂР°Р· Рё СЃР±СЂР°СЃС‹РІР°РµС‚ С„Р»Р°Рі СЃР°РјР°.
+;; РўРѕР»СЊРєРѕ РїРµС‡Р°С‚СЊ вЂ” СЂР°СЃС‡С‘С‚С‹ РЅРµ РјРµРЅСЏРµС‚.
 (defun mark:sec-diag (vs hs vs2 / sv sh v h n1 n2 s1 s2 w1 w2 kp ks)
   (setq *mark:sec-diag* nil)
-  (mark:out "[DIAG] === Геометрия секций ===")
+  (mark:out "[DIAG] === Р“РµРѕРјРµС‚СЂРёСЏ СЃРµРєС†РёР№ ===")
   (mark:out
-    (strcat "[DIAG] Вертикалей " (itoa (length vs))
-            ", стоек-границ " (itoa (length vs2))
-            ", импостов " (itoa (- (length vs) (length vs2)))
-            ", горизонталей " (itoa (length hs)) "."))
+    (strcat "[DIAG] Р’РµСЂС‚РёРєР°Р»РµР№ " (itoa (length vs))
+            ", СЃС‚РѕРµРє-РіСЂР°РЅРёС† " (itoa (length vs2))
+            ", РёРјРїРѕСЃС‚РѕРІ " (itoa (- (length vs) (length vs2)))
+            ", РіРѕСЂРёР·РѕРЅС‚Р°Р»РµР№ " (itoa (length hs)) "."))
   (setq sh nil)
   (foreach h hs
     (setq sh (mark:sec-ins-ax sh h)))
   (foreach h sh
     (mark:out
-      (strcat "[DIAG] гор y=" (rtos (nth 0 h) 2 1)
+      (strcat "[DIAG] РіРѕСЂ y=" (rtos (nth 0 h) 2 1)
               " x=" (rtos (nth 1 h) 2 1) ".." (rtos (nth 2 h) 2 1)
               " hw=" (rtos (nth 3 h) 2 0))))
   (setq sv nil)
@@ -7524,29 +7531,29 @@
     (if (or s1 s2)
       (setq kp (1+ kp)))
     (mark:out
-      (strcat "[DIAG] верт x=" (rtos (nth 0 v) 2 1)
+      (strcat "[DIAG] РІРµСЂС‚ x=" (rtos (nth 0 v) 2 1)
               " y=" (rtos (nth 1 v) 2 1) ".." (rtos (nth 2 v) 2 1)
               " hw=" (rtos (nth 3 v) 2 0)
-              (if (member v vs2) " граница" " импост")
-              " | низ[" (itoa n1) "] С=" (if s1 "ДА" "НЕТ")
-              " Т=" (if w1 "ДА" "НЕТ")
-              " | верх[" (itoa n2) "] С=" (if s2 "ДА" "НЕТ")
-              " Т=" (if w2 "ДА" "НЕТ")
-              " | прогноз: " (if (or s1 s2) "импост" "граница"))))
+              (if (member v vs2) " РіСЂР°РЅРёС†Р°" " РёРјРїРѕСЃС‚")
+              " | РЅРёР·[" (itoa n1) "] РЎ=" (if s1 "Р”Рђ" "РќР•Рў")
+              " Рў=" (if w1 "Р”Рђ" "РќР•Рў")
+              " | РІРµСЂС…[" (itoa n2) "] РЎ=" (if s2 "Р”Рђ" "РќР•Рў")
+              " Рў=" (if w2 "Р”Рђ" "РќР•Рў")
+              " | РїСЂРѕРіРЅРѕР·: " (if (or s1 s2) "РёРјРїРѕСЃС‚" "РіСЂР°РЅРёС†Р°"))))
   (mark:out
-    (strcat "[DIAG] Прогноз правила «импост = хотя бы один строгий конец»: "
-            "импостов " (itoa kp)
-            ", границ " (itoa (- (length vs) kp)) "."))
+    (strcat "[DIAG] РџСЂРѕРіРЅРѕР· РїСЂР°РІРёР»Р° В«РёРјРїРѕСЃС‚ = С…РѕС‚СЏ Р±С‹ РѕРґРёРЅ СЃС‚СЂРѕРіРёР№ РєРѕРЅРµС†В»: "
+            "РёРјРїРѕСЃС‚РѕРІ " (itoa kp)
+            ", РіСЂР°РЅРёС† " (itoa (- (length vs) kp)) "."))
   (setq ks "")
   (foreach h *mark:scale1*
     (setq ks (strcat ks " " (itoa h))))
-  (mark:out (strcat "[DIAG] Шкала Р (длины ригелей, мм):" ks))
-  (mark:out "[DIAG] === Конец геометрии секций ==="))
+  (mark:out (strcat "[DIAG] РЁРєР°Р»Р° Р  (РґР»РёРЅС‹ СЂРёРіРµР»РµР№, РјРј):" ks))
+  (mark:out "[DIAG] === РљРѕРЅРµС† РіРµРѕРјРµС‚СЂРёРё СЃРµРєС†РёР№ ==="))
 
-;; Колонка той же секции за краем-импостом: пересекает ярус ячейки
-;; и выходит за него по высоте — внутренние оси-обрезки колонки
-;; не считаются (Ред. 48.13: правая колонка для ячейки 1000 x 3010
-;; в разделённой колонке 1700 — она ниже импоста на 320 мм).
+;; РљРѕР»РѕРЅРєР° С‚РѕР№ Р¶Рµ СЃРµРєС†РёРё Р·Р° РєСЂР°РµРј-РёРјРїРѕСЃС‚РѕРј: РїРµСЂРµСЃРµРєР°РµС‚ СЏСЂСѓСЃ СЏС‡РµР№РєРё
+;; Рё РІС‹С…РѕРґРёС‚ Р·Р° РЅРµРіРѕ РїРѕ РІС‹СЃРѕС‚Рµ вЂ” РІРЅСѓС‚СЂРµРЅРЅРёРµ РѕСЃРё-РѕР±СЂРµР·РєРё РєРѕР»РѕРЅРєРё
+;; РЅРµ СЃС‡РёС‚Р°СЋС‚СЃСЏ (Р РµРґ. 48.13: РїСЂР°РІР°СЏ РєРѕР»РѕРЅРєР° РґР»СЏ СЏС‡РµР№РєРё 1000 x 3010
+;; РІ СЂР°Р·РґРµР»С‘РЅРЅРѕР№ РєРѕР»РѕРЅРєРµ 1700 вЂ” РѕРЅР° РЅРёР¶Рµ РёРјРїРѕСЃС‚Р° РЅР° 320 РјРј).
 (defun mark:sec-tier-col? (items y0 y1 / sp a b hit)
   (setq hit nil)
   (foreach sp (mark:fill-item-spans items)
@@ -7558,9 +7565,9 @@
                  (>= b (+ y1 30.0))))
       (setq hit t))))
 
-;; Гео ячейки: (ширина секции высота яруса). Границы секции —
-;; соседние колонки-границы; ярус — горизонтали, охватывающие секцию.
-;; Без осей (полилинии, линейный каркас с Т-объединением) — свой размер.
+;; Р“РµРѕ СЏС‡РµР№РєРё: (С€РёСЂРёРЅР° СЃРµРєС†РёРё РІС‹СЃРѕС‚Р° СЏСЂСѓСЃР°). Р“СЂР°РЅРёС†С‹ СЃРµРєС†РёРё вЂ”
+;; СЃРѕСЃРµРґРЅРёРµ РєРѕР»РѕРЅРєРё-РіСЂР°РЅРёС†С‹; СЏСЂСѓСЃ вЂ” РіРѕСЂРёР·РѕРЅС‚Р°Р»Рё, РѕС…РІР°С‚С‹РІР°СЋС‰РёРµ СЃРµРєС†РёСЋ.
+;; Р‘РµР· РѕСЃРµР№ (РїРѕР»РёР»РёРЅРёРё, Р»РёРЅРµР№РЅС‹Р№ РєР°СЂРєР°СЃ СЃ Рў-РѕР±СЉРµРґРёРЅРµРЅРёРµРј) вЂ” СЃРІРѕР№ СЂР°Р·РјРµСЂ.
 (defun mark:sec-geo-one (bb vs2 hs / x0 y0 x1 y1 cols c ccols face xl xr
                              cov yb yt h f)
   (setq x0 (nth 0 bb)
@@ -7570,9 +7577,9 @@
   (if (or (null vs2) (null hs))
     (list (mark:round1 (- x1 x0)) (mark:round1 (- y1 y0)))
     (progn
-      ;; Ред. 48.11: граница секции — колонка, доходящая до яруса ячейки
-      ;; (проверка та же, что L/R в fill-items->cells); короткие торцевые
-      ;; оси ширину подъячеек не срезают.
+      ;; Р РµРґ. 48.11: РіСЂР°РЅРёС†Р° СЃРµРєС†РёРё вЂ” РєРѕР»РѕРЅРєР°, РґРѕС…РѕРґСЏС‰Р°СЏ РґРѕ СЏСЂСѓСЃР° СЏС‡РµР№РєРё
+      ;; (РїСЂРѕРІРµСЂРєР° С‚Р° Р¶Рµ, С‡С‚Рѕ L/R РІ fill-items->cells); РєРѕСЂРѕС‚РєРёРµ С‚РѕСЂС†РµРІС‹Рµ
+      ;; РѕСЃРё С€РёСЂРёРЅСѓ РїРѕРґСЉСЏС‡РµРµРє РЅРµ СЃСЂРµР·Р°СЋС‚.
       (setq cols (mark:fill-cluster-items vs2)
             ccols nil
             xl    nil
@@ -7592,10 +7599,10 @@
         (if (and face (>= face (- x1 1.0))
                  (or (null xr) (< face xr)))
           (setq xr face)))
-      ;; Ред. 48.13: край ячейки — импост (его нет в vs2), а колонки,
-      ;; охватывающей ячейку, дальше нет — секция продолжается за
-      ;; импост: граница — колонка, заходящая на ярус ячейки и
-      ;; выходящая за него по высоте (обрезки внутри колонки мимо).
+      ;; Р РµРґ. 48.13: РєСЂР°Р№ СЏС‡РµР№РєРё вЂ” РёРјРїРѕСЃС‚ (РµРіРѕ РЅРµС‚ РІ vs2), Р° РєРѕР»РѕРЅРєРё,
+      ;; РѕС…РІР°С‚С‹РІР°СЋС‰РµР№ СЏС‡РµР№РєСѓ, РґР°Р»СЊС€Рµ РЅРµС‚ вЂ” СЃРµРєС†РёСЏ РїСЂРѕРґРѕР»Р¶Р°РµС‚СЃСЏ Р·Р°
+      ;; РёРјРїРѕСЃС‚: РіСЂР°РЅРёС†Р° вЂ” РєРѕР»РѕРЅРєР°, Р·Р°С…РѕРґСЏС‰Р°СЏ РЅР° СЏСЂСѓСЃ СЏС‡РµР№РєРё Рё
+      ;; РІС‹С…РѕРґСЏС‰Р°СЏ Р·Р° РЅРµРіРѕ РїРѕ РІС‹СЃРѕС‚Рµ (РѕР±СЂРµР·РєРё РІРЅСѓС‚СЂРё РєРѕР»РѕРЅРєРё РјРёРјРѕ).
       (if (null xl)
         (foreach c cols
           (if (and (mark:sec-tier-col? c y0 y1)
@@ -7635,7 +7642,7 @@
       (if (null yt) (setq yt y1))
       (list (mark:round1 (- xr xl)) (mark:round1 (- yt yb))))))
 
-;; Значение динамического свойства по маске имени
+;; Р—РЅР°С‡РµРЅРёРµ РґРёРЅР°РјРёС‡РµСЃРєРѕРіРѕ СЃРІРѕР№СЃС‚РІР° РїРѕ РјР°СЃРєРµ РёРјРµРЅРё
 (defun mark:dyn-by-mask (e mask / pairs p v out)
   (setq pairs (mark:dyn-pairs e)
         out   nil)
@@ -7649,9 +7656,9 @@
           (setq out v)))))
   out)
 
-;; Длина блока-ригеля: свойство «*лин*», иначе габарит (зеркало mk:dim-src)
+;; Р”Р»РёРЅР° Р±Р»РѕРєР°-СЂРёРіРµР»СЏ: СЃРІРѕР№СЃС‚РІРѕ В«*Р»РёРЅ*В», РёРЅР°С‡Рµ РіР°Р±Р°СЂРёС‚ (Р·РµСЂРєР°Р»Рѕ mk:dim-src)
 (defun mark:sec-block-len (e / v bb)
-  (setq v (mark:dyn-by-mask e "*лин*"))
+  (setq v (mark:dyn-by-mask e "*Р»РёРЅ*"))
   (if (numberp v)
     v
     (progn
@@ -7660,7 +7667,7 @@
         (- (nth 2 bb) (nth 0 bb))
         nil))))
 
-;; Пролёт блока-ригеля: (y x0 x1) | nil
+;; РџСЂРѕР»С‘С‚ Р±Р»РѕРєР°-СЂРёРіРµР»СЏ: (y x0 x1) | nil
 (defun mark:sec-block-span (e / L p)
   (setq L (mark:sec-block-len e)
         p (cdr (assoc 10 (entget e))))
@@ -7668,7 +7675,7 @@
     (list (float (cadr p)) (float (car p)) (+ (float (car p)) L))
     nil))
 
-;; Вставка записи (ось нач кон) по возрастанию оси, без lambda
+;; Р’СЃС‚Р°РІРєР° Р·Р°РїРёСЃРё (РѕСЃСЊ РЅР°С‡ РєРѕРЅ) РїРѕ РІРѕР·СЂР°СЃС‚Р°РЅРёСЋ РѕСЃРё, Р±РµР· lambda
 (defun mark:sec-ins-ax (sorted r / out done q)
   (setq out  nil
         done nil)
@@ -7681,7 +7688,7 @@
     (setq out (cons r out)))
   (reverse out))
 
-;; Вставка числа по возрастанию, без lambda
+;; Р’СЃС‚Р°РІРєР° С‡РёСЃР»Р° РїРѕ РІРѕР·СЂР°СЃС‚Р°РЅРёСЋ, Р±РµР· lambda
 (defun mark:sec-ins-num (sorted k / out done q)
   (setq out  nil
         done nil)
@@ -7694,13 +7701,13 @@
     (setq out (cons k out)))
   (reverse out))
 
-;; Ключ шкалы: целые мм (зеркало mk:size-key)
+;; РљР»СЋС‡ С€РєР°Р»С‹: С†РµР»С‹Рµ РјРј (Р·РµСЂРєР°Р»Рѕ mk:size-key)
 (defun mark:sec-key (v)
   (if (numberp v)
     (fix (+ v 0.5))
     nil))
 
-;; Сортировка + дедупликация целых ключей
+;; РЎРѕСЂС‚РёСЂРѕРІРєР° + РґРµРґСѓРїР»РёРєР°С†РёСЏ С†РµР»С‹С… РєР»СЋС‡РµР№
 (defun mark:sec-keys-sort (keys / sorted out q)
   (setq sorted nil)
   (foreach q keys
@@ -7712,9 +7719,9 @@
       (setq out (cons q out))))
   (reverse out))
 
-;; Блок 1 шкалы: длины горизонтальных элементов в свету.
-;; Зеркало MarkZV Ред. 3.7: геометрия MLINE (порог 50 мм, склейка
-;; соосных 200 мм при перекрытии), блоки «*ригель*»; блоки в приоритете.
+;; Р‘Р»РѕРє 1 С€РєР°Р»С‹: РґР»РёРЅС‹ РіРѕСЂРёР·РѕРЅС‚Р°Р»СЊРЅС‹С… СЌР»РµРјРµРЅС‚РѕРІ РІ СЃРІРµС‚Сѓ.
+;; Р—РµСЂРєР°Р»Рѕ MarkZV Р РµРґ. 3.7: РіРµРѕРјРµС‚СЂРёСЏ MLINE (РїРѕСЂРѕРі 50 РјРј, СЃРєР»РµР№РєР°
+;; СЃРѕРѕСЃРЅС‹С… 200 РјРј РїСЂРё РїРµСЂРµРєСЂС‹С‚РёРё), Р±Р»РѕРєРё В«*СЂРёРіРµР»СЊ*В»; Р±Р»РѕРєРё РІ РїСЂРёРѕСЂРёС‚РµС‚Рµ.
 (defun mark:sec-scale1 (msegs rblocks / hrecs s x0 x1 ax len sorted out cur
                                  cax0 cmin cmax g hit sp bspans keys)
   (setq hrecs nil)
@@ -7749,7 +7756,7 @@
   (if cur
     (setq out (cons (list cax0 cmin cmax) out)))
   (setq out (reverse out))
-  ;; пролёты блоков-ригелей
+  ;; РїСЂРѕР»С‘С‚С‹ Р±Р»РѕРєРѕРІ-СЂРёРіРµР»РµР№
   (setq bspans nil)
   (foreach sp rblocks
     (setq sp (mark:sec-block-span sp))
@@ -7758,7 +7765,7 @@
   (setq keys nil)
   (foreach sp bspans
     (setq keys (cons (mark:sec-key (- (nth 2 sp) (nth 1 sp))) keys)))
-  ;; треки, не покрытые блоками
+  ;; С‚СЂРµРєРё, РЅРµ РїРѕРєСЂС‹С‚С‹Рµ Р±Р»РѕРєР°РјРё
   (foreach g out
     (setq hit nil)
     (foreach sp bspans
@@ -7771,7 +7778,7 @@
       (setq keys (cons (mark:sec-key (- (nth 2 g) (nth 1 g))) keys))))
   (mark:sec-keys-sort keys))
 
-;; Строка шкалы по ключу
+;; РЎС‚СЂРѕРєР° С€РєР°Р»С‹ РїРѕ РєР»СЋС‡Сѓ
 (defun mark:sec-row-of (rows k / hit row)
   (setq hit nil)
   (foreach row rows
@@ -7779,7 +7786,7 @@
       (setq hit row)))
   hit)
 
-;; Вставка строки шкалы по возрастанию размера
+;; Р’СЃС‚Р°РІРєР° СЃС‚СЂРѕРєРё С€РєР°Р»С‹ РїРѕ РІРѕР·СЂР°СЃС‚Р°РЅРёСЋ СЂР°Р·РјРµСЂР°
 (defun mark:sec-ins-row (sorted r / out done q)
   (setq out  nil
         done nil)
@@ -7792,8 +7799,8 @@
     (setq out (cons r out)))
   (reverse out))
 
-;; Итоговая шкала: Блок 1 (ригели) + Блок 2 (секции без ригеля).
-;; Возвращает ((размер_мм источник) ...), источник Р/З/РЗ.
+;; РС‚РѕРіРѕРІР°СЏ С€РєР°Р»Р°: Р‘Р»РѕРє 1 (СЂРёРіРµР»Рё) + Р‘Р»РѕРє 2 (СЃРµРєС†РёРё Р±РµР· СЂРёРіРµР»СЏ).
+;; Р’РѕР·РІСЂР°С‰Р°РµС‚ ((СЂР°Р·РјРµСЂ_РјРј РёСЃС‚РѕС‡РЅРёРє) ...), РёСЃС‚РѕС‡РЅРёРє Р /Р—/Р Р—.
 (defun mark:sec-scale-full (/ secw out k row sorted)
   (setq secw nil)
   (foreach row *mark:fill-geo*
@@ -7802,19 +7809,19 @@
   (setq out nil)
   (foreach k *mark:scale1*
     (if (null (mark:sec-row-of out k))
-      (setq out (cons (list k (if (member k secw) "РЗ" "Р")) out))))
+      (setq out (cons (list k (if (member k secw) "Р Р—" "Р ")) out))))
   (foreach k secw
     (if (and (null (mark:sec-row-of out k))
              (null (member k *mark:scale1*)))
-      (setq out (cons (list k "З") out))))
+      (setq out (cons (list k "Р—") out))))
   (setq sorted nil)
   (foreach row out
     (setq sorted (mark:sec-ins-row sorted row)))
   sorted)
 
-;; Источник секции: РЗ/З/Р. Ред. 48.20: поиск по РАЗМЕРУ столбца —
-;; позиции scale-final больше не совпадают с номерами (номера
-;; сплошные по фактическим столбцам, Р-длины в нумерации не участвуют).
+;; РСЃС‚РѕС‡РЅРёРє СЃРµРєС†РёРё: Р Р—/Р—/Р . Р РµРґ. 48.20: РїРѕРёСЃРє РїРѕ Р РђР—РњР•Р РЈ СЃС‚РѕР»Р±С†Р° вЂ”
+;; РїРѕР·РёС†РёРё scale-final Р±РѕР»СЊС€Рµ РЅРµ СЃРѕРІРїР°РґР°СЋС‚ СЃ РЅРѕРјРµСЂР°РјРё (РЅРѕРјРµСЂР°
+;; СЃРїР»РѕС€РЅС‹Рµ РїРѕ С„Р°РєС‚РёС‡РµСЃРєРёРј СЃС‚РѕР»Р±С†Р°Рј, Р -РґР»РёРЅС‹ РІ РЅСѓРјРµСЂР°С†РёРё РЅРµ СѓС‡Р°СЃС‚РІСѓСЋС‚).
 (defun mark:sec-src-of (w / row sc)
   (setq row nil)
   (if (and (numberp w) *mark:scale-final*)
@@ -7826,7 +7833,7 @@
     (nth 1 row)
     "?"))
 
-;; Карта подындексов: ((ключ . (размеры)) ...)
+;; РљР°СЂС‚Р° РїРѕРґС‹РЅРґРµРєСЃРѕРІ: ((РєР»СЋС‡ . (СЂР°Р·РјРµСЂС‹)) ...)
 (defun mark:map-add (map key val / hit)
   (setq hit (assoc key map))
   (if hit
@@ -7841,7 +7848,7 @@
                     out)))
   out)
 
-;; Списки ширин/высот записей (запасная шкала W/H)
+;; РЎРїРёСЃРєРё С€РёСЂРёРЅ/РІС‹СЃРѕС‚ Р·Р°РїРёСЃРµР№ (Р·Р°РїР°СЃРЅР°СЏ С€РєР°Р»Р° W/H)
 (defun mark:recs-widths (/ out r w)
   (setq out nil)
   (foreach r *mark:records*
@@ -7858,17 +7865,17 @@
       (setq out (cons h out))))
   (reverse out))
 
-;; Готовые заполнения без раскладки: попросить каркас и рассчитать
-;; секции/ярусы на месте (решение заказчика 2026-09-29).
-;; Ред. 48.32: кэш выбора каркаса — ОДИН выбор на все проходы витражей
-;; раздельной маркировки (сбрасывается при новом выборе заполнений).
-;; Ред. 48.35: setq вместо defvar — в AutoLISP НЕТ defvar (форма из
-;; других диалектов Lisp); в 48.32-48.34 LOAD падал на ней:
-;; «no function definition: DEFVAR», файл не загружался целиком.
-;; Глобальные инициализируются setq на верхнем уровне (как *mark:rev*).
+;; Р“РѕС‚РѕРІС‹Рµ Р·Р°РїРѕР»РЅРµРЅРёСЏ Р±РµР· СЂР°СЃРєР»Р°РґРєРё: РїРѕРїСЂРѕСЃРёС‚СЊ РєР°СЂРєР°СЃ Рё СЂР°СЃСЃС‡РёС‚Р°С‚СЊ
+;; СЃРµРєС†РёРё/СЏСЂСѓСЃС‹ РЅР° РјРµСЃС‚Рµ (СЂРµС€РµРЅРёРµ Р·Р°РєР°Р·С‡РёРєР° 2026-09-29).
+;; Р РµРґ. 48.32: РєСЌС€ РІС‹Р±РѕСЂР° РєР°СЂРєР°СЃР° вЂ” РћР”РРќ РІС‹Р±РѕСЂ РЅР° РІСЃРµ РїСЂРѕС…РѕРґС‹ РІРёС‚СЂР°Р¶РµР№
+;; СЂР°Р·РґРµР»СЊРЅРѕР№ РјР°СЂРєРёСЂРѕРІРєРё (СЃР±СЂР°СЃС‹РІР°РµС‚СЃСЏ РїСЂРё РЅРѕРІРѕРј РІС‹Р±РѕСЂРµ Р·Р°РїРѕР»РЅРµРЅРёР№).
+;; Р РµРґ. 48.35: setq РІРјРµСЃС‚Рѕ defvar вЂ” РІ AutoLISP РќР•Рў defvar (С„РѕСЂРјР° РёР·
+;; РґСЂСѓРіРёС… РґРёР°Р»РµРєС‚РѕРІ Lisp); РІ 48.32-48.34 LOAD РїР°РґР°Р» РЅР° РЅРµР№:
+;; В«no function definition: DEFVARВ», С„Р°Р№Р» РЅРµ Р·Р°РіСЂСѓР¶Р°Р»СЃСЏ С†РµР»РёРєРѕРј.
+;; Р“Р»РѕР±Р°Р»СЊРЅС‹Рµ РёРЅРёС†РёР°Р»РёР·РёСЂСѓСЋС‚СЃСЏ setq РЅР° РІРµСЂС…РЅРµРј СѓСЂРѕРІРЅРµ (РєР°Рє *mark:rev*).
 (setq *mark:carc-cache* nil)
 
-;; Ред. 48.32: список enames набора выбора (в порядке выбора)
+;; Р РµРґ. 48.32: СЃРїРёСЃРѕРє enames РЅР°Р±РѕСЂР° РІС‹Р±РѕСЂР° (РІ РїРѕСЂСЏРґРєРµ РІС‹Р±РѕСЂР°)
 (defun mark:ss-list (ss / i out)
   (setq i   (sslength ss)
         out nil)
@@ -7877,7 +7884,7 @@
           out (cons (ssname ss i) out)))
   out)
 
-;; Ред. 48.32: набор из кэша каркаса (удалённые объекты пропускаем)
+;; Р РµРґ. 48.32: РЅР°Р±РѕСЂ РёР· РєСЌС€Р° РєР°СЂРєР°СЃР° (СѓРґР°Р»С‘РЅРЅС‹Рµ РѕР±СЉРµРєС‚С‹ РїСЂРѕРїСѓСЃРєР°РµРј)
 (defun mark:carc-ss (/ s e)
   (setq s nil)
   (foreach e *mark:carc-cache*
@@ -7892,8 +7899,8 @@
 (defun mark:sec-standalone (/ ss i e ed typ nm r segs blocks msegs rblocks
                                seen polys axes vs hs items boxes bb n-poly
                                n-polyo n-line vs2 out ins hit cnt glaz cs)
-  ;; Ред. 48.32: сначала кэш предыдущего выбора каркаса — следующие
-  ;; проходы витражей не спрашивают рамку заново
+  ;; Р РµРґ. 48.32: СЃРЅР°С‡Р°Р»Р° РєСЌС€ РїСЂРµРґС‹РґСѓС‰РµРіРѕ РІС‹Р±РѕСЂР° РєР°СЂРєР°СЃР° вЂ” СЃР»РµРґСѓСЋС‰РёРµ
+  ;; РїСЂРѕС…РѕРґС‹ РІРёС‚СЂР°Р¶РµР№ РЅРµ СЃРїСЂР°С€РёРІР°СЋС‚ СЂР°РјРєСѓ Р·Р°РЅРѕРІРѕ
   (setq ss nil)
   (if *mark:carc-cache*
     (progn
@@ -7901,18 +7908,18 @@
       (if cs
         (progn
           (mark:out
-            (strcat "[INFO] Каркас: использован предыдущий выбор ("
-                    (itoa (sslength cs)) " объект(ов))."))
+            (strcat "[INFO] РљР°СЂРєР°СЃ: РёСЃРїРѕР»СЊР·РѕРІР°РЅ РїСЂРµРґС‹РґСѓС‰РёР№ РІС‹Р±РѕСЂ ("
+                    (itoa (sslength cs)) " РѕР±СЉРµРєС‚(РѕРІ))."))
           (setq ss cs)))))
   (if (null ss)
     (progn
-      (mark:out "Для расчёта секций выберите каркас рамкой. Enter — отмена.")
+      (mark:out "Р”Р»СЏ СЂР°СЃС‡С‘С‚Р° СЃРµРєС†РёР№ РІС‹Р±РµСЂРёС‚Рµ РєР°СЂРєР°СЃ СЂР°РјРєРѕР№. Enter вЂ” РѕС‚РјРµРЅР°.")
       (setq ss (vl-catch-all-apply 'ssget nil))
       (if (and ss (not (vl-catch-all-error-p ss)))
         (setq *mark:carc-cache* (mark:ss-list ss)))))
   (if (or (vl-catch-all-error-p ss) (null ss))
     (progn
-      (mark:out "[INFO] Каркас не выбран.")
+      (mark:out "[INFO] РљР°СЂРєР°СЃ РЅРµ РІС‹Р±СЂР°РЅ.")
       nil)
     (progn
       (setq segs    nil
@@ -7936,7 +7943,7 @@
           ((= typ "INSERT")
            (setq nm (mark:fill-eff-name e))
            (cond
-             ;; Ред. 48.3: «Атрибуты витража» — префикс для марок
+             ;; Р РµРґ. 48.3: В«РђС‚СЂРёР±СѓС‚С‹ РІРёС‚СЂР°Р¶Р°В» вЂ” РїСЂРµС„РёРєСЃ РґР»СЏ РјР°СЂРѕРє
              ((mark:blk-match? e *mark:block-glazing*)
               (setq glaz (cons e glaz)))
              ((mark:fill-skip-block? nm) nil)
@@ -7946,14 +7953,14 @@
               (setq blocks (cons (list 0.0 e) blocks)
                     seen   (cons (cons nm (cdr (assoc 10 ed))) seen))
               (if (and (mark:strp nm)
-                       (wcmatch (strcase nm) "*РИГЕЛЬ*"))
+                       (wcmatch (strcase nm) "*Р РР“Р•Р›Р¬*"))
                 (setq rblocks (cons e rblocks))))))
-          ;; Ред. 48.4: замкнутая полилиния — не каркас и не ячейка
-          ;; (контур полилинии — только режимы точки и 7-Полилиния).
+          ;; Р РµРґ. 48.4: Р·Р°РјРєРЅСѓС‚Р°СЏ РїРѕР»РёР»РёРЅРёСЏ вЂ” РЅРµ РєР°СЂРєР°СЃ Рё РЅРµ СЏС‡РµР№РєР°
+          ;; (РєРѕРЅС‚СѓСЂ РїРѕР»РёР»РёРЅРёРё вЂ” С‚РѕР»СЊРєРѕ СЂРµР¶РёРјС‹ С‚РѕС‡РєРё Рё 7-РџРѕР»РёР»РёРЅРёСЏ).
           ((and (= typ "LWPOLYLINE") (mark:fill-lwpoly-closed? e))
            (setq n-poly (1+ n-poly)))
-          ;; Ред. 48.6: отрезки и дуги — не каркас; каркас — только
-          ;; мультилинии и динамика (как в режиме 5 МАРКАЗАП).
+          ;; Р РµРґ. 48.6: РѕС‚СЂРµР·РєРё Рё РґСѓРіРё вЂ” РЅРµ РєР°СЂРєР°СЃ; РєР°СЂРєР°СЃ вЂ” С‚РѕР»СЊРєРѕ
+          ;; РјСѓР»СЊС‚РёР»РёРЅРёРё Рё РґРёРЅР°РјРёРєР° (РєР°Рє РІ СЂРµР¶РёРјРµ 5 РњРђР РљРђР—РђРџ).
           ((member typ '("LINE" "ARC"))
            (setq n-line (1+ n-line)))
           ((= typ "MLINE")
@@ -7962,22 +7969,22 @@
              (progn
                (setq segs (append r segs))
                (setq msegs (append r msegs)))))
-          ;; Ред. 48.6: незамкнутая полилиния и POLYLINE — не каркас.
+          ;; Р РµРґ. 48.6: РЅРµР·Р°РјРєРЅСѓС‚Р°СЏ РїРѕР»РёР»РёРЅРёСЏ Рё POLYLINE вЂ” РЅРµ РєР°СЂРєР°СЃ.
           ((member typ '("LWPOLYLINE" "POLYLINE"))
            (setq n-polyo (1+ n-polyo)))))
-      ;; Ред. 48.3: «Атрибуты витража» из выбора каркаса — префикс марок.
-      ;; Ред. 48.32: только если префикс ещё не определён — раньше
-      ;; перезапись затирала блок текущего витража (mark:vz-set), и в
-      ;; раздельной маркировке все витражи получали префикс первого
-      ;; по порядку выбора блока (В-7 маркировался как ТБ-1).
+      ;; Р РµРґ. 48.3: В«РђС‚СЂРёР±СѓС‚С‹ РІРёС‚СЂР°Р¶Р°В» РёР· РІС‹Р±РѕСЂР° РєР°СЂРєР°СЃР° вЂ” РїСЂРµС„РёРєСЃ РјР°СЂРѕРє.
+      ;; Р РµРґ. 48.32: С‚РѕР»СЊРєРѕ РµСЃР»Рё РїСЂРµС„РёРєСЃ РµС‰С‘ РЅРµ РѕРїСЂРµРґРµР»С‘РЅ вЂ” СЂР°РЅСЊС€Рµ
+      ;; РїРµСЂРµР·Р°РїРёСЃСЊ Р·Р°С‚РёСЂР°Р»Р° Р±Р»РѕРє С‚РµРєСѓС‰РµРіРѕ РІРёС‚СЂР°Р¶Р° (mark:vz-set), Рё РІ
+      ;; СЂР°Р·РґРµР»СЊРЅРѕР№ РјР°СЂРєРёСЂРѕРІРєРµ РІСЃРµ РІРёС‚СЂР°Р¶Рё РїРѕР»СѓС‡Р°Р»Рё РїСЂРµС„РёРєСЃ РїРµСЂРІРѕРіРѕ
+      ;; РїРѕ РїРѕСЂСЏРґРєСѓ РІС‹Р±РѕСЂР° Р±Р»РѕРєР° (Р’-7 РјР°СЂРєРёСЂРѕРІР°Р»СЃСЏ РєР°Рє РўР‘-1).
       (if (and glaz (null *mark:glazings*))
         (setq *mark:glazings* (reverse glaz)))
       (setq boxes nil
             vs    nil
             hs    nil)
       (cond
-        ;; Ред. 48.31 (TZ п.40): оси из отрезков — секции и
-        ;; Т-членения линейного каркаса считаются как в смешанном.
+        ;; Р РµРґ. 48.31 (TZ Рї.40): РѕСЃРё РёР· РѕС‚СЂРµР·РєРѕРІ вЂ” СЃРµРєС†РёРё Рё
+        ;; Рў-С‡Р»РµРЅРµРЅРёСЏ Р»РёРЅРµР№РЅРѕРіРѕ РєР°СЂРєР°СЃР° СЃС‡РёС‚Р°СЋС‚СЃСЏ РєР°Рє РІ СЃРјРµС€Р°РЅРЅРѕРј.
         ((null blocks)
          (if segs
            (setq boxes (car (mark:fill-segs->cells segs))
@@ -7992,32 +7999,32 @@
                vs    (append vs (car items))
                hs    (append hs (cadr items))
                boxes (mark:fill-items->cells vs hs))))
-      ;; Ред. 48.4: замкнутые полилинии ячейками не стали — только лог.
+      ;; Р РµРґ. 48.4: Р·Р°РјРєРЅСѓС‚С‹Рµ РїРѕР»РёР»РёРЅРёРё СЏС‡РµР№РєР°РјРё РЅРµ СЃС‚Р°Р»Рё вЂ” С‚РѕР»СЊРєРѕ Р»РѕРі.
       (if (> n-poly 0)
         (mark:out
-          (strcat "[INFO] Замкнутых полилиний пропущено: " (itoa n-poly)
-                  " — не каркас и не ячейки.")))
-      ;; Ред. 48.6: пропущенные отрезки/дуги и полилинии — в лог.
+          (strcat "[INFO] Р—Р°РјРєРЅСѓС‚С‹С… РїРѕР»РёР»РёРЅРёР№ РїСЂРѕРїСѓС‰РµРЅРѕ: " (itoa n-poly)
+                  " вЂ” РЅРµ РєР°СЂРєР°СЃ Рё РЅРµ СЏС‡РµР№РєРё.")))
+      ;; Р РµРґ. 48.6: РїСЂРѕРїСѓС‰РµРЅРЅС‹Рµ РѕС‚СЂРµР·РєРё/РґСѓРіРё Рё РїРѕР»РёР»РёРЅРёРё вЂ” РІ Р»РѕРі.
       (if (> n-line 0)
         (mark:out
-          (strcat "[INFO] Отрезков и дуг пропущено: " (itoa n-line)
-                  " — не каркас (только мультилинии и динамика).")))
+          (strcat "[INFO] РћС‚СЂРµР·РєРѕРІ Рё РґСѓРі РїСЂРѕРїСѓС‰РµРЅРѕ: " (itoa n-line)
+                  " вЂ” РЅРµ РєР°СЂРєР°СЃ (С‚РѕР»СЊРєРѕ РјСѓР»СЊС‚РёР»РёРЅРёРё Рё РґРёРЅР°РјРёРєР°).")))
       (if (> n-polyo 0)
         (mark:out
-          (strcat "[INFO] Незамкнутых полилиний пропущено: " (itoa n-polyo)
-                  " — не каркас (контур — режимы 2/6/7).")))
+          (strcat "[INFO] РќРµР·Р°РјРєРЅСѓС‚С‹С… РїРѕР»РёР»РёРЅРёР№ РїСЂРѕРїСѓС‰РµРЅРѕ: " (itoa n-polyo)
+                  " вЂ” РЅРµ РєР°СЂРєР°СЃ (РєРѕРЅС‚СѓСЂ вЂ” СЂРµР¶РёРјС‹ 2/6/7).")))
       (setq vs2 (if (and vs hs) (mark:sec-columns vs hs) nil))
       (setq *mark:scale1* (mark:sec-scale1 msegs rblocks))
       (if *mark:sec-diag* (mark:sec-diag vs hs vs2))
-      ;; Ред. 48.8 (З-1): высоты всех ячеек каркаса (включая проёмные
-      ;; и глухие) — источник ярусной шкалы, как в режиме 5 МАРКАЗАП.
-      ;; Та же функция, что для заполнений (sec-geo-one, целые мм).
+      ;; Р РµРґ. 48.8 (Р—-1): РІС‹СЃРѕС‚С‹ РІСЃРµС… СЏС‡РµРµРє РєР°СЂРєР°СЃР° (РІРєР»СЋС‡Р°СЏ РїСЂРѕС‘РјРЅС‹Рµ
+      ;; Рё РіР»СѓС…РёРµ) вЂ” РёСЃС‚РѕС‡РЅРёРє СЏСЂСѓСЃРЅРѕР№ С€РєР°Р»С‹, РєР°Рє РІ СЂРµР¶РёРјРµ 5 РњРђР РљРђР—РђРџ.
+      ;; РўР° Р¶Рµ С„СѓРЅРєС†РёСЏ, С‡С‚Рѕ РґР»СЏ Р·Р°РїРѕР»РЅРµРЅРёР№ (sec-geo-one, С†РµР»С‹Рµ РјРј).
       (setq *mark:cell-hs* nil)
       (foreach bb boxes
         (setq hit (mark:sec-geo-one bb vs2 hs))
         (if (and hit (numberp (nth 1 hit)))
           (setq *mark:cell-hs* (cons (nth 1 hit) *mark:cell-hs*))))
-      ;; сопоставление: точка вставки блока = угол ячейки
+      ;; СЃРѕРїРѕСЃС‚Р°РІР»РµРЅРёРµ: С‚РѕС‡РєР° РІСЃС‚Р°РІРєРё Р±Р»РѕРєР° = СѓРіРѕР» СЏС‡РµР№РєРё
       (setq out nil
             cnt 0)
       (foreach e *mark:fills*
@@ -8036,16 +8043,16 @@
       (if (> cnt 0)
         (progn
           (mark:out
-            (strcat "[WARN] Вне ячеек каркаса: " (itoa cnt)
-                    " заполнени(й) — марка не формируется (причина в TEST 13)."))
+            (strcat "[WARN] Р’РЅРµ СЏС‡РµРµРє РєР°СЂРєР°СЃР°: " (itoa cnt)
+                    " Р·Р°РїРѕР»РЅРµРЅРё(Р№) вЂ” РјР°СЂРєР° РЅРµ С„РѕСЂРјРёСЂСѓРµС‚СЃСЏ (РїСЂРёС‡РёРЅР° РІ TEST 13)."))
           (mark:note-warning)))
       (setq *mark:fill-geo* (reverse out))
       (mark:out
-        (strcat "[INFO] Каркас: ячеек " (itoa (length boxes))
-                ", заполнений с гео: " (itoa (length out)) "."))
+        (strcat "[INFO] РљР°СЂРєР°СЃ: СЏС‡РµРµРє " (itoa (length boxes))
+                ", Р·Р°РїРѕР»РЅРµРЅРёР№ СЃ РіРµРѕ: " (itoa (length out)) "."))
       *mark:fill-geo*)))
 
-;; Сортировка строк-групп по номеру
+;; РЎРѕСЂС‚РёСЂРѕРІРєР° СЃС‚СЂРѕРє-РіСЂСѓРїРї РїРѕ РЅРѕРјРµСЂСѓ
 (defun mark:sec-sort-rows (rows / sorted out r q done)
   (setq sorted nil)
   (foreach r rows
@@ -8069,12 +8076,12 @@
       (setq out (strcat out ", " s))))
   out)
 
-;; TEST 16: таблицы секций и ярусов (ТЗ 3.0, §7.1)
+;; TEST 16: С‚Р°Р±Р»РёС†С‹ СЃРµРєС†РёР№ Рё СЏСЂСѓСЃРѕРІ (РўР— 3.0, В§7.1)
 (defun mark:test-16 (/ rows lines r n row q size src subs cnt div k sw-cnt
                         lrows llines letter lsize lsubs lhidx sh-cnt ln
                         wkeys wk sw hkeys hk sl)
   (mark:out "")
-  (mark:out "[TEST 16] Секции и строки")
+  (mark:out "[TEST 16] РЎРµРєС†РёРё Рё СЃС‚СЂРѕРєРё")
   (setq rows nil)
   (foreach r *mark:records*
     (setq n (mark:rec-get r 'hnum))
@@ -8104,8 +8111,8 @@
       (if (numberp (mark:rec-get q 'subw))
         (progn
           (setq sw-cnt (1+ sw-cnt))
-          ;; Ред. 48.7: ключ — округлённая ширина; подъячейки печатаются
-          ;; по возрастанию, как и индексы .1/.2 (было — в порядке записей).
+          ;; Р РµРґ. 48.7: РєР»СЋС‡ вЂ” РѕРєСЂСѓРіР»С‘РЅРЅР°СЏ С€РёСЂРёРЅР°; РїРѕРґСЉСЏС‡РµР№РєРё РїРµС‡Р°С‚Р°СЋС‚СЃСЏ
+          ;; РїРѕ РІРѕР·СЂР°СЃС‚Р°РЅРёСЋ, РєР°Рє Рё РёРЅРґРµРєСЃС‹ .1/.2 (Р±С‹Р»Рѕ вЂ” РІ РїРѕСЂСЏРґРєРµ Р·Р°РїРёСЃРµР№).
           (setq k (mark:mm-key (mark:rec-get q 'width)))
           (if (and k (not (member k wkeys)))
             (setq wkeys (cons k wkeys))))))
@@ -8131,20 +8138,20 @@
                     "  "
                     (if subs
                       (mark:sec-join subs)
-                      "—")
-                    "  заполнений: " (itoa cnt))
+                      "вЂ”")
+                    "  Р·Р°РїРѕР»РЅРµРЅРёР№: " (itoa cnt))
             lines)))
   (mark:out
-    (strcat "  Секций: " (itoa (length rows))
-            ", из них разделённых: " (itoa div)))
+    (strcat "  РЎРµРєС†РёР№: " (itoa (length rows))
+            ", РёР· РЅРёС… СЂР°Р·РґРµР»С‘РЅРЅС‹С…: " (itoa div)))
   (if rows
     (progn
-      (mark:out "  №   W      источник  подъячейки")
+      (mark:out "  в„–   W      РёСЃС‚РѕС‡РЅРёРє  РїРѕРґСЉСЏС‡РµР№РєРё")
       (foreach ln (reverse lines)
         (mark:out ln))))
-  ;; Ред. 48.20: INFO-строка о номерах без столбца (48.18) снята —
-  ;; нумерация сплошная по фактическим столбцам, пропусков нет.
-  ;; ярусы: группировка по букве
+  ;; Р РµРґ. 48.20: INFO-СЃС‚СЂРѕРєР° Рѕ РЅРѕРјРµСЂР°С… Р±РµР· СЃС‚РѕР»Р±С†Р° (48.18) СЃРЅСЏС‚Р° вЂ”
+  ;; РЅСѓРјРµСЂР°С†РёСЏ СЃРїР»РѕС€РЅР°СЏ РїРѕ С„Р°РєС‚РёС‡РµСЃРєРёРј СЃС‚РѕР»Р±С†Р°Рј, РїСЂРѕРїСѓСЃРєРѕРІ РЅРµС‚.
+  ;; СЏСЂСѓСЃС‹: РіСЂСѓРїРїРёСЂРѕРІРєР° РїРѕ Р±СѓРєРІРµ
   (setq lrows nil)
   (foreach r *mark:records*
     (setq lhidx (mark:rec-get r 'hidx))
@@ -8172,8 +8179,8 @@
       (if (mark:rec-get q 'subl)
         (progn
           (setq sh-cnt (1+ sh-cnt))
-          ;; Ред. 48.7: ключ — округлённая высота; по возрастанию,
-          ;; как и литеры .а/.б (было — в порядке записей).
+          ;; Р РµРґ. 48.7: РєР»СЋС‡ вЂ” РѕРєСЂСѓРіР»С‘РЅРЅР°СЏ РІС‹СЃРѕС‚Р°; РїРѕ РІРѕР·СЂР°СЃС‚Р°РЅРёСЋ,
+          ;; РєР°Рє Рё Р»РёС‚РµСЂС‹ .Р°/.Р± (Р±С‹Р»Рѕ вЂ” РІ РїРѕСЂСЏРґРєРµ Р·Р°РїРёСЃРµР№).
           (setq k (mark:mm-key (mark:rec-get q 'height)))
           (if (and k (not (member k hkeys)))
             (setq hkeys (cons k hkeys))))))
@@ -8196,25 +8203,25 @@
                     "  "
                     (if lsubs
                       (mark:sec-join lsubs)
-                      "—")
-                    "  заполнений: " (itoa cnt))
+                      "вЂ”")
+                    "  Р·Р°РїРѕР»РЅРµРЅРёР№: " (itoa cnt))
             llines)))
   (if lrows
     (progn
       (mark:out
-        (strcat "  Строк: " (itoa (length lrows))))
+        (strcat "  РЎС‚СЂРѕРє: " (itoa (length lrows))))
       (foreach ln (reverse llines)
         (mark:out ln))))
-  ;; Ред. 48.20: INFO-строка о буквах без заполнений (48.19) снята —
-  ;; шкала строк строится по фактическим строкам, пропусков букв нет.
+  ;; Р РµРґ. 48.20: INFO-СЃС‚СЂРѕРєР° Рѕ Р±СѓРєРІР°С… Р±РµР· Р·Р°РїРѕР»РЅРµРЅРёР№ (48.19) СЃРЅСЏС‚Р° вЂ”
+  ;; С€РєР°Р»Р° СЃС‚СЂРѕРє СЃС‚СЂРѕРёС‚СЃСЏ РїРѕ С„Р°РєС‚РёС‡РµСЃРєРёРј СЃС‚СЂРѕРєР°Рј, РїСЂРѕРїСѓСЃРєРѕРІ Р±СѓРєРІ РЅРµС‚.
   (mark:out
-    (strcat "  [INFO] Подъячеек по ширине: " (itoa sw-cnt)
-            ", по высоте: " (itoa sh-cnt))))
+    (strcat "  [INFO] РџРѕРґСЉСЏС‡РµРµРє РїРѕ С€РёСЂРёРЅРµ: " (itoa sw-cnt)
+            ", РїРѕ РІС‹СЃРѕС‚Рµ: " (itoa sh-cnt))))
 
-;; Разбор марки с подындексами: "Б.а12.1" > ("Б.а" "12.1")
+;; Р Р°Р·Р±РѕСЂ РјР°СЂРєРё СЃ РїРѕРґС‹РЅРґРµРєСЃР°РјРё: "Р‘.Р°12.1" > ("Р‘.Р°" "12.1")
 (defun mark:ar-parse2 (m / tail i n letter num)
-  ;; Ред. 48.3: префикс «Витраж» отрезаем (ar-tail, как в ar-parse);
-  ;; точку подындекса номера сохраняем: «Т-1 С10.1» -> («С» «10.1»)
+  ;; Р РµРґ. 48.3: РїСЂРµС„РёРєСЃ В«Р’РёС‚СЂР°Р¶В» РѕС‚СЂРµР·Р°РµРј (ar-tail, РєР°Рє РІ ar-parse);
+  ;; С‚РѕС‡РєСѓ РїРѕРґС‹РЅРґРµРєСЃР° РЅРѕРјРµСЂР° СЃРѕС…СЂР°РЅСЏРµРј: В«Рў-1 РЎ10.1В» -> (В«РЎВ» В«10.1В»)
   (setq tail (mark:ar-tail (mark:ar-strip-suffix (mark:trim m))))
   (if (or (null tail) (= tail ""))
     nil
@@ -8225,7 +8232,7 @@
             num    "")
       (while (and (<= i n)
                   (mark:ar-letter? (substr tail i 1))
-                  (not (member (strcase (substr tail i 1)) '("Й" "З"))))
+                  (not (member (strcase (substr tail i 1)) '("Р™" "Р—"))))
         (setq letter (strcat letter (strcase (substr tail i 1)))
               i     (1+ i)))
       (if (and (<= (+ i 1) n)
@@ -8251,7 +8258,7 @@
         (list letter num)
         nil))))
 
-;; Натуральный ключ обозначения: цифровые группы как числа
+;; РќР°С‚СѓСЂР°Р»СЊРЅС‹Р№ РєР»СЋС‡ РѕР±РѕР·РЅР°С‡РµРЅРёСЏ: С†РёС„СЂРѕРІС‹Рµ РіСЂСѓРїРїС‹ РєР°Рє С‡РёСЃР»Р°
 (defun mark:nat-key (s / out i n c dig)
   (setq out nil
         i   1
@@ -8270,11 +8277,11 @@
               i   (1+ i)))))
   (reverse out))
 
-;; Сравнение натуральных ключей: 9 < 10 < 12.1 < 13
+;; РЎСЂР°РІРЅРµРЅРёРµ РЅР°С‚СѓСЂР°Р»СЊРЅС‹С… РєР»СЋС‡РµР№: 9 < 10 < 12.1 < 13
 (defun mark:nat-key< (a b / i av bv res)
-  ;; Ред. 48.30 (фикс): инкремент i и эквивалентность равных ключей —
-  ;; раньше при равных первых токенах цикл не продвигался (вечное
-  ;; зависание; в старой сортировке ветка была фактически мёртвой)
+  ;; Р РµРґ. 48.30 (С„РёРєСЃ): РёРЅРєСЂРµРјРµРЅС‚ i Рё СЌРєРІРёРІР°Р»РµРЅС‚РЅРѕСЃС‚СЊ СЂР°РІРЅС‹С… РєР»СЋС‡РµР№ вЂ”
+  ;; СЂР°РЅСЊС€Рµ РїСЂРё СЂР°РІРЅС‹С… РїРµСЂРІС‹С… С‚РѕРєРµРЅР°С… С†РёРєР» РЅРµ РїСЂРѕРґРІРёРіР°Р»СЃСЏ (РІРµС‡РЅРѕРµ
+  ;; Р·Р°РІРёСЃР°РЅРёРµ; РІ СЃС‚Р°СЂРѕР№ СЃРѕСЂС‚РёСЂРѕРІРєРµ РІРµС‚РєР° Р±С‹Р»Р° С„Р°РєС‚РёС‡РµСЃРєРё РјС‘СЂС‚РІРѕР№)
   (setq i   0
         res nil)
   (while (and (null res)
@@ -8297,7 +8304,7 @@
              ((< (ascii (cdr av)) (ascii (cdr bv))) (setq res 'lt))
              ((> (ascii (cdr av)) (ascii (cdr bv))) (setq res 'gt))))
           (t
-            ;; разные типы: символ «.» (46) перед цифровой группой
+            ;; СЂР°Р·РЅС‹Рµ С‚РёРїС‹: СЃРёРјРІРѕР» В«.В» (46) РїРµСЂРµРґ С†РёС„СЂРѕРІРѕР№ РіСЂСѓРїРїРѕР№
             (if (= (car av) 0)
               (setq res 'lt)
               (setq res 'gt))))
@@ -8307,33 +8314,33 @@
 (defun mark:nat-less (a b)
   (mark:nat-key< (mark:nat-key a) (mark:nat-key b)))
 
-;; Слой «Размеры» для таблицы ведомости (создаётся при отсутствии)
+;; РЎР»РѕР№ В«Р Р°Р·РјРµСЂС‹В» РґР»СЏ С‚Р°Р±Р»РёС†С‹ РІРµРґРѕРјРѕСЃС‚Рё (СЃРѕР·РґР°С‘С‚СЃСЏ РїСЂРё РѕС‚СЃСѓС‚СЃС‚РІРёРё)
 (defun mark:tbl-layer (doc tbl / layers)
-  (if (null (tblsearch "LAYER" "Размеры"))
+  (if (null (tblsearch "LAYER" "Р Р°Р·РјРµСЂС‹"))
     (progn
       (setq layers (mark:ax-get doc "Layers"))
       (if layers
-        (mark:ax-invoke layers "Add" "Размеры"))))
-  (mark:ax-put tbl "Layer" "Размеры"))
+        (mark:ax-invoke layers "Add" "Р Р°Р·РјРµСЂС‹"))))
+  (mark:ax-put tbl "Layer" "Р Р°Р·РјРµСЂС‹"))
 
-;; Файл сверки «<имя чертежа> Шкала.txt»: индекс;размер_мм;источник
-;; Ред. 48.20: индекс = номер фактического столбца (сплошная
-;; шкала номеров). Р-длины шкалы осей без столбца — в конце
-;; файла с индексом «-» и источником «Р».
-;; Ред. 48.21: шкала столбцов собирается ЛОКАЛЬНО из fill-geo —
-;; *mark:widths* к этому моменту перезаписан mark:ar-reindex
-;; строками обозначений («1» … «9.1»), читать его как числа
-;; нельзя (поломка 48.20: numberp "9.1").
+;; Р¤Р°Р№Р» СЃРІРµСЂРєРё В«<РёРјСЏ С‡РµСЂС‚РµР¶Р°> РЁРєР°Р»Р°.txtВ»: РёРЅРґРµРєСЃ;СЂР°Р·РјРµСЂ_РјРј;РёСЃС‚РѕС‡РЅРёРє
+;; Р РµРґ. 48.20: РёРЅРґРµРєСЃ = РЅРѕРјРµСЂ С„Р°РєС‚РёС‡РµСЃРєРѕРіРѕ СЃС‚РѕР»Р±С†Р° (СЃРїР»РѕС€РЅР°СЏ
+;; С€РєР°Р»Р° РЅРѕРјРµСЂРѕРІ). Р -РґР»РёРЅС‹ С€РєР°Р»С‹ РѕСЃРµР№ Р±РµР· СЃС‚РѕР»Р±С†Р° вЂ” РІ РєРѕРЅС†Рµ
+;; С„Р°Р№Р»Р° СЃ РёРЅРґРµРєСЃРѕРј В«-В» Рё РёСЃС‚РѕС‡РЅРёРєРѕРј В«Р В».
+;; Р РµРґ. 48.21: С€РєР°Р»Р° СЃС‚РѕР»Р±С†РѕРІ СЃРѕР±РёСЂР°РµС‚СЃСЏ Р›РћРљРђР›Р¬РќРћ РёР· fill-geo вЂ”
+;; *mark:widths* Рє СЌС‚РѕРјСѓ РјРѕРјРµРЅС‚Сѓ РїРµСЂРµР·Р°РїРёСЃР°РЅ mark:ar-reindex
+;; СЃС‚СЂРѕРєР°РјРё РѕР±РѕР·РЅР°С‡РµРЅРёР№ (В«1В» вЂ¦ В«9.1В»), С‡РёС‚Р°С‚СЊ РµРіРѕ РєР°Рє С‡РёСЃР»Р°
+;; РЅРµР»СЊР·СЏ (РїРѕР»РѕРјРєР° 48.20: numberp "9.1").
 (defun mark:scale-write-file (/ path f row i w src rest ws)
   (if *mark:scale-final*
     (progn
       (setq path (strcat (getvar "dwgprefix")
                          (vl-filename-base (getvar "dwgname"))
-                         " Шкала.txt"))
+                         " РЁРєР°Р»Р°.txt"))
       (setq f (open path "w"))
       (if f
         (progn
-          (write-line "индекс;размер_мм;источник" f)
+          (write-line "РёРЅРґРµРєСЃ;СЂР°Р·РјРµСЂ_РјРј;РёСЃС‚РѕС‡РЅРёРє" f)
           (setq ws nil)
           (foreach geo *mark:fill-geo*
             (if (and (cdr geo) (numberp (cadr geo)))
@@ -8359,17 +8366,17 @@
                       (nth 1 row))
               f))
           (close f)
-          (mark:out (strcat "[OK] Шкала: " path)))
-        (mark:out "[WARN] Шкала не записана: файл недоступен.")))))
+          (mark:out (strcat "[OK] РЁРєР°Р»Р°: " path)))
+        (mark:out "[WARN] РЁРєР°Р»Р° РЅРµ Р·Р°РїРёСЃР°РЅР°: С„Р°Р№Р» РЅРµРґРѕСЃС‚СѓРїРµРЅ.")))))
 
-(defun c:МАРКАРОВКАЗАП () (mark:main))
+(defun c:РњРђР РљРђР РћР’РљРђР—РђРџ () (mark:main))
 (defun c:MARKZ () (mark:main))
-(defun c:МАРКАРОВКАЗАП () (mark:main))
+(defun c:РњРђР РљРђР РћР’РљРђР—РђРџ () (mark:main))
 (defun c:MARKAR () (mark:ar-main))
-(defun c:МАРКАЗАПРЯД () (mark:ar-main))
+(defun c:РњРђР РљРђР—РђРџР РЇР” () (mark:ar-main))
 (defun c:MARKA () (mark:a-all))
-(defun c:МАРКАЗАП () (mark:a-all))
-(defun c:МАРКАЗАПБЛОК () (mark:fill-main))
+(defun c:РњРђР РљРђР—РђРџ () (mark:a-all))
+(defun c:РњРђР РљРђР—РђРџР‘Р›РћРљ () (mark:fill-main))
 (defun c:MARKFILL () (mark:fill-main))
 
 (defun mark:test-line (x0 y0 x1 y1)
@@ -8424,50 +8431,50 @@
     (cdr (assoc -1 r))
     (if r (entlast) nil)))
 
-(defun c:МАРКАЗАПТЕСТ (/ doc e segs bb w h ok x y hits found)
+(defun c:РњРђР РљРђР—РђРџРўР•РЎРў (/ doc e segs bb w h ok x y hits found)
   (mark:out "========================================")
-  (mark:out (strcat " ТЕСТ ЯЧЕЙКИ БЛОКА  " *mark:rev*))
-  (mark:out "Прямоугольник 2000x1000, стойка на 800. Ожидание: W=800 H=1000")
+  (mark:out (strcat " РўР•РЎРў РЇР§Р•Р™РљР Р‘Р›РћРљРђ  " *mark:rev*))
+  (mark:out "РџСЂСЏРјРѕСѓРіРѕР»СЊРЅРёРє 2000x1000, СЃС‚РѕР№РєР° РЅР° 800. РћР¶РёРґР°РЅРёРµ: W=800 H=1000")
   (mark:out "========================================")
   (setq doc (mark:ax-get (vlax-get-acad-object) "ActiveDocument")
         ok nil)
   (if doc (mark:ax-invoke-ok doc "StartUndoMark" nil))
   (mark:test-purge "MARKZ_TEST_CELL")
   (if (not (mark:test-make-block))
-    (mark:out "[TEST] Блок не создан — FAIL")
+    (mark:out "[TEST] Р‘Р»РѕРє РЅРµ СЃРѕР·РґР°РЅ вЂ” FAIL")
     (progn
       (setq e (mark:test-insert "MARKZ_TEST_CELL" 100000.0 100000.0))
       (if (null e)
-        (mark:out "[TEST] Вставка не создана — FAIL")
+        (mark:out "[TEST] Р’СЃС‚Р°РІРєР° РЅРµ СЃРѕР·РґР°РЅР° вЂ” FAIL")
         (progn
           (setq x 100400.0
                 y 100500.0
                 segs (mark:fill-segs-of-ins e)
                 bb (if segs (mark:fill-cell-by-rays segs (list x y)) nil))
-          (mark:out (strcat "[TEST] Отрезков из блока: " (itoa (length segs))))
+          (mark:out (strcat "[TEST] РћС‚СЂРµР·РєРѕРІ РёР· Р±Р»РѕРєР°: " (itoa (length segs))))
           (if (null bb)
-            (mark:out "[TEST] Ячейка по отрезкам блока — FAIL")
+            (mark:out "[TEST] РЇС‡РµР№РєР° РїРѕ РѕС‚СЂРµР·РєР°Рј Р±Р»РѕРєР° вЂ” FAIL")
             (progn
               (setq w (- (nth 2 bb) (nth 0 bb))
                     h (- (nth 3 bb) (nth 1 bb))
                     ok (and (> w 700.0) (< w 900.0)
                             (> h 900.0) (< h 1100.0)))
               (mark:out
-                (strcat "[TEST] Ячейка W=" (rtos w 2 1)
+                (strcat "[TEST] РЇС‡РµР№РєР° W=" (rtos w 2 1)
                         " H=" (rtos h 2 1)
-                        (if ok " — OK" " — FAIL")))))
+                        (if ok " вЂ” OK" " вЂ” FAIL")))))
           (setq hits (mark:fill-insert-hits (list x y) (list x y))
                 found nil)
           (foreach hit hits
             (if (eq (cadr hit) e) (setq found t)))
           (mark:out
-            (strcat "[TEST] Окно нашло тестовый блок: "
+            (strcat "[TEST] РћРєРЅРѕ РЅР°С€Р»Рѕ С‚РµСЃС‚РѕРІС‹Р№ Р±Р»РѕРє: "
                     (if found "OK" "FAIL")))
           (if (null found) (setq ok nil))
           (entdel e)))))
   (mark:test-purge "MARKZ_TEST_CELL")
   (if doc (mark:ax-invoke-ok doc "EndUndoMark" nil))
-  (mark:out (if ok "[TEST] Итог — OK" "[TEST] Итог — FAIL"))
+  (mark:out (if ok "[TEST] РС‚РѕРі вЂ” OK" "[TEST] РС‚РѕРі вЂ” FAIL"))
   (princ))
 
 
@@ -8486,9 +8493,9 @@
   n)
 
 (defun mark:copy-key-generic (e / ed out code val)
-  ;; Полный ключ для любого примитива: все DXF-коды, кроме служебных
-  ;; (дескриптор, владелец, реакторы). Копией считается только полностью
-  ;; идентичный объект (тип, слой, цвет, геометрия и т.д.).
+  ;; РџРѕР»РЅС‹Р№ РєР»СЋС‡ РґР»СЏ Р»СЋР±РѕРіРѕ РїСЂРёРјРёС‚РёРІР°: РІСЃРµ DXF-РєРѕРґС‹, РєСЂРѕРјРµ СЃР»СѓР¶РµР±РЅС‹С…
+  ;; (РґРµСЃРєСЂРёРїС‚РѕСЂ, РІР»Р°РґРµР»РµС†, СЂРµР°РєС‚РѕСЂС‹). РљРѕРїРёРµР№ СЃС‡РёС‚Р°РµС‚СЃСЏ С‚РѕР»СЊРєРѕ РїРѕР»РЅРѕСЃС‚СЊСЋ
+  ;; РёРґРµРЅС‚РёС‡РЅС‹Р№ РѕР±СЉРµРєС‚ (С‚РёРї, СЃР»РѕР№, С†РІРµС‚, РіРµРѕРјРµС‚СЂРёСЏ Рё С‚.Рґ.).
   (setq ed (entget e) out "")
   (foreach pair ed
     (setq code (car pair) val (cdr pair))
@@ -8507,8 +8514,8 @@
   out)
 
 (defun mark:copy-dyn-key (e / obj pairs parts pair nm val)
-  ;; Строка из всех динамических свойств (включая Видимость), чтобы
-  ;; копией считался только полностью идентичный блок.
+  ;; РЎС‚СЂРѕРєР° РёР· РІСЃРµС… РґРёРЅР°РјРёС‡РµСЃРєРёС… СЃРІРѕР№СЃС‚РІ (РІРєР»СЋС‡Р°СЏ Р’РёРґРёРјРѕСЃС‚СЊ), С‡С‚РѕР±С‹
+  ;; РєРѕРїРёРµР№ СЃС‡РёС‚Р°Р»СЃСЏ С‚РѕР»СЊРєРѕ РїРѕР»РЅРѕСЃС‚СЊСЋ РёРґРµРЅС‚РёС‡РЅС‹Р№ Р±Р»РѕРє.
   (setq obj (vl-catch-all-apply 'vlax-ename->vla-object (list e)))
   (if (or (vl-catch-all-error-p obj) (null obj))
     ""
@@ -8526,13 +8533,13 @@
                                       (t (vl-princ-to-string val))))
                               parts))))
         )
-      ;; Сортировка, чтобы порядок свойств не влиял на ключ.
+      ;; РЎРѕСЂС‚РёСЂРѕРІРєР°, С‡С‚РѕР±С‹ РїРѕСЂСЏРґРѕРє СЃРІРѕР№СЃС‚РІ РЅРµ РІР»РёСЏР» РЅР° РєР»СЋС‡.
       (setq parts (vl-sort parts '(lambda (a b) (< a b))))
       (apply 'strcat (mapcar '(lambda (x) (strcat "|" x)) parts)))))
 
 (defun mark:copy-key (e / ed typ p nm rot sx sy)
-  ;; Для вставок блоков — имя + точка + поворот + масштаб + вся динамика
-  ;; (включая Видимость). Для остальных примитивов — полный DXF-ключ.
+  ;; Р”Р»СЏ РІСЃС‚Р°РІРѕРє Р±Р»РѕРєРѕРІ вЂ” РёРјСЏ + С‚РѕС‡РєР° + РїРѕРІРѕСЂРѕС‚ + РјР°СЃС€С‚Р°Р± + РІСЃСЏ РґРёРЅР°РјРёРєР°
+  ;; (РІРєР»СЋС‡Р°СЏ Р’РёРґРёРјРѕСЃС‚СЊ). Р”Р»СЏ РѕСЃС‚Р°Р»СЊРЅС‹С… РїСЂРёРјРёС‚РёРІРѕРІ вЂ” РїРѕР»РЅС‹Р№ DXF-РєР»СЋС‡.
   (setq ed  (entget e)
         typ (if ed (cdr (assoc 0 ed)) nil))
   (cond
@@ -8552,18 +8559,18 @@
                  "|" (rtos (if (numberp rot) rot 0.0) 2 4)
                  "|" (rtos (if (numberp sx) sx 1.0) 2 4)
                  "|" (rtos (if (numberp sy) sy 1.0) 2 4)
-                 ;; полное совпадение динамики, включая Видимость
+                 ;; РїРѕР»РЅРѕРµ СЃРѕРІРїР°РґРµРЅРёРµ РґРёРЅР°РјРёРєРё, РІРєР»СЋС‡Р°СЏ Р’РёРґРёРјРѕСЃС‚СЊ
                  (mark:copy-dyn-key e)))))
     (t
-     ;; Любой другой примитив: полный ключ по DXF-кодам.
+     ;; Р›СЋР±РѕР№ РґСЂСѓРіРѕР№ РїСЂРёРјРёС‚РёРІ: РїРѕР»РЅС‹Р№ РєР»СЋС‡ РїРѕ DXF-РєРѕРґР°Рј.
      (strcat typ (mark:copy-key-generic e)))))
 
 (defun mark:copies-group-name ()
-  ;; Уникальное имя, чтобы не конфликтовать с существующей группой.
-  (strcat "МАРКА_КОПИИ_" (menucmd "M=$(edtime,$(getvar,date),HHMMSS)")))
+  ;; РЈРЅРёРєР°Р»СЊРЅРѕРµ РёРјСЏ, С‡С‚РѕР±С‹ РЅРµ РєРѕРЅС„Р»РёРєС‚РѕРІР°С‚СЊ СЃ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РµР№ РіСЂСѓРїРїРѕР№.
+  (strcat "РњРђР РљРђ_РљРћРџРР_" (menucmd "M=$(edtime,$(getvar,date),HHMMSS)")))
 
 (defun mark:copies-make-group (enames / doc groups grp name vobjs arr e vo)
-  ;; Собирает копии в именованную группу AutoCAD и возвращает её объект.
+  ;; РЎРѕР±РёСЂР°РµС‚ РєРѕРїРёРё РІ РёРјРµРЅРѕРІР°РЅРЅСѓСЋ РіСЂСѓРїРїСѓ AutoCAD Рё РІРѕР·РІСЂР°С‰Р°РµС‚ РµС‘ РѕР±СЉРµРєС‚.
   (setq doc    (mark:ax-get (vlax-get-acad-object) "ActiveDocument")
         groups (if doc (mark:ax-get doc "Groups") nil))
   (if (null groups)
@@ -8589,46 +8596,46 @@
               (list name grp))
             nil))))))
 
-;; Ред. 48.14: включить [DIAG]-печать геометрии секций на следующий
-;; МАРКАЗАП (Источник Сетка или Заполнения). Расчёты не меняет.
-(defun c:МАРКАЗАПГЕО ()
+;; Р РµРґ. 48.14: РІРєР»СЋС‡РёС‚СЊ [DIAG]-РїРµС‡Р°С‚СЊ РіРµРѕРјРµС‚СЂРёРё СЃРµРєС†РёР№ РЅР° СЃР»РµРґСѓСЋС‰РёР№
+;; РњРђР РљРђР—РђРџ (РСЃС‚РѕС‡РЅРёРє РЎРµС‚РєР° РёР»Рё Р—Р°РїРѕР»РЅРµРЅРёСЏ). Р Р°СЃС‡С‘С‚С‹ РЅРµ РјРµРЅСЏРµС‚.
+(defun c:РњРђР РљРђР—РђРџР“Р•Рћ ()
   (setq *mark:sec-diag* t)
-  (mark:out "МАРКАЗАПГЕО — печать геометрии секций включена.")
+  (mark:out "РњРђР РљРђР—РђРџР“Р•Рћ вЂ” РїРµС‡Р°С‚СЊ РіРµРѕРјРµС‚СЂРёРё СЃРµРєС†РёР№ РІРєР»СЋС‡РµРЅР°.")
   (mark:out
-    "Запустите МАРКАЗАП: после строк про оси будет разбор вертикалей и горизонталей. Флаг сбросится сам после первой печати.")
+    "Р—Р°РїСѓСЃС‚РёС‚Рµ РњРђР РљРђР—РђРџ: РїРѕСЃР»Рµ СЃС‚СЂРѕРє РїСЂРѕ РѕСЃРё Р±СѓРґРµС‚ СЂР°Р·Р±РѕСЂ РІРµСЂС‚РёРєР°Р»РµР№ Рё РіРѕСЂРёР·РѕРЅС‚Р°Р»РµР№. Р¤Р»Р°Рі СЃР±СЂРѕСЃРёС‚СЃСЏ СЃР°Рј РїРѕСЃР»Рµ РїРµСЂРІРѕР№ РїРµС‡Р°С‚Рё.")
   (princ))
 
-(defun c:МАРКАЗАПКОПИИ (/ ss i e key acc groups g keep n extras ss2 grp skipped-spds)
-  ;; Ручной поиск по команде пользователя. Ищет полностью идентичные дубли
-  ;; ЛЮБЫХ примитивов (тип, слой, цвет, геометрия, для блоков — ещё и вся
-  ;; динамика, включая Видимость). Команда собирает лишние копии в группу и
-  ;; подсвечивает их, НО ничего не удаляет — решение принимает пользователь.
-  ;; Внутренние процедуры, которым нужно создавать/удалять такие элементы,
-  ;; работают отдельно и этой командой не затрагиваются.
-  (mark:out "МАРКАЗАПКОПИИ — найти полностью идентичные дубли объектов (все примитивы).")
+(defun c:РњРђР РљРђР—РђРџРљРћРџРР (/ ss i e key acc groups g keep n extras ss2 grp skipped-spds)
+  ;; Р СѓС‡РЅРѕР№ РїРѕРёСЃРє РїРѕ РєРѕРјР°РЅРґРµ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ. РС‰РµС‚ РїРѕР»РЅРѕСЃС‚СЊСЋ РёРґРµРЅС‚РёС‡РЅС‹Рµ РґСѓР±Р»Рё
+  ;; Р›Р®Р‘Р«РҐ РїСЂРёРјРёС‚РёРІРѕРІ (С‚РёРї, СЃР»РѕР№, С†РІРµС‚, РіРµРѕРјРµС‚СЂРёСЏ, РґР»СЏ Р±Р»РѕРєРѕРІ вЂ” РµС‰С‘ Рё РІСЃСЏ
+  ;; РґРёРЅР°РјРёРєР°, РІРєР»СЋС‡Р°СЏ Р’РёРґРёРјРѕСЃС‚СЊ). РљРѕРјР°РЅРґР° СЃРѕР±РёСЂР°РµС‚ Р»РёС€РЅРёРµ РєРѕРїРёРё РІ РіСЂСѓРїРїСѓ Рё
+  ;; РїРѕРґСЃРІРµС‡РёРІР°РµС‚ РёС…, РќРћ РЅРёС‡РµРіРѕ РЅРµ СѓРґР°Р»СЏРµС‚ вЂ” СЂРµС€РµРЅРёРµ РїСЂРёРЅРёРјР°РµС‚ РїРѕР»СЊР·РѕРІР°С‚РµР»СЊ.
+  ;; Р’РЅСѓС‚СЂРµРЅРЅРёРµ РїСЂРѕС†РµРґСѓСЂС‹, РєРѕС‚РѕСЂС‹Рј РЅСѓР¶РЅРѕ СЃРѕР·РґР°РІР°С‚СЊ/СѓРґР°Р»СЏС‚СЊ С‚Р°РєРёРµ СЌР»РµРјРµРЅС‚С‹,
+  ;; СЂР°Р±РѕС‚Р°СЋС‚ РѕС‚РґРµР»СЊРЅРѕ Рё СЌС‚РѕР№ РєРѕРјР°РЅРґРѕР№ РЅРµ Р·Р°С‚СЂР°РіРёРІР°СЋС‚СЃСЏ.
+  (mark:out "РњРђР РљРђР—РђРџРљРћРџРР вЂ” РЅР°Р№С‚Рё РїРѕР»РЅРѕСЃС‚СЊСЋ РёРґРµРЅС‚РёС‡РЅС‹Рµ РґСѓР±Р»Рё РѕР±СЉРµРєС‚РѕРІ (РІСЃРµ РїСЂРёРјРёС‚РёРІС‹).")
   (setq ss (vl-catch-all-apply 'ssget (list "X"))
         acc nil
         extras nil
         n 0)
   (if (or (vl-catch-all-error-p ss) (null ss))
-    (mark:out "[INFO] Объектов нет.")
+    (mark:out "[INFO] РћР±СЉРµРєС‚РѕРІ РЅРµС‚.")
     (progn
       (setq i (sslength ss))
-      (mark:out (strcat "[INFO] Объектов в чертеже: " (itoa i)))
+      (mark:out (strcat "[INFO] РћР±СЉРµРєС‚РѕРІ РІ С‡РµСЂС‚РµР¶Рµ: " (itoa i)))
       (setq skipped-spds 0)
       (repeat i
         (setq i (1- i)
               e (ssname ss i))
         (if (mark:spds? e)
-          ;; Объекты SPDS/прокси пропускаем: AutoCAD не отдаёт их координаты
-          ;; корректно, дубли по ним считать нельзя.
+          ;; РћР±СЉРµРєС‚С‹ SPDS/РїСЂРѕРєСЃРё РїСЂРѕРїСѓСЃРєР°РµРј: AutoCAD РЅРµ РѕС‚РґР°С‘С‚ РёС… РєРѕРѕСЂРґРёРЅР°С‚С‹
+          ;; РєРѕСЂСЂРµРєС‚РЅРѕ, РґСѓР±Р»Рё РїРѕ РЅРёРј СЃС‡РёС‚Р°С‚СЊ РЅРµР»СЊР·СЏ.
           (setq skipped-spds (1+ skipped-spds))
           (progn
             (setq key (mark:copy-key e))
             (if key
               (setq acc (cons (cons key e) acc))))))
       (if (> skipped-spds 0)
-        (mark:out (strcat "[INFO] Пропущено объектов SPDS/прокси: "
+        (mark:out (strcat "[INFO] РџСЂРѕРїСѓС‰РµРЅРѕ РѕР±СЉРµРєС‚РѕРІ SPDS/РїСЂРѕРєСЃРё: "
                           (itoa skipped-spds))))
       (setq acc (vl-sort acc '(lambda (a b) (< (car a) (car b))))
             groups nil
@@ -8644,8 +8651,8 @@
                   g (list (cdr pair))))))
       (if (and key (> (length g) 1))
         (setq groups (cons g groups)))
-      ;; В каждой группе оставляем «оригинал» (наименьший handle),
-      ;; остальные считаем лишними копиями.
+      ;; Р’ РєР°Р¶РґРѕР№ РіСЂСѓРїРїРµ РѕСЃС‚Р°РІР»СЏРµРј В«РѕСЂРёРіРёРЅР°Р»В» (РЅР°РёРјРµРЅСЊС€РёР№ handle),
+      ;; РѕСЃС‚Р°Р»СЊРЅС‹Рµ СЃС‡РёС‚Р°РµРј Р»РёС€РЅРёРјРё РєРѕРїРёСЏРјРё.
       (foreach g groups
         (setq keep nil)
         (foreach e g
@@ -8657,41 +8664,41 @@
           (if (not (eq e keep))
             (setq extras (cons e extras)))))
       (if (null extras)
-        (mark:out "[INFO] Лишних копий не найдено.")
+        (mark:out "[INFO] Р›РёС€РЅРёС… РєРѕРїРёР№ РЅРµ РЅР°Р№РґРµРЅРѕ.")
         (progn
           (setq n (length extras))
-          ;; Соберём копии в pickset и подсветим их (grip-выделение).
+          ;; РЎРѕР±РµСЂС‘Рј РєРѕРїРёРё РІ pickset Рё РїРѕРґСЃРІРµС‚РёРј РёС… (grip-РІС‹РґРµР»РµРЅРёРµ).
           (setq ss2 (ssadd))
           (foreach e extras (ssadd e ss2))
           (setq grp (mark:copies-make-group extras))
           (if grp
             (mark:out
-              (strcat "[INFO] Копии собраны в группу: " (car grp)))
-            (mark:out "[WARN] Не удалось создать группу; только подсветка."))
-          ;; Ручной поиск: только собираем в группу и подсвечиваем.
-          ;; Удаление — на усмотрение пользователя (Delete/Стереть вручную).
+              (strcat "[INFO] РљРѕРїРёРё СЃРѕР±СЂР°РЅС‹ РІ РіСЂСѓРїРїСѓ: " (car grp)))
+            (mark:out "[WARN] РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕР·РґР°С‚СЊ РіСЂСѓРїРїСѓ; С‚РѕР»СЊРєРѕ РїРѕРґСЃРІРµС‚РєР°."))
+          ;; Р СѓС‡РЅРѕР№ РїРѕРёСЃРє: С‚РѕР»СЊРєРѕ СЃРѕР±РёСЂР°РµРј РІ РіСЂСѓРїРїСѓ Рё РїРѕРґСЃРІРµС‡РёРІР°РµРј.
+          ;; РЈРґР°Р»РµРЅРёРµ вЂ” РЅР° СѓСЃРјРѕС‚СЂРµРЅРёРµ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ (Delete/РЎС‚РµСЂРµС‚СЊ РІСЂСѓС‡РЅСѓСЋ).
           (sssetfirst nil ss2)
           (mark:out
-            (strcat "[INFO] Найдено лишних копий: " (itoa n)
-                    ". Собраны в группу и подсвечены."))
+            (strcat "[INFO] РќР°Р№РґРµРЅРѕ Р»РёС€РЅРёС… РєРѕРїРёР№: " (itoa n)
+                    ". РЎРѕР±СЂР°РЅС‹ РІ РіСЂСѓРїРїСѓ Рё РїРѕРґСЃРІРµС‡РµРЅС‹."))
           (mark:out
-            "[INFO] Копии не удалялись. При необходимости удалите их вручную.")))))
+            "[INFO] РљРѕРїРёРё РЅРµ СѓРґР°Р»СЏР»РёСЃСЊ. РџСЂРё РЅРµРѕР±С…РѕРґРёРјРѕСЃС‚Рё СѓРґР°Р»РёС‚Рµ РёС… РІСЂСѓС‡РЅСѓСЋ.")))))
   (princ))
 
-(defun c:МАРКАЗАПБЛОК () (mark:fill-main))
+(defun c:РњРђР РљРђР—РђРџР‘Р›РћРљ () (mark:fill-main))
 (defun c:MARKFILL () (mark:fill-main))
-(defun c:Сетка-мультилинии () (setq *mark:fill-force* "1") (c:МАРКАЗАПБЛОК))
-(defun c:Точка-мультилинии () (setq *mark:fill-force* "2") (c:МАРКАЗАПБЛОК))
-(defun c:Сетка-динамика () (setq *mark:fill-force* "3") (c:МАРКАЗАПБЛОК))
-(defun c:Точка-динамика () (setq *mark:fill-force* "4") (c:МАРКАЗАПБЛОК))
-(defun c:Полилинии () (setq *mark:fill-force* "P") (c:МАРКАЗАПБЛОК))
+(defun c:РЎРµС‚РєР°-РјСѓР»СЊС‚РёР»РёРЅРёРё () (setq *mark:fill-force* "1") (c:РњРђР РљРђР—РђРџР‘Р›РћРљ))
+(defun c:РўРѕС‡РєР°-РјСѓР»СЊС‚РёР»РёРЅРёРё () (setq *mark:fill-force* "2") (c:РњРђР РљРђР—РђРџР‘Р›РћРљ))
+(defun c:РЎРµС‚РєР°-РґРёРЅР°РјРёРєР° () (setq *mark:fill-force* "3") (c:РњРђР РљРђР—РђРџР‘Р›РћРљ))
+(defun c:РўРѕС‡РєР°-РґРёРЅР°РјРёРєР° () (setq *mark:fill-force* "4") (c:РњРђР РљРђР—РђРџР‘Р›РћРљ))
+(defun c:РџРѕР»РёР»РёРЅРёРё () (setq *mark:fill-force* "P") (c:РњРђР РљРђР—РђРџР‘Р›РћРљ))
 
-;; Снять старые имена из памяти AutoCAD при повторной загрузке
-(setq c:МАРКИРОВКА nil)
-(setq c:МАРКАЗ nil)
-(setq c:МАРКАР nil)
-(setq c:МАРКАЗАЛ nil)
-(setq c:МАРКАЗАЛА nil)
+;; РЎРЅСЏС‚СЊ СЃС‚Р°СЂС‹Рµ РёРјРµРЅР° РёР· РїР°РјСЏС‚Рё AutoCAD РїСЂРё РїРѕРІС‚РѕСЂРЅРѕР№ Р·Р°РіСЂСѓР·РєРµ
+(setq c:РњРђР РљРР РћР’РљРђ nil)
+(setq c:РњРђР РљРђР— nil)
+(setq c:РњРђР РљРђР  nil)
+(setq c:РњРђР РљРђР—РђР› nil)
+(setq c:РњРђР РљРђР—РђР›Рђ nil)
 
 (defun mark:snapshot-path (/ src dir ch)
   (setq src (mark:find-source)
@@ -8707,7 +8714,7 @@
   (strcat dir "MARKZ_SNAPSHOT.txt"))
 
 (defun mark:ax-objname (e / obj r)
-  ;; Класс объекта (ObjectName). Для SPDS/прокси это НЕ AcDbBlockReference.
+  ;; РљР»Р°СЃСЃ РѕР±СЉРµРєС‚Р° (ObjectName). Р”Р»СЏ SPDS/РїСЂРѕРєСЃРё СЌС‚Рѕ РќР• AcDbBlockReference.
   (setq obj (vl-catch-all-apply 'vlax-ename->vla-object (list e)))
   (if (or (vl-catch-all-error-p obj) (null obj))
     "?"
@@ -8716,11 +8723,11 @@
       (if (or (vl-catch-all-error-p r) (not (mark:strp r))) "?" r))))
 
 (defun mark:spds? (e / on typ)
-  ;; Признак объекта SPDS/иной внешней программы или прокси.
+  ;; РџСЂРёР·РЅР°Рє РѕР±СЉРµРєС‚Р° SPDS/РёРЅРѕР№ РІРЅРµС€РЅРµР№ РїСЂРѕРіСЂР°РјРјС‹ РёР»Рё РїСЂРѕРєСЃРё.
   (setq on  (strcase (mark:ax-objname e))
         typ (strcase (cond ((cdr (assoc 0 (entget e)))) (t ""))))
   (or (wcmatch on "*SPDS*")
-      (wcmatch on "*СПДС*")
+      (wcmatch on "*РЎРџР”РЎ*")
       (wcmatch on "*PROXY*")
       (wcmatch on "*ZOMBIE*")
       (wcmatch typ "*PROXY*")
@@ -8732,20 +8739,20 @@
         nm  (if (and obj (not (vl-catch-all-error-p obj)))
               (mark:ax-get obj "EffectiveName")
               nil))
-  (list (if (mark:strp nm) nm "<нет EffectiveName>")
+  (list (if (mark:strp nm) nm "<РЅРµС‚ EffectiveName>")
         (if (mark:strp raw) raw "?")))
 
-(defun c:МАРКАДИАГ (/ ss i e ed typ on names nm raw match eb cnt)
-  ;; Диагностика: ВЫДЕЛИТЕ рамкой окно/дверь — покажет для каждого объекта
-  ;; тип, класс (ObjectName), EffectiveName, имя блока, габариты и признак SPDS.
-  (mark:out "МАРКАДИАГ — выделите рамкой окно/дверь (можно один объект).")
+(defun c:РњРђР РљРђР”РРђР“ (/ ss i e ed typ on names nm raw match eb cnt)
+  ;; Р”РёР°РіРЅРѕСЃС‚РёРєР°: Р’Р«Р”Р•Р›РРўР• СЂР°РјРєРѕР№ РѕРєРЅРѕ/РґРІРµСЂСЊ вЂ” РїРѕРєР°Р¶РµС‚ РґР»СЏ РєР°Р¶РґРѕРіРѕ РѕР±СЉРµРєС‚Р°
+  ;; С‚РёРї, РєР»Р°СЃСЃ (ObjectName), EffectiveName, РёРјСЏ Р±Р»РѕРєР°, РіР°Р±Р°СЂРёС‚С‹ Рё РїСЂРёР·РЅР°Рє SPDS.
+  (mark:out "РњРђР РљРђР”РРђР“ вЂ” РІС‹РґРµР»РёС‚Рµ СЂР°РјРєРѕР№ РѕРєРЅРѕ/РґРІРµСЂСЊ (РјРѕР¶РЅРѕ РѕРґРёРЅ РѕР±СЉРµРєС‚).")
   (setq ss (vl-catch-all-apply 'ssget nil))
   (if (or (vl-catch-all-error-p ss) (null ss))
-    (mark:out "[INFO] Ничего не выбрано.")
+    (mark:out "[INFO] РќРёС‡РµРіРѕ РЅРµ РІС‹Р±СЂР°РЅРѕ.")
     (progn
       (setq i   (sslength ss)
             cnt 0)
-      (mark:out (strcat "[INFO] Выбрано объектов: " (itoa i)))
+      (mark:out (strcat "[INFO] Р’С‹Р±СЂР°РЅРѕ РѕР±СЉРµРєС‚РѕРІ: " (itoa i)))
       (repeat i
         (setq i   (1- i)
               e   (ssname ss i)
@@ -8762,27 +8769,27 @@
                   eb    (mark:fill-vla-bb e))
             (mark:out
               (strcat "  #" (itoa cnt)
-                      "  DXF-тип=" (if (mark:strp typ) typ "?")
-                      "  Класс=" on
-                      (if (mark:spds? e) "  [SPDS/прокси]" "")))
+                      "  DXF-С‚РёРї=" (if (mark:strp typ) typ "?")
+                      "  РљР»Р°СЃСЃ=" on
+                      (if (mark:spds? e) "  [SPDS/РїСЂРѕРєСЃРё]" "")))
             (mark:out
               (strcat "      EffName='" nm "'"
                       "  Block='" (if (mark:strp raw) raw "?") "'"
-                      "  проём=" (if match "ДА" "нет")))
+                      "  РїСЂРѕС‘Рј=" (if match "Р”Рђ" "РЅРµС‚")))
             (if eb
               (mark:out
                 (strcat "      BB X " (rtos (nth 0 eb) 2 1)
                         ".." (rtos (nth 2 eb) 2 1)
                         "  Y " (rtos (nth 1 eb) 2 1)
                         ".." (rtos (nth 3 eb) 2 1)))
-              (mark:out "      BB: нет (VLA не дал габарит)")))))))
+              (mark:out "      BB: РЅРµС‚ (VLA РЅРµ РґР°Р» РіР°Р±Р°СЂРёС‚)")))))))
   (princ))
 
 (defun c:SNAPSHOT (/ ss i e bb lst fn f ed typ p0 p1 rad w h)
-  (prompt "\nВыберите элементы для снятия геометрии (SNAPSHOT): ")
+  (prompt "\nР’С‹Р±РµСЂРёС‚Рµ СЌР»РµРјРµРЅС‚С‹ РґР»СЏ СЃРЅСЏС‚РёСЏ РіРµРѕРјРµС‚СЂРёРё (SNAPSHOT): ")
   (setq ss (ssget))
   (if (null ss)
-    (prompt "\n[INFO] Ничего не выбрано.")
+    (prompt "\n[INFO] РќРёС‡РµРіРѕ РЅРµ РІС‹Р±СЂР°РЅРѕ.")
     (progn
       (setq i (sslength ss)
             lst nil)
@@ -8799,27 +8806,40 @@
             f  (open fn "w"))
       (if f
         (progn
-          (write-line (strcat "; SNAPSHOT: " (itoa (length lst)) " элементов") f)
+          (write-line (strcat "; SNAPSHOT: " (itoa (length lst)) " СЌР»РµРјРµРЅС‚РѕРІ") f)
           (foreach item lst
             (write-line (vl-prin1-to-string item) f))
           (close f)
-          (prompt (strcat "\n[OK] Снапшот геометрии сохранен в " fn "\n")))
-        (prompt (strcat "\n[ERROR] Не удалось открыть файл " fn "\n")))))
+          (prompt (strcat "\n[OK] РЎРЅР°РїС€РѕС‚ РіРµРѕРјРµС‚СЂРёРё СЃРѕС…СЂР°РЅРµРЅ РІ " fn "\n")))
+        (prompt (strcat "\n[ERROR] РќРµ СѓРґР°Р»РѕСЃСЊ РѕС‚РєСЂС‹С‚СЊ С„Р°Р№Р» " fn "\n")))))
   (princ))
 
-;;; ---- TEST 00 + сообщение загрузки ------------------------------------
+;;; ---- TEST 00 + СЃРѕРѕР±С‰РµРЅРёРµ Р·Р°РіСЂСѓР·РєРё ------------------------------------
 
+(defun mark:repeat (ch n / out)
+  (setq out "")
+  (repeat n (setq out (strcat out ch)))
+  out)
+(defun mark:ljust (s w / d)
+  ;; Return exactly w characters; do not append an extra space.
+  (setq s (if (mark:strp s) s "") d (- w (strlen s)))
+  (if (> d 0) (strcat s (mark:repeat " " d)) s))
+(defun mark:help-row (cmd desc)
+  (princ (strcat "\n  | " (mark:ljust cmd 25) "| " (mark:ljust desc 34) " |")))
+(defun mark:help-border ()
+  (princ (strcat "\n  +" (mark:repeat "-" 26) "+" (mark:repeat "-" 36) "+")))
+(defun mark:help-header ()
+  (princ (strcat "\n  | " (mark:ljust "РљРћРњРђРќР”Рђ" 25) "| " (mark:ljust "Р§РўРћ Р”Р•Р›РђР•Рў" 34) " |")))
 (mark:test-parens)
-(princ (strcat
-  "\n[MARKZ] Загружен " *mark:rev*
-  "\nМАРКАЗАП       — полный цикл: сетка или готовые заполнения (каркас: мультилинии + динамика)"
-  "\nМАРКАРОВКАЗАП  — марки блоков в «Заполнение в витраж»"
-  "\nМАРКАЗАПРЯД    — рядовка из блоков «Ряд заполнений»: номера снизу, буквы справа"
-  "\nМАРКАЗАПТАБЛ   — ведомость"
-  "\nМАРКАЗАПБЛОК   — вставка по ячейкам: 1/2 мультилинии, 3/4 динамика, 5/6 все-типы, 7-Полилиния"
-  "\nТочка-динамика — отдельная команда; в списке: 4 или Д"
-  "\nМАРКАЗАПТЕСТ   — проверка ячейки на тестовом блоке из линий"
-  "\nМАРКАЗАПГЕО   — [DIAG] печать геометрии секций: вертикали/импосты/горизонтали"
-        "\nМАРКАЗАПКОПИИ — собрать полные дубли объектов в группу и подсветить (без удаления)"
-  "\nМАРКАДИАГ      — диагностика: что за блок стоит у окна/двери и как его видит LISP\n"))
+(princ (strcat "\n[MARKZ] " (if (mark:strp *mark:rev*) *mark:rev* "Р РµРґ. РЅРµРёР·РІРµСЃС‚РЅР°")
+  " / build " (if (mark:strp *mark:build*) *mark:build* "РЅРµРёР·РІРµСЃС‚РЅР°СЏ") " Р·Р°РіСЂСѓР¶РµРЅР°."))
+(mark:help-border)
+(mark:help-header)
+(mark:help-border)
+(mark:help-row "РњРђР РљРђР— (MARKZ)" "РњР°СЂРєРёСЂРѕРІРєР° Р·Р°РїРѕР»РЅРµРЅРёР№")
+(mark:help-row "РњРђР РљРђР  (MARKAR)" "Р СЏРґРѕРІРєР° Р·Р°РїРѕР»РЅРµРЅРёР№")
+(mark:help-row "РњРђР РљРђРўРђР‘Р› (MARKTABLE)" "Р’РµРґРѕРјРѕСЃС‚СЊ: С‚Р°Р±Р»РёС†Р° + XLS/CSV")
+(mark:help-row "РњРђР РљРђ (MARKA)" "РџРѕР»РЅС‹Р№ РїР°РєРµС‚ РѕР±СЂР°Р±РѕС‚РєРё")
+(mark:help-row "РњРђР РљРђР—РђР› (MARKFILL)" "Р Р°СЃРєР»Р°РґРєР° Р·Р°РїРѕР»РЅРµРЅРёР№ РїРѕ СЏС‡РµР№РєР°Рј")
+(mark:help-border)
 (princ)
