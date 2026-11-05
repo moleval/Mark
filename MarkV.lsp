@@ -1,7 +1,11 @@
 ;;;=====================================================================
-;;; MarkV.lsp
+;;; MarkV.lsp  (ранее MarkZV.lsp)
 ;;; Модуль сбора данных, построения 2D модели витража
-;;; и автозаполнения атрибутов стоек и ригелей
+;;; и автозаполнения атрибутов стоек и ригелей.
+;;;
+;;; Марки СТОЕК и ригелей ставятся по витражам: каждая рамка «Атрибуты
+;;; витража» обрабатывается отдельно — свой префикс, свои шкалы номеров,
+;;; свои группы на чертеже; ведомость одна и общая.
 ;;;=====================================================================
 (vl-load-com)
 
@@ -98,8 +102,8 @@
 ;;; 1. КОНФИГУРАЦИЯ
 ;;;=====================================================================
 ;; Ред. <версия>.<билд>:  версия — крупные задачи, билд — итерация правок
-(setq *mk:ver*            "6.4")
-(setq *mk:build*          "32.3")
+(setq *mk:ver*            "Ред. 7.0")       ; схема как в MARKZ.lsp: «Ред. N.N»
+(setq *mk:build*          "33.1")         ; билд — итерация правок внутри редакции
 
 (setq *mk:block-fill*     "Заполнение в витраж")
 (setq *mk:block-window*   "Окно КПТ60")
@@ -2738,7 +2742,7 @@
 
 ;; Собрать все выноски чертежа в группу
 (defun mk:group-labels (/ ss i lst e d txt prefix)
-  (setq prefix (mk:get-vitrage-prefix)
+  (setq prefix (if (mk:strp *mk:last-prefix*) *mk:last-prefix* (mk:get-vitrage-prefix))
         ss (ssget "_X" (list (cons 8 *mk:layer-label*) (cons 0 "TEXT")))
         lst nil)
   (if ss
@@ -2982,242 +2986,6 @@
 ;;;---------------------------------------------------------------------
 ;;; 18f. КОМАНДЫ МАРКИРОВКИ
 ;;;---------------------------------------------------------------------
-(defun c:МАРКАВСТ (/ ss data posts elements prefix plan res count skip-count
-                     lab-count doc)
-  (prompt "\n[МАРКАВСТ] Марки стоек...")
-  (setq *mk:dyn-cache* nil *mk:vitrage-cache* nil)
-  (setq prefix (mk:get-vitrage-prefix))
-  (prompt (strcat "\n  Префикс витража: " prefix " (" *mk:vitrage-src* ")"))
-  (setq ss   (mk:scope-ss))
-  (setq data (mk:collect-scope ss))
-  (setq posts (cdr (assoc 'POSTS data)))
-  (if (null posts)
-    (prompt "\n  [INFO] Блоки стоек не найдены.")
-    (progn
-      (setq elements (append (cdr (assoc 'PANELS data)) (cdr (assoc 'BEAMS data))))
-      (prompt (strcat "\n  Стоек: " (itoa (length posts))
-                      ", элементов окружения: " (itoa (length elements))))
-      (setq posts (mk:annotate-posts posts elements))
-      (setq plan  (mk:plan-posts posts prefix))
-      (prompt (strcat "\n  Марок (групп): " (itoa (length plan))))
-      (setq count 0 skip-count 0 lab-count 0)
-      (setq suffix (mk:get-vitrage-prefix))
-      (if (not (mk:strp suffix)) (setq suffix "Витраж"))
-      (setq suffix (mk:get-vitrage-prefix))
-      (if (not (mk:strp suffix)) (setq suffix "Витраж"))
-      (setq doc (mk:undo-begin))
-      (foreach item plan
-        (setq res (mk:write-marks (cadr item) (car item)))
-        (prompt (strcat "\n  " (mk:pad (car item) 16)
-                        " шт.: " (mk:padl (itoa (length (cadr item))) 3)
-                        "   [" (mk:pad (mk:rec-get (car (cadr item)) 'LEFT_TYPES) 18)
-                        " | " (mk:rec-get (car (cadr item)) 'RIGHT_TYPES) "]"))
-        (setq count      (+ count (car res))
-              skip-count (+ skip-count (cadr res))
-              lab-count  (+ lab-count (caddr res))))
-      (if (> lab-count 0)
-        (progn
-          (prompt (strcat "\n  Выносок (нет атрибута «" *mk:attr-mark* "»): "
-                          (itoa lab-count)))
-          (mk:group-labels)))
-      (mk:undo-end doc)
-      (prompt (strcat "\n[ГОТОВО] Заполнено: " (itoa count)
-                      ", выносок: " (itoa lab-count)
-                      ", пропущено: " (itoa skip-count)))))
-  (princ))
-
-(defun c:МАРКАВРГ (/ ss data beams posts panels doors bounds prefix plan
-                     res count skip-count lab-count doc)
-  (prompt "\n[МАРКАВРГ] Марки ригелей...")
-  (setq *mk:dyn-cache* nil *mk:vitrage-cache* nil)
-  (if (null *mk:batch*) (setq *mk:allowance-unknown* nil))
-  (setq prefix (mk:get-vitrage-prefix))
-  (prompt (strcat "\n  Префикс витража: " prefix " (" *mk:vitrage-src* ")"))
-  (setq ss   (mk:scope-ss))
-  (setq data (mk:collect-scope ss))
-  (setq beams  (cdr (assoc 'BEAMS data))
-        posts  (cdr (assoc 'POSTS data))
-        panels (cdr (assoc 'PANELS data))
-        doors  (cdr (assoc 'DOORS data)))
-  (if (null beams)
-    (prompt "\n  [INFO] Блоки ригелей не найдены.")
-    (progn
-      (prompt (strcat "\n  Ригелей: " (itoa (length beams))
-                      ", панелей: " (itoa (length panels))))
-      (mk:ask-unknown-allowance beams)      ; чтобы L=… уже содержал припуск
-      (setq bounds (mk:find-vitrage-bounds posts beams))
-      (setq beams  (mk:annotate-beams beams panels doors bounds posts))
-      (setq plan   (mk:plan-beams beams prefix))
-      (prompt (strcat "\n  Марок (групп): " (itoa (length plan))))
-      (setq count 0 skip-count 0 lab-count 0)
-      (setq doc (mk:undo-begin))
-      (foreach item plan
-        (setq res (mk:write-marks (cadr item) (car item)))
-        (prompt (strcat "\n  " (mk:pad (car item) 16)
-                        " шт.: " (mk:padl (itoa (length (cadr item))) 3)))
-        (setq count      (+ count (car res))
-              skip-count (+ skip-count (cadr res))
-              lab-count  (+ lab-count (caddr res))))
-      (if (> lab-count 0)
-        (progn
-          (prompt (strcat "\n  Выносок (нет атрибута «" *mk:attr-mark* "»): "
-                          (itoa lab-count)))
-          (mk:group-labels)))
-      (mk:undo-end doc)
-      (prompt (strcat "\n[ГОТОВО] Заполнено: " (itoa count)
-                      ", выносок: " (itoa lab-count)
-                      ", пропущено: " (itoa skip-count)))))
-  (princ))
-
-;;;=====================================================================
-;;; 19. ГЛАВНАЯ КОМАНДА
-;;;=====================================================================
-(defun c:МАРКАВГЕОМЕТРИЯ (/ ss vitrage vitrage-pt posts beams fills windows doors
-                      bounds topo-result all-panels dup-count overlap-count
-                      out-count post-result protruding-count mlines
-                      mline-result use-mlines mode-kw post-enames beam-enames)
-  (prompt "\n[МАРКАВГЕОМЕТРИЯ] Сбор данных и построение 2D модели витража...")
-  (setq *mk:dyn-cache* nil *mk:vitrage-cache* nil)
-  (if (and *mk:batch* *mk:batch-ss*)
-    (progn
-      (setq ss *mk:batch-ss*)
-      (prompt "\n  Область: выборка пакета МАРКАВ"))
-    (progn
-      (prompt "\nВыберите элементы витража (рамкой): ")
-      (setq ss (ssget))))
-  (if ss (setq *mk:last-ss* ss))
-  (if (null ss)
-    (prompt "\n[INFO] Ничего не выбрано."))
-  (if ss (progn
-  (prompt (strcat "\n  Выбрано объектов: " (itoa (sslength ss))))
-  (prompt "\n[1/8] Чтение блока Атрибуты витража...")
-  (setq vitrage (mk:read-vitrage-block))
-  (if vitrage
-    (progn
-      (setq vitrage-pt (cdr (assoc 'INS_PT vitrage)))
-      (setq *mk:group-model* (strcat "Сетка_витража_" (mk:get-vitrage-prefix)))
-      (prompt (strcat "\n  Блок атрибутов витража найден (" *mk:vitrage-src*
-                      "), Витраж: " (mk:get-vitrage-prefix))))
-    (prompt "\n  [WARN] Блок Атрибуты витража не найден!"))
-  (prompt "\n[2/8] Поиск элементов каркаса в выборке...")
-  (setq mlines (mk:find-mlines-in-ss ss))
-  (prompt (strcat "\n  Мультилиний найдено: " (itoa (length mlines))))
-  (if (and *mk:batch* *mk:batch-mode*)
-    (setq mode-kw *mk:batch-mode*)
-    (progn
-      (initget "Блоки Мультилинии Все-типы B M A")
-      (setq mode-kw (getkword
-        "\nРежим сбора каркаса [Блоки/Мультилинии/Все-типы] <Все-типы>: "))))
-  (setq mode-kw (mk:norm-mode mode-kw))
-  (setq *mk:scope-mode* mode-kw)
-  (setq use-mlines (= mode-kw "Мультилинии"))
-  (cond
-    ((= mode-kw "Все-типы")
-     (prompt "\n  Режим: ВСЕ ТИПЫ (мультилинии + линии/полилинии + блоки)")
-     (setq mline-result (mk:extract-posts-beams-all ss))
-     (setq posts (nth 0 mline-result))
-     (setq beams (nth 1 mline-result)))
-    (use-mlines
-     (prompt "\n  Режим: МУЛЬТИЛИНИИ")
-     (if (> (length mlines) 0)
-       (progn
-         (setq mline-result (mk:extract-posts-beams-from-mlines mlines))
-         (setq posts (nth 0 mline-result))
-         (setq beams (nth 1 mline-result)))
-       (prompt "\n  [WARN] Мультилинии не найдены в выборке.")))
-    (t
-     (prompt "\n  Режим: БЛОКИ")
-     (setq post-enames (mk:find-blocks-in-ss ss (strcat "*" *mk:block-post* "*")))
-     (setq beam-enames (mk:find-blocks-in-ss ss (strcat "*" *mk:block-beam* "*")))
-     (setq posts (mapcar 'mk:collect-post post-enames))
-     (setq beams (mapcar 'mk:collect-beam beam-enames))))
-  (setq posts (mk:sanitize-frame posts "Стойки"))
-  (setq beams (mk:sanitize-frame beams "Ригели"))
-  ;; панели собираются до разбора узлов: по ним проверяется симметрия Т-соединения
-  (setq fills   (mk:find-blocks-in-ss ss (strcat "*" *mk:block-fill* "*")))
-  (setq windows (mk:find-blocks-in-ss ss (strcat "*" *mk:block-window* "*")))
-  (setq doors   (mk:find-blocks-in-ss ss (strcat "*" *mk:block-door* "*")))
-  (setq fills   (mk:sanitize-panels (mapcar 'mk:collect-fill fills)     "Заполнения"))
-  (setq windows (mk:sanitize-panels (mapcar 'mk:collect-window windows) "Окна"))
-  (setq doors   (mk:sanitize-panels (mapcar 'mk:collect-door doors)     "Двери"))
-  (setq res   (mk:split-tjoints posts beams (append fills windows doors))
-        posts (nth 0 res)
-        beams (nth 1 res))
-  (prompt (strcat "\n  Стойки: " (itoa (length posts))))
-  (prompt (strcat "\n  Ригели: " (itoa (length beams))))
-  (prompt (strcat "\n  Заполнения: " (itoa (length fills))))
-  (prompt (strcat "\n  Окна: " (itoa (length windows))))
-  (prompt (strcat "\n  Двери: " (itoa (length doors))))
-  (prompt "\n[3/8] Определение границ витража...")
-  (setq bounds (mk:find-vitrage-bounds posts beams))
-  (prompt (strcat "\n  Границы: X=" (rtos (cdr (assoc 'MIN_X bounds)) 2 1)
-                  ".." (rtos (cdr (assoc 'MAX_X bounds)) 2 1)
-                  ", Y=" (rtos (cdr (assoc 'MIN_Y bounds)) 2 1)
-                  ".." (rtos (cdr (assoc 'MAX_Y bounds)) 2 1)))
-  (prompt "\n[4/8] Проверки и валидация...")
-  (setq all-panels (append fills windows doors))
-  (prompt "\n  Проверка дубликатов...")
-  (setq dup-count (mk:check-duplicates (append posts beams all-panels)))
-  (prompt "\n  Проверка перекрытий...")
-  (setq overlap-count (mk:check-overlaps all-panels))
-  (prompt "\n  Проверка выхода за пределы сетки...")
-  (setq out-count (mk:check-out-of-grid (append posts beams all-panels) bounds))
-  (prompt "\n  Определение выступающих стоек...")
-  (setq post-result (mk:identify-protruding-posts posts bounds))
-  (setq posts (nth 0 post-result))
-  (setq protruding-count (nth 1 post-result))
-  (prompt (strcat "\n  Выступающих стоек: " (itoa protruding-count)))
-  (prompt "\n  Валидация ригелей...")
-  (foreach beam beams (mk:validate-beam beam posts beams))
-  (prompt "\n  Валидация заполнений...")
-  (foreach fill fills (mk:validate-fill fill posts beams))
-  (prompt "\n[5/8] Построение топологии связей...")
-  (setq topo-result (mk:build-topology posts beams fills windows doors bounds))
-  (setq posts   (nth 0 topo-result))
-  (setq beams   (nth 1 topo-result))
-  (setq fills   (nth 2 topo-result))
-  (setq windows (nth 3 topo-result))
-  (setq doors   (nth 4 topo-result))
-  (setq all-panels (append fills windows doors))
-  (setq posts (mk:annotate-posts posts (append all-panels beams)))
-  (setq beams (mk:annotate-beams beams all-panels doors bounds posts))
-  (prompt "\n[6/8] Визуализация и вывод данных...")
-  (mk:draw-model posts beams fills windows doors bounds)
-  (mk:dump-data vitrage bounds posts beams fills windows doors)
-  (setq *mk:cached-data* (list posts beams fills windows doors bounds))
-  (prompt "\n")
-  (prompt "\n=== СВОДКА ПРОВЕРОК ===")
-  (prompt (strcat "\n  Режим: " (strcase mode-kw)))
-  (prompt (strcat "\n  Дубликатов: " (itoa dup-count)))
-  (prompt (strcat "\n  Перекрытий: " (itoa overlap-count)))
-  (prompt (strcat "\n  Элементов вне сетки: " (itoa out-count)))
-  (prompt (strcat "\n  Выступающих стоек: " (itoa protruding-count)))
-  (prompt "\n[ГОТОВО] Сбор данных завершён.")
-  ))                                    ; конец (if ss (progn …
-  (princ))
-
-;;;=====================================================================
-;;; 20. КОМАНДА ТЕСТОВОЙ ОТРИСОВКИ
-;;;=====================================================================
-(defun c:МАРКАВМОДЕЛЬ (/ posts beams fills windows doors bounds)
-  (prompt "\n[МАРКАВМОДЕЛЬ] Тестовая отрисовка модели витража...")
-  (if (null *mk:cached-data*)
-    (progn
-      (prompt "\n  Данные не найдены. Запуск сбора...")
-      (c:МАРКАВГЕОМЕТРИЯ)))
-  (if *mk:cached-data*
-    (progn
-      (setq posts   (nth 0 *mk:cached-data*))
-      (setq beams   (nth 1 *mk:cached-data*))
-      (setq fills   (nth 2 *mk:cached-data*))
-      (setq windows (nth 3 *mk:cached-data*))
-      (setq doors   (nth 4 *mk:cached-data*))
-      (setq bounds  (nth 5 *mk:cached-data*))
-      (mk:draw-test-model posts beams fills windows doors bounds)
-      (prompt "\n[ГОТОВО] Тестовая модель отрисована."))
-    (prompt "\n[ERROR] Нет данных. Запустите МАРКАВГЕОМЕТРИЯ."))
-  (princ))
-
 ;;;=====================================================================
 ;;; 20a. ДИАГНОСТИКА БЛОКА (почему LENGTH/WIDTH/АРТИКУЛ = nil)
 ;;;=====================================================================
@@ -3293,9 +3061,18 @@
 ;;; 20a. ВЕДОМОСТЬ ПРОФИЛЕЙ — МАРКАВТАБЛ
 ;;;   Таблица AutoCAD + XLS (SpreadsheetML 2003).
 ;;;   Шапка: № | Артикул | Марка | Длина, мм | Кол-во, шт. | Всего, м.п.
-;;;   Сначала стойки, потом ригели; сортировка по артикулу, затем по марке
-;;;   и длине. Доноры: mtab:* (MARKZ.lsp, MARKTABLE).
+;;;   Стойки, затем ригели; сортировка по артикулу, затем по марке и длине.
+;;;   С Ред. 7.0 команда строит ОДНУ общую ведомость по всем витражам
+;;;   (см. раздел 20e); здесь — только движок таблицы и XLS.
 ;;;=====================================================================
+;;;--- Приписка к имени файла ведомости --------------------------------
+;; Один витраж — его марка; несколько — число витражей.
+(defun mk:tab-prefix (/ groups)
+  (setq groups (if *mk:last-groups* *mk:last-groups* nil))
+  (cond
+    ((null groups) (if (mk:strp *mk:last-prefix*) *mk:last-prefix* "витраж"))
+    ((= (length groups) 1) (nth 0 (car groups)))
+    (t (strcat (itoa (length groups)) " витражей"))))
 (setq *mk:tab-title* "Ведомость профилей")
 
 ;; Число с двумя знаками и запятой-разделителем: 12.5 -> "12,5"
@@ -4142,97 +3919,6 @@
 (setq *mk:leg-sfx* nil)
 (setq *mk:leg-arts* nil)
 
-(defun c:МАРКАВТАБЛ (/ ss data posts beams rows agg do-tbl do-xls file doc
-                       prefix bounds acc res pt2 pt3 h h2 tbl2 suffix)
-  (prompt "\n[МАРКАВТАБЛ] Ведомость профилей (стойки + ригели)...")
-  (setq *mk:dyn-cache* nil *mk:vitrage-cache* nil)
-  ;; вопрос о припуске задаётся один раз за прогон
-  (if (null *mk:batch*) (setq *mk:allowance-unknown* nil))
-  (setq ss   (mk:scope-ss))
-  (setq data (mk:collect-scope ss))
-  (setq posts (cdr (assoc 'POSTS data))
-        beams (cdr (assoc 'BEAMS data)))
-  (if (and (null posts) (null beams))
-    (prompt "\n  [INFO] Стойки и ригели не найдены.")
-    (progn
-      (prompt (strcat "\n  Стоек: " (itoa (length posts))
-                      ", ригелей: " (itoa (length beams))))
-      (mk:ask-unknown-allowance beams)
-      ;; расчётные марки — для элементов, у которых нет атрибута «Марка»
-      (setq *mk:mark-map* nil)
-      (setq prefix (mk:get-vitrage-prefix))
-      (setq bounds (mk:find-vitrage-bounds posts beams))
-      (if posts
-        (mk:mark-map-put
-          (mk:plan-posts
-            (mk:annotate-posts posts (append (cdr (assoc 'PANELS data)) beams))
-            prefix)))
-      (if beams
-        (progn
-          (setq beams (mk:annotate-beams beams (cdr (assoc 'PANELS data))
-                                         (cdr (assoc 'DOORS data)) bounds posts))
-          (mk:mark-map-put
-            (mk:plan-beams beams prefix))))
-      (setq rows (mk:tab-rows posts beams)
-            agg  (mk:tab-aggregate rows))
-      (prompt (strcat "\n  Уникальных позиций: " (itoa (length agg))))
-      ;; комплектующие: атрибуты «Пятка*» / «Кронштейн*» у блоков
-      (setq acc (mk:acc-rows (append posts beams)))
-      (if acc
-        (prompt (strcat "\n  Закладных (позиций): " (itoa (length acc))))
-        (prompt "\n  Закладные (Пятка/Кронштейн) не найдены."))
-      ;; условные обозначения: только реально встретившиеся
-      (setq *mk:leg-sfx*  (mk:leg-suffixes agg)
-            *mk:leg-arts* (mk:leg-articles beams))
-      (mk:leg-print *mk:leg-sfx* *mk:leg-arts*)
-      (initget "Да Нет")
-      (setq do-tbl (getkword "\nТаблица в чертеже? [Да/Нет] <Да>: "))
-      (setq do-tbl (if (= do-tbl "Нет") nil t))
-      (initget "Да Нет")
-      (setq do-xls (getkword "\nЭкспорт в XLS? [Да/Нет] <Да>: "))
-      (setq do-xls (if (= do-xls "Нет") nil t))
-      (setq suffix (mk:get-vitrage-prefix))
-      (if (not (mk:strp suffix)) (setq suffix "Витраж"))
-      (setq doc (mk:undo-begin))
-      (if do-xls
-        (progn
-          (setq file (strcat (getvar "dwgprefix")
-                             (vl-filename-base (getvar "dwgname"))
-                             " Стойки ригели витража "
-                             suffix
-                             ".xls"))
-          (mk:tab-xls agg file acc)))
-      (if do-tbl
-        (progn
-          (setq res (mk:tab-create agg))
-          ;; вторая таблица — закладные, под ведомостью профилей
-          (if res
-            (progn
-              (setq h (vl-catch-all-apply 'vlax-get-property (list (car res) 'Height)))
-              (if (vl-catch-all-error-p h) (setq h (* 12.0 (+ 3 (length agg)))))
-              (setq pt2 (list (car (cadr res))
-                              (- (cadr (cadr res)) h *mk:acc-gap*)
-                              0.0))
-              (setq tbl2 (if acc (mk:acc-table-create acc pt2) nil))
-              ;; третья таблица — условные обозначения
-              (setq pt3 pt2)
-              (if tbl2
-                (progn
-                  (setq h2 (vl-catch-all-apply 'vlax-get-property (list tbl2 'Height)))
-                  (if (vl-catch-all-error-p h2)
-                    (setq h2 (* 12.0 (+ 3 (length acc)))))
-                  (setq pt3 (list (car pt2) (- (cadr pt2) h2 *mk:acc-gap*) 0.0))))
-              (mk:leg-table-create *mk:leg-sfx* *mk:leg-arts* pt3)))))
-      (mk:undo-end doc)
-      (prompt "\n[ГОТОВО] Ведомость сформирована.")))
-  (princ))
-
-;;;=====================================================================
-;;; 20b. ПАКЕТНЫЙ ПРОГОН — МАРКАВ
-;;;   Одна выборка -> сбор и сетка -> марки стоек -> марки ригелей ->
-;;;   удаление сетки -> ведомость. Один UNDO на весь пакет.
-;;;=====================================================================
-;; Удалить группу по имени (если существует)
 (defun mk:group-delete (name / doc groups g)
   (setq doc    (mk:ax-get (vlax-get-acad-object) "ActiveDocument")
         groups (if doc (mk:ax-get doc "Groups") nil))
@@ -4257,59 +3943,721 @@
   (prompt (strcat "\n  [OK] Сетка удалена, объектов: " (itoa n)))
   n)
 
-(defun c:МАРКАВ (/ ss keep doc n-posts n-beams)
-  (prompt (strcat "\n[МАРКАВ] Пакетный прогон, Ред. " *mk:ver* "."))
-  (prompt "\n  Этапы: сбор и сетка -> марки стоек -> марки ригелей -> ведомость.")
-  (setq *mk:batch* nil *mk:batch-ss* nil *mk:batch-mode* nil)
-  (setq *mk:dyn-cache* nil *mk:vitrage-cache* nil *mk:no-vitrage-prompted* nil *mk:manual-vitrage-prefix* nil *mk:allowance-unknown* nil)
-  (prompt "\nВыберите элементы витража (рамкой): ")
+;;;=====================================================================
+;;; 20e. МНОГОВИТРАЖНЫЙ КОНВЕЙЕР (Ред. 7.0)
+;;;   Раньше МАРКАВ брал один блок «Атрибуты витража» и навешивал его
+;;;   префикс на всю выборку: при нескольких витражах вся выборка
+;;;   получала префикс одной (ближайшей) рамки — например, ВН-7.
+;;;   Теперь: рамки ищутся по всему чертежу, каждый объект получает марку
+;;;   витража по максимальной площади пересечения BBOX с CaptureBBox
+;;;   рамки, объекты делятся на группы, и каждая группа проходит цикл
+;;;   (сбор -> стыки -> топология -> стойки -> ригели) отдельно, со своим
+;;;   префиксом и своими локальными шкалами. Ведомость — одна, общая.
+;;;   Выбор: выбраны объекты — только они; выбор отменён — весь чертёж.
+;;;   Рамки всегда ищутся по всему чертежу, даже если не попали в выборку.
+;;;=====================================================================
+(setq *mk:last-groups*   nil)   ; группы прогона: (TAG FRAME ENANES RECORDS COUNTS)
+(setq *mk:last-extra*    nil)   ; объекты вне рамок — не маркируются
+(setq *mk:last-scope*    nil)   ; полная выборка прогона (список ename)
+(setq *mk:last-frames*   nil)   ; рамки чертежа
+(setq *mk:last-prefix*   nil)   ; префикс текущей группы (выноски, группы)
+(setq *mk:run-scope*     nil)   ; выборка пакета МАРКАВ (список ename)
+(setq *mk:last-mode*     "Все-типы") ; режим сбора каркаса текущего прогона
+(setq *mk:vitrage-none*  "<ВНЕ РАМОК>")
+
+;;;--- Служебное -------------------------------------------------------
+
+;; ATTRIB / SEQEND / VERTEX — подобъекты, а не самостоятельные объекты
+(defun mk:sub-entity? (ename / typ)
+  (setq typ (if ename (cdr (assoc 0 (entget ename))) nil))
+  (or (= typ "ATTRIB") (= typ "SEQEND") (= typ "VERTEX")))
+
+;; Имя объекта: Name, затем EffectiveName
+(defun mk:ent-name (ename / nm nm2 o)
+  (setq nm (if ename (cdr (assoc 2 (entget ename))) nil))
+  (setq o (if ename (vl-catch-all-apply 'vlax-ename->vla-object (list ename)) nil))
+  (if (and o (not (vl-catch-all-error-p o)))
+    (progn
+      (setq nm2 (mk:ax-get o "EffectiveName"))
+      (if (and (mk:strp nm2) (> (strlen nm2) 0)) (setq nm nm2))))
+  nm)
+
+;; Признак рамки: динамические «Ширина рамки» / «Высота рамки»
+(defun mk:frame-like? (ename / o w h)
+  (setq o (if ename (vl-catch-all-apply 'vlax-ename->vla-object (list ename)) nil))
+  (if (or (null o) (vl-catch-all-error-p o))
+    nil
+    (progn
+      (setq w (mk:get-dyn o "*Ширина рамки*")
+            h (mk:get-dyn o "*Высота рамки*"))
+      (and (numberp w) (numberp h) (> w 0.0) (> h 0.0)))))
+
+;; Тип объекта конвейера; nil — объект в конвейер не входит
+(defun mk:obj-kind (ename / n)
+  (if (or (null ename) (mk:sub-entity? ename))
+    nil
+    (cond
+      ((mk:blk-match? ename (strcat "*" *mk:block-fill* "*"))   "ЗАПОЛНЕНИЕ")
+      ((mk:blk-match? ename (strcat "*" *mk:block-window* "*")) "ОКНО")
+      ((mk:blk-match? ename (strcat "*" *mk:block-door* "*"))   "ДВЕРЬ")
+      ((mk:blk-match? ename (strcat "*" *mk:block-post* "*"))   "СТОЙКА")
+      ((mk:blk-match? ename (strcat "*" *mk:block-beam* "*"))   "РИГЕЛЬ")
+      (t
+       (setq n (mk:ent-name ename))
+       (cond
+         ((mk:name= n *mk:block-vitrage*) "АТРИБУТЫ_ВИТРАЖА")
+         ((mk:frame-like? ename)          "РАМКА")
+         ((and (mk:strp n) (wcmatch (strcase n) "*РЯД ЗАПОЛНЕНИ*")) "РЯД")
+         (t nil))))))
+
+;;;--- Этап 1. Выборка -------------------------------------------------
+
+(defun mk:select-scope (/ ss out e i all)
+  (prompt "\nВыберите элементы витражей (Enter — весь чертёж): ")
   (setq ss (ssget))
+  (if ss
+    (progn
+      (setq out nil i 0)
+      (repeat (sslength ss)
+        (setq e (ssname ss i))
+        (if (not (mk:sub-entity? e)) (setq out (cons e out)))
+        (setq i (1+ i)))
+      (setq *mk:scope-source* "выборка" out (reverse out))
+      (prompt (strcat "\n  Область: выборка, объектов " (itoa (length out)))))
+    (progn
+      (prompt "\n  [INFO] Выбор отменён — обрабатывается ВЕСЬ чертёж.")
+      (setq all (ssget "_X" '((0 . "INSERT,MLINE,LINE,LWPOLYLINE,POLYLINE,ARC"))))
+      (setq out nil i 0)
+      (if all
+        (repeat (sslength all)
+          (setq e (ssname all i))
+          (if (not (mk:sub-entity? e)) (setq out (cons e out)))
+          (setq i (1+ i))))
+      (setq *mk:scope-source* "чертёж" out (reverse out))
+      (prompt (strcat "\n  Область: весь чертёж, объектов " (itoa (length out))))))
+  out)
+
+;; Список ename -> набор SSGET (подвыборка годится для всех collect-функций)
+(defun mk:ss-of (enames / ss)
+  (setq ss (ssadd))
+  (foreach e enames (if e (ssadd e ss)))
+  ss)
+
+;;;--- Этап 2. Рамки (по всему чертежу) --------------------------------
+
+;; Запись рамки: (ENAME INS_PT BBOX CAPTURE AX AY TAG)
+;; AX: +1 — ширина растёт вправо, -1 — влево (Вертикаль);
+;; AY: -1 — высота растёт вниз, +1 — вверх (Горизонталь).
+(defun mk:frame-detail (ename / d o p w h vf hf cap tag)
+  (setq d (entget ename) p (cdr (assoc 10 d)))
+  (setq o (vl-catch-all-apply 'vlax-ename->vla-object (list ename)))
+  (if (or (null o) (vl-catch-all-error-p o))
+    nil
+    (progn
+      (setq w   (mk:get-dyn o "*Ширина рамки*")
+            h   (mk:get-dyn o "*Высота рамки*")
+            vf  (mk:get-dyn o "*Вертикаль*")
+            hf  (mk:get-dyn o "*Горизонталь*")
+            cap (mk:frame-capture-bb ename)
+            tag (mk:get-attr ename *mk:attr-vitrage*))
+      (if (null cap) (setq cap (mk:e-bb o)))
+      (if (null cap)
+        nil
+        (list ename p (mk:e-bb o) cap
+              (if (= vf 1) -1 1)
+              (if (= hf 1) 1 -1)
+              (if (and (mk:strp tag) (> (strlen tag) 0)) tag nil))))))
+
+;; Все рамки чертежа: слева-направо, сверху-вниз.
+;; Рамка без атрибута «Витраж» получает имя ВИТРАЖ-N.
+(defun mk:frame-table (/ ss i e frames out n rec)
+  (setq ss (ssget "_X" '((0 . "INSERT"))) i 0 frames nil)
+  (if ss
+    (repeat (sslength ss)
+      (setq e (ssname ss i))
+      (if (mk:frame-like? e)
+        (progn
+          (setq rec (mk:frame-detail e))
+          (if rec (setq frames (cons rec frames)))))
+      (setq i (1+ i))))
+  (setq out (vl-sort frames
+              '(lambda (a b)
+                 (if (equal (cadr (nth 1 a)) (cadr (nth 1 b)) 1.0)
+                   (< (car (nth 1 a)) (car (nth 1 b)))
+                   (> (cadr (nth 1 a)) (cadr (nth 1 b)))))))
+  (setq n 0)
+  (mapcar '(lambda (fr)
+             (setq n (1+ n))
+             (if (nth 6 fr)
+               fr
+               (list (nth 0 fr) (nth 1 fr) (nth 2 fr) (nth 3 fr) (nth 4 fr) (nth 5 fr) (strcat "ВИТРАЖ-" (itoa n)))))
+          out))
+
+;;;--- Этап 3. Принадлежность -----------------------------------------
+
+;; Индекс рамки с максимальным пересечением BBOX; 0 — вне рамок
+(defun mk:frame-of (bb frames / i best besta a)
+  (setq i 1 best nil besta 0.0)
+  (foreach fr frames
+    (setq a (mk:bb-overlap-area bb (nth 3 fr)))
+    (if (> a besta) (setq besta a best i))
+    (setq i (1+ i)))
+  (if best best 0))
+
+;; Локальные координаты внутри витража: X слева-направо, Y сверху вниз,
+;; с учётом отражений рамки (Вертикаль / Горизонталь).
+(defun mk:local-xy (pt fr / cap)
+  (setq cap (nth 3 fr))
+  (list (if (> (nth 4 fr) 0) (- (car pt) (nth 0 cap)) (- (nth 2 cap) (car pt)))
+        (if (> (nth 5 fr) 0) (- (cadr pt) (nth 1 cap)) (- (nth 3 cap) (cadr pt)))))
+
+;;;--- Этап 3a. Единая запись объекта --------------------------------
+
+(defun mk:obj-record (ename kind frames / o bb idx fr pt d)
+  (setq o (vl-catch-all-apply 'vlax-ename->vla-object (list ename)))
+  (setq bb (if (and o (not (vl-catch-all-error-p o))) (mk:e-bb o) nil))
+  (setq idx (if bb (mk:frame-of bb frames) 0))
+  (setq fr (if (> idx 0) (nth (1- idx) frames) nil))
+  (setq d (entget ename) pt (cdr (assoc 10 d)))
+  (list (cons 'ENAME   ename)
+        (cons 'HANDLE  (cdr (assoc 5 d)))
+        (cons 'TYPE    kind)
+        (cons 'NAME    (mk:ent-name ename))
+        (cons 'BBOX    bb)
+        (cons 'INS_PT  pt)
+        (cons 'CENTER  (if bb (list (/ (+ (nth 0 bb) (nth 2 bb)) 2.0)
+                                    (/ (+ (nth 1 bb) (nth 3 bb)) 2.0)) nil))
+        (cons 'VITRAGE (if fr (nth 6 fr) *mk:vitrage-none*))
+        (cons 'FRAME   idx)
+        (cons 'LOCAL   (if (and fr pt) (mk:local-xy pt fr) nil))))
+
+;;;--- Этап 4. Группы -------------------------------------------------
+
+(defun mk:uniq-nums (lst / out v)
+  (setq out nil)
+  (foreach v lst (if (not (member v out)) (setq out (cons v out))))
+  (reverse out))
+
+(defun mk:filter-frame (records idx / out)
+  (setq out nil)
+  (foreach r records
+    (if (= (cdr (assoc 'FRAME r)) idx) (setq out (cons r out))))
+  (reverse out))
+
+(defun mk:drop-kind (records kind / out)
+  (setq out nil)
+  (foreach r records
+    (if (/= (cdr (assoc 'TYPE r)) kind) (setq out (cons r out))))
+  (reverse out))
+
+(defun mk:count-kind (records kind / n)
+  (setq n 0)
+  (foreach r records (if (= (cdr (assoc 'TYPE r)) kind) (setq n (1+ n))))
+  n)
+
+;; Делит выборку по витражам: (GROUPS EXTRA).
+;; Группа: (TAG FRAME ENANES RECORDS COUNTS), COUNTS =
+;; (стойки ригели заполнения окна двери всего)
+(defun mk:split-by-vitrage (enames frames / records idxs out extra i sub tag k c)
+  (setq records nil)
+  (foreach e enames
+    (setq k (mk:obj-kind e))
+    (if k (setq records (cons (mk:obj-record e k frames) records))))
+  (setq records (reverse records))
+  (setq idxs (mk:uniq-nums
+               (vl-sort (mapcar '(lambda (r) (cdr (assoc 'FRAME r))) records) '<)))
+  (setq out nil extra nil)
+  (foreach i idxs
+    (setq sub (mk:filter-frame records i))
+    (setq sub (mk:drop-kind sub "АТРИБУТЫ_ВИТРАЖА"))
+    (setq sub (mk:drop-kind sub "РАМКА"))
+    (if (= i 0)
+      (setq extra sub)
+      (progn
+        (setq tag (nth 6 (nth (1- i) frames)))
+        (setq c (list (mk:count-kind sub "СТОЙКА")
+                      (mk:count-kind sub "РИГЕЛЬ")
+                      (mk:count-kind sub "ЗАПОЛНЕНИЕ")
+                      (mk:count-kind sub "ОКНО")
+                      (mk:count-kind sub "ДВЕРЬ")
+                      (length sub)))
+        (setq out (cons (list tag (nth (1- i) frames)
+                              (mapcar '(lambda (r) (cdr (assoc 'ENAME r))) sub)
+                              sub c)
+                        out)))))
+  (list (reverse out) extra))
+
+;;;--- Печать групп ----------------------------------------------------
+
+(defun mk:print-groups (groups extra / n g c)
+  (setq n 0)
+  (prompt "\n=== ГРУППЫ ПО ВИТРАЖАМ ===")
+  (foreach g groups
+    (setq n (1+ n) c (nth 4 g))
+    (prompt (strcat "\n  " (mk:pad (nth 0 g) 10)
+                    " стойки " (itoa (nth 0 c))
+                    ", ригели " (itoa (nth 1 c))
+                    ", заполнения " (itoa (nth 2 c))
+                    ", окна " (itoa (nth 3 c))
+                    ", двери " (itoa (nth 4 c))
+                    "   всего " (itoa (nth 5 c)))))
+  (prompt (strcat "\n  " (mk:pad *mk:vitrage-none* 10)
+                  " объектов: " (itoa (length extra))
+                  " — в маркировку не входят"))
+  n)
+
+;;;--- Один витраж -----------------------------------------------------
+
+;; Проставить марку витража в записи группы
+(defun mk:tag-records (els tag / out)
+  (setq out nil)
+  (foreach el els (setq out (cons (mk:rec-put el 'VITRAGE tag) out)))
+  (reverse out))
+
+;; Сбор данных одного витража: подвыборка группы -> collect-scope
+(defun mk:group-data (grp / tag enames sub data)
+  (setq tag (nth 0 grp) enames (nth 2 grp))
+  (setq *mk:last-prefix* tag)
+  (setq sub (mk:ss-of enames))
+  (setq data (mk:collect-scope sub))
+  (list (cons 'POSTS   (mk:tag-records (cdr (assoc 'POSTS data))   tag))
+        (cons 'BEAMS   (mk:tag-records (cdr (assoc 'BEAMS data))   tag))
+        (cons 'FILLS   (mk:tag-records (cdr (assoc 'FILLS data))   tag))
+        (cons 'WINDOWS (mk:tag-records (cdr (assoc 'WINDOWS data)) tag))
+        (cons 'DOORS   (mk:tag-records (cdr (assoc 'DOORS data))   tag))))
+
+;; План марок стоек одного витража (локальные группы и нумерация)
+(defun mk:group-plan-posts (grp / data posts elements)
+  (setq data (mk:group-data grp))
+  (setq posts (cdr (assoc 'POSTS data)))
+  (if posts
+    (progn
+      (setq elements (append (cdr (assoc 'FILLS data))
+                             (cdr (assoc 'WINDOWS data))
+                             (cdr (assoc 'DOORS data))
+                             (cdr (assoc 'BEAMS data))))
+      (mk:plan-posts (mk:annotate-posts posts elements) (nth 0 grp)))))
+
+;; План марок ригелей одного витража
+(defun mk:group-plan-beams (grp / data beams posts panels doors bounds)
+  (setq data (mk:group-data grp))
+  (setq beams  (cdr (assoc 'BEAMS data))
+        posts  (cdr (assoc 'POSTS data))
+        panels (append (cdr (assoc 'FILLS data))
+                       (cdr (assoc 'WINDOWS data))
+                       (cdr (assoc 'DOORS data)))
+        doors  (cdr (assoc 'DOORS data)))
+  (if beams
+    (progn
+      (setq bounds (mk:find-vitrage-bounds posts beams))
+      (mk:plan-beams (mk:annotate-beams beams panels doors bounds posts)
+                     (nth 0 grp)))))
+
+;;;--- Подготовка прогона ---------------------------------------------
+
+;; Область прогона: выборка пакета МАРКАВ либо вопрос пользователю
+(defun mk:run-scope (/ enames)
+  (if (and *mk:batch* *mk:run-scope*)
+    (progn
+      (prompt (strcat "\n  Область: выборка пакета МАРКАВ, объектов "
+                      (itoa (length *mk:run-scope*))))
+      *mk:run-scope*)
+    (mk:select-scope)))
+
+;; Выборка (или весь чертёж) + рамки всего чертежа + группы по витражам
+(defun mk:prepare-run (/ enames frames res)
+  (setq enames (mk:run-scope))
+  (if (null enames)
+    (progn (prompt "\n[INFO] Нечего обрабатывать — прогон прерван.") nil)
+    (progn
+      (setq frames (mk:frame-table))
+      (prompt (strcat "\n  Рамок витражей в чертеже: " (itoa (length frames))))
+      (if (null frames)
+        (prompt "\n  [WARN] Рамки «Атрибуты витража» не найдены — все объекты вне рамок."))
+      (setq res (mk:split-by-vitrage enames frames))
+      (setq *mk:last-scope*  enames
+            *mk:last-frames* frames
+            *mk:last-groups* (car res)
+            *mk:last-extra*  (cadr res)
+            *mk:last-ss*     (mk:ss-of enames))
+      (mk:print-groups *mk:last-groups* *mk:last-extra*)
+      (if (null (car res))
+        (progn (prompt "\n[WARN] Ни один объект не попал в рамки витражей.") nil)
+        res))))
+
+;; Группы для этапа: в пакете — уже собранные, иначе новый прогон
+(defun mk:groups-or-prepare (/ res)
+  (if (and *mk:batch* *mk:last-groups*)
+    (progn (prompt "\n  Группы: выборка пакета МАРКАВ") *mk:last-groups*)
+    (progn
+      (setq res (mk:prepare-run))
+      (if res (car res) nil))))
+
+;; Имя группы на чертеже: только буквы/цифры, остальное — «_»
+(defun mk:slug (s / i c out)
+  (setq s (if (mk:strp s) s "") out "" i 1)
+  (while (<= i (strlen s))
+    (setq c (substr s i 1))
+    (setq out (strcat out (if (wcmatch c "~*[~A-Za-zА-Яа-яЁё0-9]*") "_" c)))
+    (setq i (1+ i)))
+  (if (> (strlen out) 0) out "ВИТРАЖ"))
+
+;; Имя группы сетки/модели текущего витража
+(defun mk:group-model-name (tag)
+  (strcat *mk:group-model* "_" (mk:slug tag)))
+
+;; Запись «Атрибуты витража» из рамки (для дампа)
+(defun mk:vitrage-rec-from-frame (grp / e)
+  (setq e (car (nth 1 grp)))
+  (if e (mk:vitrage-rec e) nil))
+
+;;;--- Дамп по витражам ----------------------------------------------
+
+(defun mk:dump-groups (/ f fn grp data posts beams fills windows doors bounds)
+  (setq fn (strcat (vl-filename-directory *mk:out-file*)
+                   "/MARKZV_MODEL.txt"))
+  (setq f (open fn "w"))
+  (if (null f)
+    (prompt (strcat "\n  [WARN] Дамп не создан: " fn))
+    (progn
+      (write-line "=== ДАННЫЕ ВИТРАЖЕЙ (MarkV, многовитражный прогон) ===" f)
+      (write-line (strcat "  " *mk:ver* " / build " *mk:build*) f)
+      (write-line (strcat "  Область: " (if *mk:scope-source* *mk:scope-source* "?")) f)
+      (write-line (strcat "  Рамок: " (itoa (length *mk:last-frames*))) f)
+      (write-line "" f)
+      (foreach grp *mk:last-groups*
+        (setq data (mk:group-data grp)
+              posts (cdr (assoc 'POSTS data)) beams (cdr (assoc 'BEAMS data))
+              fills (cdr (assoc 'FILLS data)) windows (cdr (assoc 'WINDOWS data))
+              doors (cdr (assoc 'DOORS data)))
+        (setq bounds (mk:find-vitrage-bounds posts beams))
+        (write-line (strcat "=== ВИТРАЖ " (nth 0 grp) " ===") f)
+        (write-line (strcat "  Границы: X=" (rtos (cdr (assoc 'MIN_X bounds)) 2 1)
+                            ".." (rtos (cdr (assoc 'MAX_X bounds)) 2 1)
+                            "  Y=" (rtos (cdr (assoc 'MIN_Y bounds)) 2 1)
+                            ".." (rtos (cdr (assoc 'MAX_Y bounds)) 2 1)) f)
+        (write-line (strcat "  Стойки: " (itoa (length posts))
+                            "  Ригели: " (itoa (length beams))
+                            "  Заполнения: " (itoa (length fills))
+                            "  Окна: " (itoa (length windows))
+                            "  Двери: " (itoa (length doors))) f)
+        (foreach post posts
+          (write-line (strcat "  СТОЙКА HANDLE=" (mk:rec-get post 'HANDLE)
+                              " X=" (rtos (car (cdr (assoc 'INS_PT post))) 2 1)
+                              " Y=" (rtos (cadr (cdr (assoc 'INS_PT post))) 2 1)
+                              " L=" (rtos (mk:rec-get post 'LENGTH) 2 1)
+                              " АРТ=" (if (mk:rec-get post 'ARTICLE)
+                                        (mk:rec-get post 'ARTICLE) "—")) f))
+        (foreach beam beams
+          (write-line (strcat "  РИГЕЛЬ HANDLE=" (mk:rec-get beam 'HANDLE)
+                              " X=" (rtos (car (cdr (assoc 'INS_PT beam))) 2 1)
+                              " Y=" (rtos (cadr (cdr (assoc 'INS_PT beam))) 2 1)
+                              " L=" (rtos (mk:rec-get beam 'LENGTH) 2 1)
+                              " АРТ=" (if (mk:rec-get beam 'ARTICLE)
+                                        (mk:rec-get beam 'ARTICLE) "—")) f))
+        (foreach pn (append fills windows doors)
+          (write-line (strcat "  " (mk:rec-get pn 'TYPE)
+                              " HANDLE=" (mk:rec-get pn 'HANDLE)
+                              " X=" (rtos (car (cdr (assoc 'INS_PT pn))) 2 1)
+                              " Y=" (rtos (cadr (cdr (assoc 'INS_PT pn))) 2 1)
+                              " W=" (rtos (mk:rec-get pn 'WIDTH) 2 1)
+                              " H=" (rtos (mk:rec-get pn 'HEIGHT) 2 1)) f))
+        (write-line "" f))
+      (write-line "--- ВНЕ РАМОК ---" f)
+      (foreach r *mk:last-extra*
+        (write-line (strcat "  " (cdr (assoc 'TYPE r))
+                            " HANDLE=" (cdr (assoc 'HANDLE r))) f))
+      (close f)
+      (prompt (strcat "\n  [OK] Дамп по витражам: " fn)))))
+
+;;;--- ЭТАП 1/4. МАРКАВГЕОМЕТРИЯ ------------------------------------
+
+(defun c:МАРКАВГЕОМЕТРИЯ (/ mode res groups grp data posts beams fills windows doors
+                            bounds all-panels dup overlap outj topo res2 n-groups)
+  (prompt "\n[МАРКАВГЕОМЕТРИЯ] Сбор данных и 2D модель — по каждому витраже отдельно...")
+  (setq *mk:dyn-cache* nil *mk:vitrage-cache* nil)
+  ;; режим каркаса спрашивается один раз на прогон
+  (if (and *mk:batch* *mk:batch-mode*)
+    (setq mode *mk:batch-mode*)
+    (progn
+      (initget "Блоки Мультилинии Все-типы B M A")
+      (setq mode (getkword
+                   "\nРежим сбора каркаса [Блоки/Мультилинии/Все-типы] <Все-типы>: "))))
+  (setq *mk:last-mode* (mk:norm-mode mode))
+  (prompt (strcat "\n  Режим: " *mk:last-mode*))
+  (setq *mk:cached-data* nil *mk:geo-summary* nil)
+  (if (setq res (mk:prepare-run))
+    (progn
+      (setq groups (car res))
+      (foreach grp groups
+        (setq *mk:last-prefix* (nth 0 grp))
+        (setq *mk:group-model* (mk:group-model-name (nth 0 grp)))
+        (prompt (strcat "\n\n--- Витраж " (nth 0 grp) " ---"))
+        (setq data (mk:group-data grp))
+        (setq posts   (cdr (assoc 'POSTS data))
+              beams   (cdr (assoc 'BEAMS data))
+              fills   (cdr (assoc 'FILLS data))
+              windows (cdr (assoc 'WINDOWS data))
+              doors   (cdr (assoc 'DOORS data)))
+        (prompt (strcat "\n  Стойки: " (itoa (length posts))
+                        ", ригели: " (itoa (length beams))
+                        ", заполнения: " (itoa (length fills))
+                        ", окна: " (itoa (length windows))
+                        ", двери: " (itoa (length doors))))
+        (if (or posts beams fills)
+          (progn
+            (setq bounds (mk:find-vitrage-bounds posts beams))
+            (prompt (strcat "\n  Границы: X=" (rtos (cdr (assoc 'MIN_X bounds)) 2 1)
+                            ".." (rtos (cdr (assoc 'MAX_X bounds)) 2 1)
+                            ", Y=" (rtos (cdr (assoc 'MIN_Y bounds)) 2 1)
+                            ".." (rtos (cdr (assoc 'MAX_Y bounds)) 2 1)))
+            ;; проверки — тоже внутри витража, чтобы не ловить соседей
+            (setq all-panels (append fills windows doors))
+            (setq dup (mk:check-duplicates (append posts beams all-panels)))
+            (setq overlap (mk:check-overlaps all-panels))
+            (setq outj (mk:check-out-of-grid (append posts beams all-panels) bounds))
+            (setq res2 (mk:identify-protruding-posts posts bounds))
+            (setq posts (nth 0 res2))
+            ;; топология и разметка внутри витража
+            (setq topo (mk:build-topology posts beams fills windows doors bounds))
+            (setq posts   (nth 0 topo) beams (nth 1 topo) fills (nth 2 topo)
+                  windows (nth 3 topo) doors (nth 4 topo))
+            (setq all-panels (append fills windows doors))
+            (setq posts (mk:annotate-posts posts (append all-panels beams)))
+            (setq beams (mk:annotate-beams beams all-panels doors bounds posts))
+            ;; 2D модель витража — своя группа
+            (mk:draw-model posts beams fills windows doors bounds)
+            (prompt (strcat "\n  Дубликатов: " (itoa dup)
+                            ", перекрытий: " (itoa overlap)
+                            ", вне сетки: " (itoa outj)))
+            (setq *mk:geo-summary*
+              (cons (list (nth 0 grp) (length posts) (length beams)
+                          (length fills) (length windows) (length doors)
+                          dup overlap outj)
+                    *mk:geo-summary*)))
+          (prompt "\n  [WARN] В витраже нет элементов каркаса и заполнений.")))
+      (mk:dump-groups)
+      (prompt (strcat "\n[ГОТОВО] Витражей обработано: "
+                      (itoa (length groups))
+                      ". Модели: слой «" *mk:layer-model* "», группы «"
+                      *mk:group-model* "_<витраж>».")))
+    (prompt "\n[INFO] Сбор данных не выполнен."))
+  (princ))
+
+;;;--- ЭТАП 2/4. МАРКАВСТ --------------------------------------------
+
+(defun c:МАРКАВСТ (/ groups grp plan item res n cnt sk lab doc tag tot)
+  (prompt "\n[МАРКАВСТ] Марки стоек по витражам...")
+  (setq *mk:dyn-cache* nil *mk:vitrage-cache* nil)
+  (if (setq groups (mk:groups-or-prepare))
+    (progn
+      (setq doc (mk:undo-begin) tot 0 sk 0 lab 0)
+      (foreach grp groups
+        (setq tag  (nth 0 grp)
+              plan (mk:group-plan-posts grp))
+        (if (null plan)
+          (prompt (strcat "\n  " (mk:pad tag 10) " [INFO] стоек нет"))
+          (progn
+            (setq *mk:last-prefix* tag cnt 0)
+            (prompt (strcat "\n  " (mk:pad tag 10)
+                            " стоек: " (itoa (mk:count-kind (nth 3 grp) "СТОЙКА"))
+                            ", марок: " (itoa (length plan))))
+            (foreach item plan
+              (setq res (mk:write-marks (cadr item) (car item)))
+              (prompt (strcat "\n    " (mk:pad (car item) 18)
+                              " шт.: " (mk:padl (itoa (length (cadr item))) 3)))
+              (setq cnt (+ cnt (car res))
+                    sk  (+ sk  (cadr res))
+                    lab (+ lab (caddr res))))
+            (setq tot (+ tot cnt))
+            ;; выноски этого витража — в свою группу
+            (if (> (mk:group-labels-tag tag) 0)
+              (prompt (strcat "\n    выноски: группа «Маркировка_"
+                              (mk:slug tag) "»"))))))
+      (mk:undo-end doc)
+      (prompt (strcat "\n[ГОТОВО] Стоек промаркировано: " (itoa tot)
+                      ", выносок: " (itoa lab) ", пропущено: " (itoa sk))))
+    (prompt "\n[INFO] Группы не собраны — маркировка стоек не выполнена."))
+  (princ))
+
+;;;--- ЭТАП 3/4. МАРКАВРГ --------------------------------------------
+
+(defun c:МАРКАВРГ (/ groups grp plan item res n cnt sk lab doc tag tot)
+  (prompt "\n[МАРКАВРГ] Марки ригелей по витражам...")
+  (setq *mk:dyn-cache* nil *mk:vitrage-cache* nil)
+  (if (null *mk:batch*) (setq *mk:allowance-unknown* nil))
+  (if (setq groups (mk:groups-or-prepare))
+    (progn
+      (setq doc (mk:undo-begin) tot 0 sk 0 lab 0)
+      (foreach grp groups
+        (setq tag  (nth 0 grp)
+              plan (mk:group-plan-beams grp))
+        (if (null plan)
+          (prompt (strcat "\n  " (mk:pad tag 10) " [INFO] ригелей нет"))
+          (progn
+            (setq *mk:last-prefix* tag cnt 0)
+            (prompt (strcat "\n  " (mk:pad tag 10)
+                            " ригелей: " (itoa (mk:count-kind (nth 3 grp) "РИГЕЛЬ"))
+                            ", марок: " (itoa (length plan))))
+            (foreach item plan
+              (setq res (mk:write-marks (cadr item) (car item)))
+              (prompt (strcat "\n    " (mk:pad (car item) 18)
+                              " шт.: " (mk:padl (itoa (length (cadr item))) 3)))
+              (setq cnt (+ cnt (car res))
+                    sk  (+ sk  (cadr res))
+                    lab (+ lab (caddr res))))
+            (setq tot (+ tot cnt))
+            (if (> (mk:group-labels-tag tag) 0)
+              (prompt (strcat "\n    выноски: группа «Маркировка_"
+                              (mk:slug tag) "»"))))))
+      (mk:undo-end doc)
+      (prompt (strcat "\n[ГОТОВО] Ригелей промаркировано: " (itoa tot)
+                      ", выносок: " (itoa lab) ", пропущено: " (itoa sk))))
+    (prompt "\n[INFO] Группы не собраны — маркировка ригелей не выполнена."))
+  (princ))
+
+;;;--- Выноски одного витража -----------------------------------------
+
+(defun mk:group-labels-tag (tag / ss i lst e d txt)
+  (setq lst nil)
+  (if (and (mk:strp tag) (> (strlen tag) 0))
+    (progn
+      (setq ss (ssget "_X" (list (cons 8 *mk:layer-label*) (cons 0 "TEXT"))) i 0)
+      (if ss
+        (repeat (sslength ss)
+          (setq e (ssname ss i) d (entget e) txt (cdr (assoc 1 d)))
+          (if (and (mk:strp txt) (wcmatch txt (strcat tag " *")))
+            (setq lst (cons e lst)))
+          (setq i (1+ i))))
+      (if lst (mk:make-group (strcat "Маркировка_" (mk:slug tag)) (reverse lst)))))
+  (if lst (length lst) 0))
+
+;;;--- ЭТАП 4/4. МАРКАВТАБЛ (общая ведомость) -------------------------
+
+(defun c:МАРКАВТАБЛ (/ groups grp data posts beams rows agg acc all-posts all-beams
+                      doc do-tbl do-xls file res pt2 pt3 h h2 tbl2 suffix)
+  (prompt "\n[МАРКАВТАБЛ] Ведомость профилей — общая по всем витражам...")
+  (setq *mk:dyn-cache* nil *mk:vitrage-cache* nil)
+  (if (null *mk:batch*) (setq *mk:allowance-unknown* nil))
+  (if (setq groups (mk:groups-or-prepare))
+    (progn
+      (setq all-posts nil all-beams nil)
+      (foreach grp groups
+        (setq data (mk:group-data grp))
+        (setq all-posts (append all-posts (cdr (assoc 'POSTS data))))
+        (setq all-beams (append all-beams (cdr (assoc 'BEAMS data)))))
+      (mk:ask-unknown-allowance all-beams)
+      (setq rows (mk:tab-rows all-posts all-beams)
+            agg  (mk:tab-aggregate rows))
+      (prompt (strcat "\n  Стойки: " (itoa (length all-posts))
+                      ", ригели: " (itoa (length all-beams))
+                      ", витражей: " (itoa (length groups))))
+      (prompt (strcat "\n  Уникальных позиций: " (itoa (length agg))))
+      (setq acc (mk:acc-rows (append all-posts all-beams)))
+      (if acc
+        (prompt (strcat "\n  Закладных (позиций): " (itoa (length acc))))
+        (prompt "\n  Закладные (Пятка/Кронштейн) не найдены."))
+      (setq *mk:leg-sfx*  (mk:leg-suffixes agg)
+            *mk:leg-arts* (mk:leg-articles all-beams))
+      (mk:leg-print *mk:leg-sfx* *mk:leg-arts*)
+      (initget "Да Нет")
+      (setq do-tbl (getkword "\nТаблица в чертеже? [Да/Нет] <Да>: "))
+      (setq do-tbl (if (= do-tbl "Нет") nil t))
+      (initget "Да Нет")
+      (setq do-xls (getkword "\nЭкспорт в XLS? [Да/Нет] <Да>: "))
+      (setq do-xls (if (= do-xls "Нет") nil t))
+      (setq suffix (if (= (length groups) 1)
+                     (nth 0 (car groups))
+                     (strcat (itoa (length groups)) " витражей")))
+      (setq doc (mk:undo-begin))
+      (if do-xls
+        (progn
+          (setq file (strcat (getvar "dwgprefix")
+                             (vl-filename-base (getvar "dwgname"))
+                             " Стойки ригели витража "
+                             (mk:slug suffix) ".xls"))
+          (mk:tab-xls agg file acc)))
+      (if do-tbl
+        (progn
+          (setq res (mk:tab-create agg))
+          (if res
+            (progn
+              (setq h (vl-catch-all-apply 'vlax-get-property (list (car res) 'Height)))
+              (if (vl-catch-all-error-p h) (setq h (* 12.0 (+ 3 (length agg)))))
+              (setq pt2 (list (car (cadr res))
+                              (- (cadr (cadr res)) h *mk:acc-gap*)
+                              0.0))
+              (setq tbl2 (if acc (mk:acc-table-create acc pt2) nil))
+              (setq pt3 pt2)
+              (if tbl2
+                (progn
+                  (setq h2 (vl-catch-all-apply 'vlax-get-property (list tbl2 'Height)))
+                  (if (vl-catch-all-error-p h2)
+                    (setq h2 (* 12.0 (+ 3 (length acc)))))
+                  (setq pt3 (list (car pt2) (- (cadr pt2) h2 *mk:acc-gap*) 0.0))))
+              (mk:leg-table-create *mk:leg-sfx* *mk:leg-arts* pt3)))))
+      (mk:undo-end doc)
+      (prompt "\n[ГОТОВО] Ведомость сформирована (общая по всем витражам)."))
+    (prompt "\n[INFO] Данных нет — ведомость не создана."))
+  (princ))
+
+;;;--- ПАКЕТ. МАРКАВ --------------------------------------------------
+;;   Одна выборка -> по каждому витражу: сбор и модель, стойки, ригели ->
+;;   удаление сеток -> одна общая ведомость. Один UNDO на весь пакет.
+
+(defun c:МАРКАВ (/ ss keep doc n grp)
+  (prompt (strcat "\n[МАРКАВ] Пакетный прогон, " *mk:ver* " / build " *mk:build*))
+  (prompt "\n  Порядок: выборка -> витражи -> (сбор, стойки, ригели) по каждому -> ведомость.")
+  (setq *mk:batch* nil *mk:batch-ss* nil *mk:batch-mode* nil
+        *mk:last-groups* nil *mk:last-extra* nil *mk:last-frames* nil)
+  (setq *mk:dyn-cache* nil *mk:vitrage-cache* nil *mk:no-vitrage-prompted* nil
+        *mk:manual-vitrage-prefix* nil *mk:allowance-unknown* nil)
+  (setq ss (mk:select-scope))
   (if (null ss)
     (prompt "\n[INFO] Ничего не выбрано — пакет прерван.")
     (progn
-      (prompt (strcat "\n  Выбрано объектов: " (itoa (sslength ss))))
-      ;; режим каркаса спрашиваем один раз на весь пакет
+      (setq *mk:run-scope* ss)
+      ;; режим каркаса и судьбу сетки спрашиваем один раз
       (initget "Блоки Мультилинии Все-типы B M A")
       (setq *mk:batch-mode*
         (getkword "\nРежим сбора каркаса [Блоки/Мультилинии/Все-типы] <Все-типы>: "))
       (if (null *mk:batch-mode*) (setq *mk:batch-mode* "Все-типы"))
-      (setq *mk:batch-mode* (mk:norm-mode *mk:batch-mode*))
-      ;; судьба сетки
+      (setq *mk:batch-mode* (mk:norm-mode *mk:batch-mode*)
+            *mk:last-mode*  *mk:batch-mode*)
       (initget "Да Нет")
-      (setq keep (getkword "\nОставить сетку витража в чертеже? [Да/Нет] <Нет>: "))
+      (setq keep (getkword "\nОставить сетки витражей в чертеже? [Да/Нет] <Нет>: "))
       (setq *mk:batch-keep-grid* (= keep "Да"))
-      ;; один UNDO на весь пакет
+      ;; единая транзакция отката
       (setq doc (mk:ax-get (vlax-get-acad-object) "ActiveDocument"))
       (if doc (vl-catch-all-apply 'vlax-invoke-method (list doc "StartUndoMark")))
-      (setq *mk:batch* t *mk:batch-ss* ss *mk:last-ss* ss)
-      ;; --- 1/4 сбор, проверки, сетка, дамп
+      (setq *mk:batch* t)
       (prompt "\n\n===== [ЭТАП 1/4] МАРКАВГЕОМЕТРИЯ =====")
       (c:МАРКАВГЕОМЕТРИЯ)
-      ;; --- 2/4 стойки
       (prompt "\n\n===== [ЭТАП 2/4] МАРКАВСТ =====")
       (c:МАРКАВСТ)
-      ;; --- 3/4 ригели
       (prompt "\n\n===== [ЭТАП 3/4] МАРКАВРГ =====")
       (c:МАРКАВРГ)
-      ;; --- сетка больше не нужна: марки записаны в атрибуты блоков,
-      ;;     а ведомость дальше просит указать точку вставки таблицы —
-      ;;     чертёж к этому моменту должен быть чистым.
       (if *mk:batch-keep-grid*
-        (prompt (strcat "\n\n  [INFO] Сетка оставлена на слое «" *mk:layer-model*
-                        "» (группа " *mk:group-model* ")."))
+        (prompt (strcat "\n\n  [INFO] Сетки витражей оставлены на слое «"
+                        *mk:layer-model* "» (группы «" *mk:group-model*
+                        "_<витраж>»)."))
         (progn
-          (prompt "\n\n  Удаление сетки витража перед вставкой таблицы...")
-          (mk:erase-model *mk:layer-model* *mk:group-model*)
-          (mk:erase-model *mk:layer-test*  *mk:group-test*)))
-      ;; --- 4/4 ведомость
+          (prompt "\n\n  Удаление сеток витражей перед вставкой таблицы...")
+          (foreach grp *mk:last-groups*
+            (mk:erase-model *mk:layer-model*
+                            (mk:group-model-name (nth 0 grp))))
+          (mk:erase-model *mk:layer-test* *mk:group-test*)))
       (prompt "\n\n===== [ЭТАП 4/4] МАРКАВТАБЛ =====")
       (c:МАРКАВТАБЛ)
-      (setq *mk:batch* nil *mk:batch-ss* nil *mk:batch-mode* nil)
+      (setq *mk:batch* nil *mk:batch-ss* nil *mk:run-scope* nil)
       (if doc (vl-catch-all-apply 'vlax-invoke-method (list doc "EndUndoMark")))
-      (prompt "\n\n[ГОТОВО] Пакет МАРКАВ завершён. Откат всего пакета — один U.")))
+      (setq n (length *mk:last-groups*))
+      (prompt (strcat "\n\n[ГОТОВО] Пакет МАРКАВ завершён: витражей "
+                      (itoa n) ", объектов вне рамок "
+                      (itoa (length *mk:last-extra*)) "."))
+      (prompt "\n  Откат всего пакета — один U.")))
   (setq *mk:batch* nil)
   (princ))
-
 ;;;=====================================================================
 ;;; 20b. ВНЕШНИЕ БАЗЫ ПРОФИЛЬНЫХ СИСТЕМ
 ;;;=====================================================================
@@ -4522,13 +4870,14 @@
       (cons (cons key 1) alist))))
 
 (defun mk:diag-vltext (v / z)
-  (if (= (type v) 'VARIANT)
-    (setq v (vlax-variant-value v)))
+  ;; VARIANT может быть и вложенным — раскрываем до двух уровней
+  (while (and (= (type v) 'VARIANT)
+              (not (vl-catch-all-error-p
+                     (setq z (vl-catch-all-apply 'vlax-variant-value (list v))))))
+    (setq v z))
   (if (= (type v) 'SAFEARRAY)
-    (setq v (vlax-safearray->list v)))
-  (if (= (type v) 'LIST)
-    (strcat "(" (vl-princ-to-string v) ")")
-    (vl-princ-to-string v)))
+    (setq v (vl-catch-all-apply 'vlax-safearray->list (list v))))
+  (vl-princ-to-string v))
 
 (defun mk:diag-dynamic (f e / o n ps pr pn pv)
   (if (= (type e) 'ENAME)
@@ -4886,15 +5235,15 @@
         ax (car (caddr a)) bx (car (caddr b)))
   (if (equal ay by 0.01) (< ax bx) (> ay by)))
 
-(prompt (strcat "\n[MarkV] Ред. " *mk:ver* " / build " *mk:build* " загружена."))
+(prompt (strcat "\n[MarkV] Загружен " *mk:ver* " build " *mk:build*))
 (mk:help-border)
 (mk:help-header)
 (mk:help-border)
-(mk:help-row "МАРКАВ" "Маркировка стоек/ригелей+ведомость")
-(mk:help-row "МАРКАВГЕОМЕТРИЯ" "Сбор данных и построение 2D модели")
-(mk:help-row "МАРКАВСТ" "Маркировка стоек")
-(mk:help-row "МАРКАВРГ" "Маркировка ригелей")
-(mk:help-row "МАРКАВТАБЛ" "Ведомость: таблица в чертеже + XLS")
+(mk:help-row "МАРКАВ" "Пакет: витражи -> стойки, ригели, ведомость")
+(mk:help-row "МАРКАВГЕОМЕТРИЯ" "Сбор по витражам: модель, проверки")
+(mk:help-row "МАРКАВСТ" "Марки стоек (свой номер в каждом витраже)")
+(mk:help-row "МАРКАВРГ" "Марки ригелей (своя шкала в каждом витраже)")
+(mk:help-row "МАРКАВТАБЛ" "Общая ведомость профилей + XLS")
 (mk:help-row "МАРКАВДИАГНОЗ" "Диагностика блока и атрибутов")
 (mk:help-row "МАРКАВБАЗЫ" "Список баз профильных систем")
 (mk:help-row "МАРКАВСКОБКИ" "Проверка баланса скобок")
