@@ -132,9 +132,9 @@
 ;;; 1. КОНФИГУРАЦИЯ
 ;;;=====================================================================
 ;; Версия — как у заказчика: редакция и билд отдельными записями «Ред. N.N».
-;; В логах печатается «Ред. 7.0 / Ред. 33.12» — две редакции, без слова build.
+;; В логах печатается «Ред. 7.0 / Ред. 33.13» — две редакции, без слова build.
 (setq *mk:ver*            "Ред. 7.0")
-(setq *mk:build*          "Ред. 33.12")
+(setq *mk:build*          "Ред. 33.13")
 
 (setq *mk:block-fill*     "Заполнение в витраж")
 (setq *mk:block-vitrage*  "Атрибуты витража")
@@ -1834,7 +1834,7 @@
   ;; mk:emk нельзя: он складывает объекты в *mk:drawn* (это только графика
   ;; модели). Слой создаётся напрямую entmake — и, если слой уже есть,
   ;; ничего не делаем, чтобы не перебить цвета настройки заказчика.
-  ;; Ред. 33.12: пары DXF — ТОЛЬКО точечные: (70 . 0), а не (70 0).
+  ;; Ред. 33.13: пары DXF — ТОЛЬКО точечные: (70 . 0), а не (70 0).
   ;; Запись без точки даёт «неверная DXF-группа: (70 0)» и валит этап 1
   ;; (слой не создаётся, а ошибка всплывает позже, на entmake объектов).
   (if (null (tblsearch "LAYER" name))
@@ -4611,11 +4611,21 @@
 ;; Сводка «имя блока -> сколько раз встретилось» по вставкам, которые не
 ;; попали ни в стойки/ригели, ни в заполнения/окна/двери, ни в рамки.
 ;; Нужна для разбора «окна = 0»: в логе сразу видно настоящее имя семейства.
+;; Подпись объекта вне типов: имя блока, а если его нет (POINT,
+;; SPDSPOLYMORPHMARK) — DXF-тип в угловых скобках. Иначе счётчик печатал
+;; бессмысленное «? x30» и дублировал список ниже.
+(defun mk:unknown-label (e / nm typ)
+  (setq nm (mk:ent-name e))
+  (if (not (mk:strp nm))
+    (progn
+      (setq typ (cdr (assoc 0 (entget e))))
+      (setq nm (strcat "<" (mk:safe-str typ) ">"))))
+  nm)
+
 (defun mk:unknown-table (/ out hit key)
   (setq out nil)
   (foreach e *mk:last-unknown*
-    (setq key (mk:ent-name e))
-    (setq key (if (mk:strp key) key "?"))
+    (setq key (mk:unknown-label e))
     (if (setq hit (assoc key out))
       (setq out (subst (cons key (1+ (cdr hit))) hit out))
       (setq out (cons (cons key 1) out))))
@@ -4669,9 +4679,7 @@
     (if (and e (null (mk:obj-kind e)))
       (progn
         (setq typ (cdr (assoc 0 (entget e))))
-        (setq nm  (mk:ent-name e))
-        (if (not (mk:strp nm)) (setq nm (strcat "<" (mk:safe-str typ) ">")))
-        (setq nm (strcat nm "  [" (mk:safe-str typ) "]"))
+        (setq nm  (strcat (mk:unknown-label e) "  [" (mk:safe-str typ) "]"))
         (if (setq hit (assoc nm out))
           (setq out (subst (cons nm (1+ (cdr hit))) hit out))
           (setq out (cons (cons nm 1) out))))))
@@ -5059,6 +5067,14 @@
 
 ;; Этап пакета под защитой: сбой фиксируется в *mk:run-errors* и печатается,
 ;; следующие этапы при этом выполняются (уборка сетки и ведомость — тоже).
+;; Этап по имени команды. Имя передаётся СТРОКОЙ и превращается в символ
+;; через (read) — в исходнике нет литерала-символа с кириллицей.
+;; Причина: CHKALL пропускает не-ANSI слова только по маске «c:*», а знак
+;; апострофа в литерал 'c:МАРКАВ… попадает в слово и маску ломает: строка
+;; числится как «не-ANSI символ вне строки/комментария», хотя код верный.
+(defun mk:stage-sym (cmd)
+  (if (mk:strp cmd) (read (strcat "c:" cmd)) nil))
+
 (defun mk:run-stage (no name sym / r)
   (prompt (strcat "\n\n===== [" no "] " name " ====="))
   (setq r (vl-catch-all-apply sym nil))
@@ -5354,9 +5370,10 @@
       ;; каждый этап под vl-catch-all-apply: раньше сбой на этапе 1 обрывал
       ;; МАРКАВ целиком — сетки моделей оставались в чертеже, ведомость
       ;; не строилась, а UNDO-транзакция не закрывалась
-      (setq r (mk:run-stage "ЭТАП 1/4" "МАРКАВГЕОМЕТРИЯ" 'c:МАРКАВГЕОМЕТРИЯ))
-      (setq r (mk:run-stage "ЭТАП 2/4" "МАРКАВСТ" 'c:МАРКАВСТ))
-      (setq r (mk:run-stage "ЭТАП 3/4" "МАРКАВРГ" 'c:МАРКАВРГ))
+      (setq r (mk:run-stage "ЭТАП 1/4" "МАРКАВГЕОМЕТРИЯ"
+                            (mk:stage-sym "МАРКАВГЕОМЕТРИЯ")))
+      (setq r (mk:run-stage "ЭТАП 2/4" "МАРКАВСТ" (mk:stage-sym "МАРКАВСТ")))
+      (setq r (mk:run-stage "ЭТАП 3/4" "МАРКАВРГ" (mk:stage-sym "МАРКАВРГ")))
       (if *mk:batch-keep-grid*
         (prompt (strcat "\n\n  [INFO] Сетки витражей оставлены на слое «"
                         *mk:layer-model* "» (группы «" *mk:group-model-base*
@@ -5381,7 +5398,7 @@
                         (rtos (car *mk:table-ins-pt*) 2 1)
                         ", Y=" (rtos (cadr *mk:table-ins-pt*) 2 1)))
         (prompt "\n\n  [WARN] Точка вставки ведомости не задана — таблицы пропущены."))
-      (mk:run-stage "ЭТАП 4/4" "МАРКАВТАБЛ" 'c:МАРКАВТАБЛ)
+      (mk:run-stage "ЭТАП 4/4" "МАРКАВТАБЛ" (mk:stage-sym "МАРКАВТАБЛ"))
       (setq *mk:batch* nil *mk:batch-ss* nil *mk:run-scope* nil)
       (setq *mk:run-errors* (reverse *mk:run-errors*))
       (mk:print-run-errors)
