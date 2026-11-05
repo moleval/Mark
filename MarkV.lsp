@@ -86,39 +86,45 @@
       (setq out (findfile cand))))
   out)
 
-;; Основная программа (AutoExtraction) уже содержит проверку модулей:
-;; CHKFILE — один файл, CHKALL — все загруженные, CHKLOAD — поиск места сбоя.
-;; Свой тестер нужен только если AutoExtraction не загружен.
-(defun mk:ext-checker? ()
-  (or (= (type 'c:CHKFILE) 'SUBR) (= (type 'c:CHKFILE) 'USUBR)))
+;; Проверка синтаксиса. Основной тестер — в AutoExtraction: CHKALL (все модули
+;; и плагины), CHKFILE (один файл), CHKLOAD (поиск места сбоя загрузки).
+;; CHKALL вызывается как команда AutoCAD: имена команд в AutoLISP не видны как
+;; функции, поэтому наличие тестера ловится через getc: no-arg (не трогает
+;; CMDECHO и не печатает «Неизвестная команда»). Если AutoExtraction загружен —
+;; он и проверяет; иначе работает встроенный сканер по исходнику MarkV.lsp.
+(defun mk:ext-checker? (cmd)
+  (if (and (mk:strp cmd) (getc: cmd))
+    (progn (getc: nil) t)
+    (progn (getc: nil) nil)))
 
 (defun c:МАРКАВСКОБКИ (/ result path)
-  (prompt "\n[МАРКАВСКОБКИ] Проверка баланса скобок MarkV.lsp...")
-  (setq path (mk:find-source))
-  (cond
-    ((null path)
-     (prompt "\n  [WARN] Файл не найден среди кандидатов — проверять нечего."))
-    ((mk:ext-checker?)
-     (prompt (strcat "\n  Файл: " path))
-     (prompt "\n  Проверка штатным тестером AutoExtraction: CHKFILE.")
-     (setvar "CMDECHO" 0)
-     (vl-catch-all-apply 'c:CHKFILE (list path)))
-    (t
-     (prompt (strcat "\n  Файл: " path))
-     (prompt "\n  AutoExtraction не загружен — проверка встроенным сканером.")
-     (setq result (mk:check-brackets path))
-     (if result
-       (prompt "\n[OK] Файл корректен.")
-       (prompt "\n[ERROR] Обнаружены проблемы. См. сообщение выше."))))
+  (prompt "\n[МАРКАВСКОБКИ] Проверка MarkV.lsp...")
+  (if (mk:ext-checker? "CHKALL")
+    (progn
+      (prompt "\n  Тестер AutoExtraction найден: CHKALL (все модули и плагины).")
+      (setq *mk:batch* nil *mk:run-scope* nil)
+      (c:CHKALL))
+    (progn
+      (setq path (mk:find-source))
+      (cond
+        ((null path)
+         (prompt "\n  [WARN] Файл MarkV.lsp не найден среди кандидатов."))
+        (t
+         (prompt (strcat "\n  Файл: " path))
+         (prompt "\n  AutoExtraction не загружен — встроенный сканер MarkV.")
+         (setq result (mk:check-brackets path))
+         (if result
+           (prompt "\n[OK] Файл корректен.")
+           (prompt "\n[ERROR] Обнаружены проблемы. См. сообщение выше."))))))
   (princ))
 
 ;;;=====================================================================
 ;;; 1. КОНФИГУРАЦИЯ
 ;;;=====================================================================
-;; Схема одна, как в MARKZ.lsp: «Ред. N.N» + отдельно билд.
-;; Печать в логах: «Ред. 7.0 / build 33.3».
+;; Версия — как у заказчика: редакция и билд отдельными записями «Ред. N.N».
+;; В логах печатается «Ред. 7.0 / Ред. 33.4», то есть РЕД.7.0 и РЕД.33.4.
 (setq *mk:ver*            "Ред. 7.0")
-(setq *mk:build*          "33.4")
+(setq *mk:build*          "Ред. 33.4")
 
 (setq *mk:block-fill*     "Заполнение в витраж")
 (setq *mk:block-window*   "Окно КПТ60")
@@ -4477,7 +4483,7 @@
     (prompt (strcat "\n  [WARN] Дамп не создан: " fn))
     (progn
       (write-line "=== ДАННЫЕ ВИТРАЖЕЙ (MarkV, многовитражный прогон) ===" f)
-      (write-line (strcat "  " *mk:ver* " / build " *mk:build*) f)
+      (write-line (strcat "  " *mk:ver* " / " *mk:build*) f)
       (write-line (strcat "  Область: " (if *mk:scope-source* *mk:scope-source* "?")) f)
       (write-line (strcat "  Рамок: " (itoa (length *mk:last-frames*))) f)
       (write-line "" f)
@@ -4759,7 +4765,7 @@
 ;;   удаление сеток -> одна общая ведомость. Один UNDO на весь пакет.
 
 (defun c:МАРКАВ (/ ss keep doc n grp)
-  (prompt (strcat "\n[МАРКАВ] Пакетный прогон, " *mk:ver* " / build " *mk:build*))
+  (prompt (strcat "\n[МАРКАВ] Пакетный прогон, " *mk:ver* " / " *mk:build*))
   (prompt "\n  Порядок: выборка -> витражи -> (сбор, стойки, ригели) по каждому -> ведомость.")
   (setq *mk:batch* nil *mk:batch-ss* nil *mk:batch-mode* nil
         *mk:last-groups* nil *mk:last-extra* nil *mk:last-frames* nil)
@@ -5388,7 +5394,7 @@
         ax (car (caddr a)) bx (car (caddr b)))
   (if (equal ay by 0.01) (< ax bx) (> ay by)))
 
-(prompt (strcat "\n[MarkV] Загружен " *mk:ver* " / build " *mk:build*))
+(prompt (strcat "\n[MarkV] Загружен " *mk:ver* " / " *mk:build*))
 (mk:help-border)
 (mk:help-header)
 (mk:help-border)
@@ -5399,7 +5405,7 @@
 (mk:help-row "МАРКАВТАБЛ" "Общая ведомость профилей + XLS")
 (mk:help-row "МАРКАВДИАГНОЗ" "Диагностика блока и атрибутов")
 (mk:help-row "МАРКАВБАЗЫ" "Список баз профильных систем")
-(mk:help-row "МАРКАВСКОБКИ" "Скобки: CHKFILE или свой сканер")
+(mk:help-row "МАРКАВСКОБКИ" "Скобки: CHKALL или свой сканер")
 (mk:help-border)
 (mk:load-bases)
 (princ)
