@@ -125,9 +125,9 @@
 ;;; 1. КОНФИГУРАЦИЯ
 ;;;=====================================================================
 ;; Версия — как у заказчика: редакция и билд отдельными записями «Ред. N.N».
-;; В логах печатается «Ред. 7.0 / Ред. 33.9» — две редакции, без слова build.
+;; В логах печатается «Ред. 7.0 / Ред. 33.10» — две редакции, без слова build.
 (setq *mk:ver*            "Ред. 7.0")
-(setq *mk:build*          "Ред. 33.9")
+(setq *mk:build*          "Ред. 33.10")
 
 (setq *mk:block-fill*     "Заполнение в витраж")
 (setq *mk:block-vitrage*  "Атрибуты витража")
@@ -1827,7 +1827,7 @@
   ;; mk:emk нельзя: он складывает объекты в *mk:drawn* (это только графика
   ;; модели). Слой создаётся напрямую entmake — и, если слой уже есть,
   ;; ничего не делаем, чтобы не перебить цвета настройки заказчика.
-  ;; Ред. 33.9: пары DXF — ТОЛЬКО точечные: (70 . 0), а не (70 0).
+  ;; Ред. 33.10: пары DXF — ТОЛЬКО точечные: (70 . 0), а не (70 0).
   ;; Запись без точки даёт «неверная DXF-группа: (70 0)» и валит этап 1
   ;; (слой не создаётся, а ошибка всплывает позже, на entmake объектов).
   (if (null (tblsearch "LAYER" name))
@@ -4577,6 +4577,15 @@
       (setq out (cons (cons key 1) out))))
   (vl-sort out '(lambda (a b) (> (cdr a) (cdr b)))))
 
+;; Вставки в выборке, не попавшие ни в один тип конвейера. Пакет МАРКАВ
+;; разбирает выборку по рамкам витражей, поэтому *mk:last-unknown* там пуст;
+;; без этого счётчика исчезала бы подсказка «окна = 0 — смотри имена блоков».
+(defun mk:count-unknown (/ n)
+  (setq n 0)
+  (foreach e *mk:last-scope*
+    (if (and e (null (mk:obj-kind e))) (setq n (1+ n))))
+  n)
+
 (defun mk:print-unknown (/ tb n shown tail)
   (setq tb (mk:unknown-table) n (length *mk:last-unknown*))
   (if (> n 0)
@@ -4593,6 +4602,27 @@
       (if tail (prompt "\n    ... (остальные — в MARKZV_MODEL.txt)")))))
 
 ;;;--- Печать групп ----------------------------------------------------
+
+;; Сводка «видов объектов» выборки — одна строка на тип. В пакете МАРКАВ
+;; строка «из блоков N/M» по витражам не печатается (она шумит на 9 витражах),
+;; но без неё не видно, что вообще попало в выборку (например, что окон в
+;; чертеже нет), поэтому сводка печатается один раз за прогон.
+(defun mk:print-kinds (/ kinds e k n)
+  (setq kinds nil n 0)
+  (foreach e *mk:last-scope*
+    (setq k (if e (mk:obj-kind e) nil))
+    (if k
+      (progn
+        (setq n (1+ n))
+        (if (assoc k kinds)
+          (setq kinds (subst (cons k (1+ (cdr (assoc k kinds))))
+                             (assoc k kinds) kinds))
+          (setq kinds (cons (cons k 1) kinds))))))
+  (prompt (strcat "\n  Видов объектов в выборке (" (itoa n) " из "
+                  (itoa (length *mk:last-scope*)) "):"))
+  (foreach pr (reverse kinds)
+    (prompt (strcat "\n    " (mk:pad (car pr) 14) (itoa (cdr pr)))))
+  kinds)
 
 (defun mk:print-groups (groups extra / n g c)
   (setq n 0)
@@ -4693,7 +4723,7 @@
     (mk:select-scope)))
 
 ;; Выборка (или весь чертёж) + рамки всего чертежа + группы по витражам
-(defun mk:prepare-run (/ enames frames res mode)
+(defun mk:prepare-run (/ enames frames res mode n)
   (mk:group-cache-clear)
   (setq *mk:in-group* nil)   ; состояние предыдущего прогона не наследуем
   ;; режим сбора спрашивается один раз на прогон: в пакете его задаёт МАРКАВ,
@@ -4720,8 +4750,14 @@
             *mk:last-groups* (car res)
             *mk:last-extra*  (cadr res)
             *mk:last-ss*     (mk:ss-of enames))
+      (mk:print-kinds)
       (mk:print-groups *mk:last-groups* *mk:last-extra*)
-      (mk:print-unknown)
+      (mk:print-unknown)          ; одиночный прогон: имена вне типов
+      (setq n (mk:count-unknown))
+      (if (> n 0)
+        (prompt (strcat "\n  [INFO] Вставок вне типов MarkV: " (itoa n)
+                        " — что это за блоки, покажет МАРКАВДИАГНОЗОПТОМ"
+                        " (в файл " *mk:diag-all-file* ")")))
       (if (null (car res))
         (progn (prompt "\n[WARN] Ни один объект не попал в рамки витражей.") nil)
         res))))
