@@ -104,6 +104,10 @@
 ;; режим: "joint" (общие шкалы) / "separate" (свои per витраж) / nil
 (setq *mark:vz-map*     nil)
 (setq *mark:vz-mode*    nil)
+;; Ред. 48.44: краткоживущий кэш AABB на время mark:vz-split.
+;; Один GetBoundingBox на заполнение; ActiveX не вызывается из comparator
+;; vl-sort и не повторяется для каждого блока «Атрибуты витража».
+(setq *mark:vz-bb-cache* nil)
 
 ;; Сетка заполнений
 (setq *mark:fill-tol*    30.0)    ; мм — выравнивание осей
@@ -120,7 +124,7 @@
 ;;;--------------------- Состояние сеанса -----------------------------
 
 ;; Редакция модуля — видно в консоли при загрузке и в баннерах
-(setq *mark:rev*    "Ред. 48.43")
+(setq *mark:rev*    "Ред. 48.44")
 (setq *mark:build*  "Ред. 36.6")
 
 ;; МАРКАЗАП: один выбор; один UNDO на весь пакет
@@ -141,6 +145,7 @@
   (setq *mark:dyn-cache*    nil
         *mark:seg-cache*    nil
         *mark:no-expl-undo* nil
+        *mark:vz-bb-cache*  nil
         *mark:errors*       0
         *mark:warnings*     0
         *mark:records*      nil
@@ -7396,11 +7401,18 @@
       (setq out (cons x out))))
   (reverse out))
 
+;; AABB из краткоживущего кэша группировки; вне её — прежний прямой расчёт.
+(defun mark:vz-bb-of (e / hit)
+  (setq hit (assoc e *mark:vz-bb-cache*))
+  (if hit
+    (cdr hit)
+    (mark:fill-e-bb e)))
+
 ;; Минимальный X кластера — порядок витражей «слева направо»
 (defun mark:vz-minx (cluster / m bb x)
   (setq m nil)
   (foreach e cluster
-    (setq bb (mark:fill-e-bb e))
+    (setq bb (mark:vz-bb-of e))
     (if bb
       (progn
         (setq x (float (nth 0 bb)))
@@ -7411,12 +7423,21 @@
 ;; Кластеры заполнений: связные компоненты bbox, слева направо
 (defun mark:vz-clusters (fills / bbs nobb rest cur queue e0 bb0 hit out e bb r)
   (setq bbs  nil
-        nobb nil)
+        nobb nil
+        *mark:vz-bb-cache* nil)
   (foreach e fills
     (setq bb (mark:fill-e-bb e))
+    ;; Сохраняем и nil: это тоже результат, повторный ActiveX-запрос не нужен.
+    (setq *mark:vz-bb-cache*
+          (cons (cons e bb) *mark:vz-bb-cache*))
     (if bb
       (setq bbs (cons (cons e bb) bbs))
       (setq nobb (cons e nobb))))
+  ;; Контрольная граница для LOG-10: обрыв до этой строки означает первый
+  ;; обход GetBoundingBox, после неё — собственно связность/сортировку.
+  (mark:out (strcat "[INFO] Габариты для группировки: "
+                    (itoa (length bbs))
+                    "; без габарита: " (itoa (length nobb)) "."))
   (setq out  nil
         rest bbs)
   (while rest
@@ -7453,7 +7474,7 @@
 (defun mark:vz-cbb (cluster / x0 y0 x1 y1 bb e f)
   (setq x0 nil y0 nil x1 nil y1 nil f nil)
   (foreach e cluster
-    (setq bb (mark:fill-e-bb e))
+    (setq bb (mark:vz-bb-of e))
     (if bb
       (progn
         (if (or (null x0) (< (nth 0 bb) x0)) (setq x0 (nth 0 bb)))
@@ -7595,7 +7616,9 @@
            (cons (list (car r)
                        (list (mark:vz-nearest blks (mark:vz-cbb (car r)))))
                  out))))))
-  (reverse out))
+  (setq out (reverse out)
+        *mark:vz-bb-cache* nil)
+  out)
 
 ;; Этап МАРКАРОВКАЗАП по витражам: один кластер — как раньше
 ;; (лог прежний); несколько — полный блок диагностики per витраж
