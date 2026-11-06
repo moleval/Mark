@@ -134,7 +134,7 @@
 ;;;--------------------- Состояние сеанса -----------------------------
 
 ;; Редакция модуля — видно в консоли при загрузке и в баннерах
-(setq *mark:rev*    "Ред. 48.46")
+(setq *mark:rev*    "Ред. 48.47")
 (setq *mark:build*  "Ред. 36.6")
 
 ;; МАРКАЗАП: один выбор; один UNDO на весь пакет
@@ -8211,7 +8211,7 @@
 ;; Гео ячейки: (ширина секции высота яруса). Границы секции —
 ;; соседние колонки-границы; ярус — горизонтали, охватывающие секцию.
 ;; Без осей (полилинии, линейный каркас с Т-объединением) — свой размер.
-(defun mark:sec-geo-one (bb vs2 hs / x0 y0 x1 y1 cols c ccols face xl xr
+(defun mark:sec-geo-one (bb vs2 hs / x0 y0 x1 y1 cols c ccols it face xl xr
                              cov yb yt h f)
   (setq x0 (nth 0 bb)
         y0 (nth 1 bb)
@@ -8232,36 +8232,46 @@
                               y0 y1 (+ *mark:fill-tol* 25.0))
           (setq ccols (cons c ccols))))
       (setq ccols (reverse ccols))
+      ;; Ред. 48.47: один X-кластер может содержать оси разных,
+      ;; разнесённых по Y витражей. Сначала брать экстремум всего
+      ;; кластера нельзя: после привязки грани к ригелю такой экстремум
+      ;; может не совпасть с фактическим краем ячейки, и колонка будет
+      ;; ошибочно отброшена. Проверяем грань каждой оси отдельно;
+      ;; сам кластер и построенные ячейки не меняются.
       (foreach c ccols
-        (setq face (mark:fill-inner-edge c 1.0))
-        (if (and face (<= face (+ x0 1.0))
-                 (or (null xl) (> face xl)))
-          (setq xl face)))
+        (foreach it c
+          (setq face (+ (nth 0 it) (nth 3 it)))
+          (if (and face (<= face (+ x0 1.0))
+                   (or (null xl) (> face xl)))
+            (setq xl face))))
       (foreach c ccols
-        (setq face (mark:fill-inner-edge c -1.0))
-        (if (and face (>= face (- x1 1.0))
-                 (or (null xr) (< face xr)))
-          (setq xr face)))
+        (foreach it c
+          (setq face (- (nth 0 it) (nth 3 it)))
+          (if (and face (>= face (- x1 1.0))
+                   (or (null xr) (< face xr)))
+            (setq xr face))))
       ;; Ред. 48.13: край ячейки — импост (его нет в vs2), а колонки,
       ;; охватывающей ячейку, дальше нет — секция продолжается за
       ;; импост: граница — колонка, заходящая на ярус ячейки и
       ;; выходящая за него по высоте (обрезки внутри колонки мимо).
       (if (null xl)
         (foreach c cols
-          (if (and (mark:sec-tier-col? c y0 y1)
-                   (setq face (mark:fill-inner-edge c 1.0))
-                   face
-                   (<= face (+ x0 1.0))
-                   (or (null xl) (> face xl)))
-            (setq xl face))))
+          (if (mark:sec-tier-col? c y0 y1)
+            (foreach it c
+              (setq face (+ (nth 0 it) (nth 3 it)))
+              (if (and face
+                       (<= face (+ x0 1.0))
+                       (or (null xl) (> face xl)))
+                (setq xl face))))))
       (if (null xr)
         (foreach c cols
-          (if (and (mark:sec-tier-col? c y0 y1)
-                   (setq face (mark:fill-inner-edge c -1.0))
-                   face
-                   (>= face (- x1 1.0))
-                   (or (null xr) (< face xr)))
-            (setq xr face))))
+          (if (mark:sec-tier-col? c y0 y1)
+            (foreach it c
+              (setq face (- (nth 0 it) (nth 3 it)))
+              (if (and face
+                       (>= face (- x1 1.0))
+                       (or (null xr) (< face xr)))
+                (setq xr face))))))
       (if (null xl) (setq xl x0))
       (if (null xr) (setq xr x1))
       (setq cov nil)

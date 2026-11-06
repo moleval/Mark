@@ -40,7 +40,8 @@ LOCAL = {
     "ВН-2": [200, 550, 600, 740, 1100, 2250],
     "ВН-1": [375, 495, 700, 1100, 2250],
 }
-# Заполнения/резерв, которые MarkZ добавляет к общей шкале (LOG-11).
+# Исторические заполнения/резерв LOG-11 (48.46). Ред. 48.47 отдельно
+# проверяет удаление четырёх фантомных З-секций из этого старого набора.
 Z_ONLY = [195, 1425, 2245, 2850, 2900, 3085]
 BEAMS = sorted({v for values in LOCAL.values() for v in values})
 COMMON = sorted(set(BEAMS + Z_ONLY))
@@ -182,7 +183,8 @@ expect("separate сохраняет состояние", "(mark:vz-state-save c)
        and "*mark:scale1*" in state_save and "*mark:heights*" in state_save)
 expect("separate восстанавливает состояние", "mark:vz-state-restore" in rows_fn)
 expect("раздельный файл имеет витраж", "витраж;индекс;размер_мм;источник" in MZ)
-expect("редакции обновлены", re.search(r'\*mark:rev\*\s+"Ред\. 48\.46"', MZ)
+rev = re.search(r'\*mark:rev\*\s+"Ред\. (\d+)\.(\d+)"', MZ)
+expect("редакции обновлены", bool(rev) and tuple(map(int, rev.groups())) >= (48, 46)
        and re.search(r'\*mk:build\*\s+"Ред\. 33\.19"', MV))
 
 if failures:
