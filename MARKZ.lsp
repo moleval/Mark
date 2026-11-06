@@ -118,8 +118,8 @@
 ;;;--------------------- Состояние сеанса -----------------------------
 
 ;; Редакция модуля — видно в консоли при загрузке и в баннерах
-(setq *mark:rev*    "Ред. 48.37")
-(setq *mark:build*  "Ред. 36.5")
+(setq *mark:rev*    "Ред. 48.38")
+(setq *mark:build*  "Ред. 36.6")
 
 ;; МАРКАЗАП: один выбор; один UNDO на весь пакет
 (setq *mark:reuse-sel* nil)
@@ -1393,13 +1393,17 @@
     (if suffix suffix "")))
 
 (defun mark:build-marks (/ out r w h geo secw tierh iw ih letter hnum suffix m
-                            subw subl subh mapW mapH lst pos v)
+                            subw subl subh mapW mapH fullH lst pos v)
   ;; Ред. 48.0: марка от секции и яруса. Подындексы — глобально по
   ;; номеру секции (.1/.2/.3 по возрастанию ширины) и букве яруса
   ;; (.а/.б/.в по возрастанию высоты). Без гео — марка не формируется.
-  (setq mapW nil
-        mapH nil
-        out  nil)
+  ;; Ред. 48.38: литера по высоте нужна только для различения нескольких
+  ;; фактических высот внутри одного геометрического яруса. fullH —
+  ;; ярусы, где есть заполнение полной высоты tierh.
+  (setq mapW  nil
+        mapH  nil
+        fullH nil
+        out   nil)
   (foreach r *mark:records*
     (setq geo (cdr (assoc (mark:rec-get r 'ename) *mark:fill-geo*)))
     (if (and geo (numberp (nth 0 geo)) (numberp (nth 1 geo)))
@@ -1411,6 +1415,8 @@
               r (mark:rec-put r 'hidx ih)
               w  (mark:rec-get r 'width)
               h  (mark:rec-get r 'height))
+        (if (and ih (mark:same-num? h (nth 1 geo)))
+          (setq fullH (cons ih fullH)))
         (if (and iw (not (mark:same-num? w (nth 0 geo))))
           (setq mapW (mark:map-add mapW iw w)))
         (if (and ih (not (mark:same-num? h (nth 1 geo))))
@@ -1455,9 +1461,15 @@
                   pos 0)
             (foreach v lst
               (setq pos (1+ pos))
-              (if (and (null subl) (mark:same-num? v h))
-                (setq subl (strcase (mark:letter-at (- pos 1)) t)
-                      subh pos)))))
+              (if (and (null subh) (mark:same-num? v h))
+                (setq subh pos)))
+            ;; Одна фактическая высота во всём ярусе — отдельная литера
+            ;; не нужна: базовой буквы достаточно. При полной высоте или
+            ;; нескольких подъячейках литеры сохраняются (.а/.б/...).
+            (if (and subh
+                     (or (member ih fullH)
+                         (> (length lst) 1)))
+              (setq subl (strcase (mark:letter-at (- subh 1)) t)))))
         (setq r (mark:rec-put r 'letter letter)
               r (mark:rec-put r 'hnum hnum)
               r (mark:rec-put r 'subw subw)
@@ -8486,9 +8498,11 @@
           cnt    0)
     (foreach q (nth 1 row)
       (setq cnt (1+ cnt))
-      (if (mark:rec-get q 'subl)
+      (if (mark:rec-get q 'subh)
         (progn
           (setq sh-cnt (1+ sh-cnt))
+          ;; Ред. 48.38: показываем и геометрическую подъячейку без
+          ;; литеры — если она единственная по высоте в этом ярусе.
           ;; Ред. 48.7: ключ — округлённая высота; по возрастанию,
           ;; как и литеры .а/.б (было — в порядке записей).
           (setq k (mark:mm-key (mark:rec-get q 'height)))
@@ -8500,12 +8514,13 @@
       (setq sl nil)
       (foreach q (nth 1 row)
         (if (and (null sl)
-                 (mark:rec-get q 'subl)
+                 (mark:rec-get q 'subh)
                  (= hk (mark:mm-key (mark:rec-get q 'height))))
-          (setq sl (mark:rec-get q 'subl))))
+          (setq sl (if (mark:rec-get q 'subl)
+                     (strcat " (" (mark:rec-get q 'subl) ")")
+                     ""))))
       (if sl
-        (setq lsubs (cons (strcat (rtos hk 2 0)
-                                  " (" sl ")") lsubs))))
+        (setq lsubs (cons (strcat (rtos hk 2 0) sl) lsubs))))
     (setq lsubs (reverse lsubs))
     (setq llines
       (cons (strcat "  " (mark:rjust letter 4)
