@@ -77,7 +77,7 @@
     ("Сэндвич" . "снд")))
 
 ;; Ред. 48.0: секции/ярусы и шкала «в свету» (зеркало MarkZV)
-(setq *mark:fill-geo*    nil)     ;; (ename . (ширина секции высота яруса))
+(setq *mark:fill-geo*    nil)     ;; (ename . (ширина маркировочной секции высота яруса))
 (setq *mark:sec-reserve*  nil)     ;; ширины объединённых секций: резерв номеров
 (setq *mark:cell-hs*     nil)     ;; Ред. 48.8: высоты всех ячеек каркаса (З-1)
 (setq *mark:scale1*      nil)     ;; Блок 1: ключи длин ригелей, мм
@@ -134,8 +134,8 @@
 ;;;--------------------- Состояние сеанса -----------------------------
 
 ;; Редакция модуля — видно в консоли при загрузке и в баннерах
-(setq *mark:rev*    "Ред. 48.47")
-(setq *mark:build*  "Ред. 36.6")
+(setq *mark:rev*    "Ред. 48.48")
+(setq *mark:build*  "Ред. 36.7")
 
 ;; МАРКАЗАП: один выбор; один UNDO на весь пакет
 (setq *mark:reuse-sel* nil)
@@ -6655,7 +6655,7 @@
               (list cells pts))))))))
 
 (defun mark:fill-apply (cells pts / doc space n ins x0 y0 x1 y1
-                        w h obj lst cell t0 t1 t_ins)
+                        w h obj lst cell t0 t1 t_ins geo-widths)
   (if (null cells)
     (progn
       (mark:out "[INFO] Нет ячеек — вставок нет.")
@@ -6664,7 +6664,8 @@
       (setq doc   (mark:ax-get (vlax-get-acad-object) "ActiveDocument")
             space (if doc (mark:ax-get doc "ModelSpace") nil)
             n     0
-            lst   nil)
+            lst   nil
+            geo-widths nil)
       (if (null space)
         (progn
           (mark:out "[ERROR] ModelSpace недоступен.")
@@ -6698,9 +6699,11 @@
                     (setq lst (cons ins lst))
                     ;; Ред. 48.0: гео ячейки для маркировки
                     (if (and (nth 4 cell) (nth 5 cell))
-                      (setq *mark:fill-geo*
-                        (cons (cons ins (list (nth 4 cell) (nth 5 cell)))
-                              *mark:fill-geo*)))))
+                      (progn
+                        (setq *mark:fill-geo*
+                          (cons (cons ins (list (nth 4 cell) (nth 5 cell)))
+                                *mark:fill-geo*))
+                        (setq geo-widths (cons (cons ins w) geo-widths))))))
                 (mark:out
                   (strcat "  ячейка " (mark:rjust (itoa n) 3)
                           ": " (mark:rjust (rtos x0 2 4) 12) "," (mark:rjust (rtos y0 2 4) 12)
@@ -6709,6 +6712,10 @@
                           " ||| вставка " (mark:rjust (itoa n) 3)
                           ": W=" (mark:rjust (rtos w 2 0) 5)
                           "  H=" (mark:rjust (rtos h 2 0) 5))))))
+          ;; Ред. 48.48: после геометрического расчёта одиночная
+          ;; подгруппа с фактической длиной ригеля получает его номер.
+          (setq *mark:fill-geo*
+                (mark:fill-geo-rigel-widths *mark:fill-geo* geo-widths))
           (setq t1 (getvar "MILLISECS")
                 t_ins (/ (- t1 t0) 1000.0))
           (if (and doc (not *mark:batch-undo*) (not *mark:fill-undo-off*))
@@ -8419,6 +8426,72 @@
           (setq out v)))))
   out)
 
+;;;--- Маркировочная ширина по фактическому ригелю (Ред. 48.48) ---
+;;; Ред. 48.48: номер одиночной подгруппы — по фактическому ригелю.
+;; Геометрия Т-секции уже рассчитана и здесь не меняется. Если внутри
+;; родительской секции нет полноразмерного заполнения и все её заполнения
+;; имеют одну фактическую ширину, совпадающую с длиной ригеля, эта ширина
+;; становится маркировочной секцией. Например: W=1100 при secW=2250 -> Рг17.
+;; Полная ширина + подъячейка и несколько разных подширин не переназначаются:
+;; для них сохраняется родительский номер и правило .1/.2.
+;; widths = ((ename . фактическая_W) ...), полученная из координат ячеек.
+(defun mark:fill-geo-rigel-widths (geo widths / sub full bad out rec e secw key
+                                   w hit lst direct changed logged)
+  (setq sub nil
+        full nil
+        bad nil
+        out nil
+        changed 0
+        logged nil)
+  (foreach rec geo
+    (setq e    (car rec)
+          secw (nth 0 (cdr rec))
+          w    (cdr (assoc e widths)))
+    (if (numberp secw)
+      (setq key (mark:sec-key secw))
+      (setq key nil))
+    (if (and key (numberp w) (> w 0.0))
+      (if (mark:same-num? w secw)
+        (setq full (cons key full))
+        (setq sub (mark:map-add sub key w)))
+      (if key
+        (setq bad (cons key bad)))))
+  (setq sub (mark:map-sort sub))
+  (foreach rec geo
+    (setq secw (nth 0 (cdr rec))
+          key  (if (numberp secw) (mark:sec-key secw) nil)
+          hit  (if key (assoc key sub) nil)
+          lst  (if hit (cdr hit) nil)
+          direct nil)
+    ;; Неизвестная ширина хотя бы одного заполнения делает группу
+    ;; непригодной для переназначения; это не повод менять её марку.
+    (if (and key hit
+             (not (member key full))
+             (not (member key bad))
+             (= (length lst) 1)
+             (mark:index-of *mark:scale1* (car lst)))
+      (setq direct (car lst)))
+    (if direct
+      (progn
+        (setq changed (1+ changed))
+        (if (not (member key logged))
+          (progn
+            (setq logged (cons key logged))
+            (mark:out
+              (strcat "[INFO] Маркировочная ширина по фактическому ригелю: "
+                      (rtos (float secw) 2 0) " -> "
+                      (rtos (float direct) 2 0) "."))))))
+    (setq out
+      (cons (cons (car rec)
+                  (cons (if direct direct (nth 0 (cdr rec)))
+                        (cdr (cdr rec))))
+            out)))
+  (if (> changed 0)
+    (mark:out
+      (strcat "[INFO] Заполнений с номером фактического ригеля: "
+              (itoa changed) ".")))
+  (reverse out))
+
 ;; Длина блока-ригеля: свойство «*лин*», иначе габарит (зеркало mk:dim-src)
 (defun mark:sec-block-len (e / v bb)
   (setq v (mark:dyn-by-mask e "*лин*"))
@@ -8661,7 +8734,8 @@
 
 (defun mark:sec-standalone (/ ss i e ed typ nm r segs blocks msegs rblocks
                                seen polys axes vs hs items boxes bb n-poly
-                               n-polyo n-line vs2 out ins hit cnt glaz cs)
+                               n-polyo n-line vs2 out ins hit hitw cnt glaz cs
+                               geo-widths)
   ;; Ред. 48.32: сначала кэш предыдущего выбора каркаса — следующие
   ;; проходы витражей не спрашивают рамку заново
   (setq ss nil
@@ -8796,19 +8870,24 @@
           (setq *mark:cell-hs* (cons (nth 5 bb) *mark:cell-hs*))))
       ;; сопоставление: точка вставки блока = угол ячейки; геометрия
       ;; секции уже уточнена общим правилом равных Т-половин.
-      (setq cnt 0)
+      (setq cnt 0
+            geo-widths nil)
       (foreach e *mark:fills*
         (setq ins (cdr (assoc 10 (entget e)))
               hit nil)
         (if ins
           (progn
+            (setq hitw nil)
             (foreach bb boxes
               (if (and (null hit)
                        (<= (abs (- (float (nth 0 bb)) (float (car ins)))) 2.0)
                        (<= (abs (- (float (nth 1 bb)) (float (cadr ins)))) 2.0))
-                (setq hit (list (nth 4 bb) (nth 5 bb)))))))
+                (setq hit  (list (nth 4 bb) (nth 5 bb))
+                      hitw (mark:round1 (- (nth 2 bb) (nth 0 bb))))))))
         (if hit
-          (setq out (cons (cons e hit) out))
+          (progn
+            (setq out (cons (cons e hit) out)
+                  geo-widths (cons (cons e hitw) geo-widths)))
           (setq cnt (1+ cnt))))
       (if (> cnt 0)
         (progn
@@ -8816,7 +8895,8 @@
             (strcat "[WARN] Вне ячеек каркаса: " (itoa cnt)
                     " заполнени(й) — марка не формируется (причина в TEST 13)."))
           (mark:note-warning)))
-      (setq *mark:fill-geo* (reverse out))
+      (setq *mark:fill-geo*
+            (mark:fill-geo-rigel-widths (reverse out) geo-widths))
       (mark:out
         (strcat "[INFO] Каркас: ячеек " (itoa (length boxes))
                 ", заполнений с гео: " (itoa (length out)) "."))
