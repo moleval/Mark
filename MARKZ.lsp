@@ -119,7 +119,7 @@
 ;;;--------------------- Состояние сеанса -----------------------------
 
 ;; Редакция модуля — видно в консоли при загрузке и в баннерах
-(setq *mark:rev*    "Ред. 48.41")
+(setq *mark:rev*    "Ред. 48.42")
 (setq *mark:build*  "Ред. 36.6")
 
 ;; МАРКАЗАП: один выбор; один UNDO на весь пакет
@@ -6379,10 +6379,40 @@
                         vs))))))
   (list vs hs))
 
+;; Ред. 48.42: вертикальная грань не должна заходить внутрь пролёта
+;; верхнего/нижнего ригеля. Если конец ригеля лежит снаружи вычисленной
+;; грани на расстоянии (5; *mark:fill-tol*] мм, привязываем грань к ближайшему
+;; такому концу. Отклонения до 5 мм — штатный зазор/округление: на контрольном
+;; чертеже шесть правильных ячеек имеют именно 5 мм и не должны расширяться.
+;; Дальние концы не трогаем: они могут принадлежать длинному ригелю через
+;; несколько секций. Сужение по внутренним концам здесь не выполняется.
+(defun mark:fill-rail-cell-x (bot top xL xR / it a b d left right)
+  (setq left  nil
+        right nil)
+  (foreach it (append bot top)
+    (setq a (float (nth 1 it))
+          b (float (nth 2 it)))
+    (if (< a xL)
+      (progn
+        (setq d (- xL a))
+        (if (and (> d 5.0)
+                 (<= d *mark:fill-tol*)
+                 (or (null left) (> a left)))
+          (setq left a))))
+    (if (> b xR)
+      (progn
+        (setq d (- b xR))
+        (if (and (> d 5.0)
+                 (<= d *mark:fill-tol*)
+                 (or (null right) (< b right)))
+          (setq right b)))))
+  (list (if left left xL)
+        (if right right xR)))
+
 (defun mark:fill-items->cells (vs hs / cols rows iL iR nL nR
                                 Lcol Rcol xL xR w spanning iB nB
                                 bot top yB yT h gap boxes
-                                oL oR n-own n-open)
+                                oL oR n-own n-open xedges rail-hit n-rail cL cR)
   ;; Ячейка только если четыре стороны доходят до углов и
   ;; противоположные стороны принадлежат разным владельцам.
   (setq *mark:h-bins* (mark:fill-index-hs hs)
@@ -6391,6 +6421,7 @@
         boxes nil
         n-own 0
         n-open 0
+        n-rail 0
         iL 0
         nL (length cols))
   (while (< iL nL)
@@ -6424,6 +6455,16 @@
                  yB (mark:fill-inner-edge bot 1.0)
                  yT (mark:fill-inner-edge top -1.0)
                  h (if (and yB yT) (- yT yB) 0.0))
+            ;; Пролёты bot/top уже проверены fill-span-items. Копии cL/cR
+            ;; уточняем только наружу в диапазоне (5; *mark:fill-tol*] мм.
+            ;; Исходные xL/xR не меняем: они нужны всем рядам этой пары
+            ;; колонок и всем проверкам замкнутости/владельцев без побочных
+            ;; эффектов от предыдущей ячейки.
+            (setq xedges (mark:fill-rail-cell-x bot top xL xR)
+                  rail-hit (or (> (abs (- (car xedges) xL)) 1e-6)
+                               (> (abs (- (cadr xedges) xR)) 1e-6))
+                  cL (car xedges)
+                  cR (cadr xedges))
            (cond
              ((not (mark:fill-owners-differ
                      (mark:fill-owners bot)
@@ -6459,7 +6500,8 @@
                           (mark:fill-overlap-owners top xL xR gap))))
               (setq n-own (1+ n-own)))
              (t
-              (setq boxes (cons (list xL yB xR yT) boxes))))
+              (if rail-hit (setq n-rail (1+ n-rail)))
+              (setq boxes (cons (list cL yB cR yT) boxes))))
            (setq iB (1+ iB)))))
       (setq iR (1+ iR)))
     (setq iL (1+ iL)))
@@ -6469,6 +6511,8 @@
             ", неполный контур " (itoa n-open) "."))
   (if (null boxes)
     (mark:out "[INFO] Незамкнутый контур и камеры профиля не заполняю."))
+  (mark:out (strcat "[INFO] Ячеек с привязкой границ к ригелям: "
+                    (itoa n-rail) "."))
   (reverse boxes))
 
 (defun mark:fill-closed-cells (hits / axes vs hs)
