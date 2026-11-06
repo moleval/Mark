@@ -68,6 +68,18 @@ check("ядро без глобальных переменных модулей"
       not re.search(r"\*(?:mark|mk):", core_code))
 check("ядро само грузит COM", "(vl-load-com)" in core_code)
 
+# fboundp/atoms-family есть не во всех сборках AutoCAD: первая фактическая
+# загрузка дала "no function definition: FBOUNDP". Проверять наличие функций
+# ими нельзя — только флагом готовности ядра.
+for name, text in (("MARKCORE", core), ("MARKZ", mz), ("MarkV", mv)):
+    check(f"{name}: без fboundp", "(fboundp" not in text)
+    check(f"{name}: без atoms-family", "(atoms-family" not in text)
+
+check("ядро выставляет флаг готовности", "(setq *mc:core-ready* t)" in core)
+check("ядро сбрасывает флаг при старте", "(setq *mc:core-ready* nil)" in core)
+check("MARKZ проверяет флаг", "*mc:core-ready*" in mz)
+check("MarkV проверяет флаг", "*mc:core-ready*" in mv)
+
 # --- 3. Все используемые mc:* определены один раз -----------------------
 core_defuns = re.findall(r"\(defun\s+(mc:[^\s()]+)", core_code)
 dups = {n for n in core_defuns if core_defuns.count(n) > 1}

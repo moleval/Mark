@@ -31,30 +31,34 @@
 ;;;=====================================================================
 (setq *mc:core-file* "MARKCORE.lsp")
 
+;; Ядро считается загруженным по флагу *mc:core-ready*: MARKCORE.lsp выставляет
+;; его последней строкой. fboundp / atoms-family есть не во всех сборках
+;; AutoCAD (факт: (LOAD "MARKZ.lsp") -> "no function definition: FBOUNDP"),
+;; поэтому наличие функций так не проверяем.
 (defun mark:core-ensure (/ p r)
-  (if (fboundp 'mc:strp)
+  (if *mc:core-ready*
     t
     (progn
       (setq p (vl-catch-all-apply 'findfile (list *mc:core-file*)))
       (cond
         ((or (vl-catch-all-error-p p) (null p))
          (princ (strcat "\n[MARKZ][ERROR] Не найден " *mc:core-file*
-                        ". Положите ядро рядом с MARKZ.lsp или задайте путь:"
-                        " (setq *mc:core-file* \"D:/MARKCORE.lsp\") и загрузите снова."))
+                        ". Положите ядро рядом с модулями или задайте путь:"
+                        " (setq *mc:core-file* \"D:/MARKZ/MARKCORE.lsp\") и загрузите снова."))
          nil)
         (t
          (setq r (vl-catch-all-apply 'load (list p)))
          (cond
-           ((fboundp 'mc:strp)
-            (princ (strcat "\n[MARKZ] Ядро MARKCORE.lsp "
-                           (mc:core-version) " загружено: " p))
+           (*mc:core-ready*
+            (princ (strcat "\n[MARKZ] Ядро MARKCORE.lsp " (mc:core-version)
+                           " загружено: " p))
             t)
            (t
             (princ (strcat "\n[MARKZ][ERROR] " *mc:core-file*
                            " найден, но не загрузился: "
                            (if (vl-catch-all-error-p r)
                              (vl-catch-all-error-message r)
-                             "неизвестная ошибка")))
+                             "флаг *mc:core-ready* не выставлен")))
             nil)))))))
 
 (mark:core-ensure)
