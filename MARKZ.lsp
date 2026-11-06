@@ -3,8 +3,9 @@
 ;;;  Файл: D:\MARKZ.lsp
 ;;;  Команды: МАРКАЗАП, МАРКАРОВКАЗАП, МАРКАЗАПРЯД, МАРКАЗАПТАБЛ, МАРКАЗАПБЛОК
 ;;;
-;;;  Режим самодиагностики TEST 00 ... TEST 14.
-;;;  TEST 00 — прогон скобок исходника MARKZ.lsp.
+;;;  Режим самодиагностики TEST 01 ... TEST 16.
+;;;  Проверка скобок: AutoExtraction, CHKALL / CHKFILE (вручную).
+;;;  При ошибке RELOAD: диагностика упавшего файла + CHKLOAD.
 ;;;  Этап A: выбор > чтение > диагностика > расчёт > PRE-CHECK
 ;;;  Этап B: запись атрибута "Марка" только после PRE-CHECK = OK
 ;;;
@@ -118,7 +119,7 @@
 ;;;--------------------- Состояние сеанса -----------------------------
 
 ;; Редакция модуля — видно в консоли при загрузке и в баннерах
-(setq *mark:rev*    "Ред. 48.39")
+(setq *mark:rev*    "Ред. 48.40")
 (setq *mark:build*  "Ред. 36.6")
 
 ;; МАРКАЗАП: один выбор; один UNDO на весь пакет
@@ -844,7 +845,7 @@
   (setq *mark:records* (reverse recs))
   *mark:records*)
 
-;;;--------------------- TEST 00 — прогон скобок исходника ------------
+;;;--------------------- Исходник MARKZ.lsp (путь для снимка) ---------
 
 (setq *mark:source-candidates*
   '("D:/MarkZ/MARKZ.lsp"
@@ -881,124 +882,6 @@
              (setq found cand)))))))
   (setq *mark:source-file* found)
   found)
-
-;; Сканер: баланс () вне строк и комментариев.
-;; Возвращает (T "детали OK") или (NIL "детали ошибка")
-(defun mark:scan-parens (path / f ch depth in-str in-com line err n-open n-close
-                            n-str-start escaped cr)
-  (setq f (vl-catch-all-apply 'open (list path "r")))
-  (if (or (vl-catch-all-error-p f) (null f))
-    (list nil (strcat "файл не открыт: " path))
-    (progn
-      (setq depth   0
-            in-str  nil
-            in-com  nil
-            line    1
-            err     nil
-            n-open  0
-            n-close 0
-            n-str-start 0)
-      (while (and (null err) (setq ch (read-char f)))
-        (cond
-          ;; перевод строки
-          ((= ch 10)
-           (setq in-com nil
-                 line   (1+ line)))
-          ;; внутри комментария — до конца строки
-          (in-com nil)
-          ;; внутри строки
-          (in-str
-           (cond
-             ((= ch 92)  ; backslash — экранирующий символ
-              (if (null (read-char f))
-                (setq err (strcat "незавершённый escape, строка " (itoa line)))))
-             ((= ch 34)  ; закрывающая кавычка
-              (setq in-str nil))
-             (t nil)))
-          ;; обычный код
-          ((= ch 59) (setq in-com t))          ; ; — комментарий
-          ((= ch 34)                           ; " — открытие строки
-           (setq in-str t
-                 n-str-start (1+ n-str-start)))
-          ((= ch 40)                           ; (
-           (setq depth   (1+ depth)
-                 n-open  (1+ n-open)))
-          ((= ch 41)                           ; )
-           (setq depth    (1- depth)
-                 n-close  (1+ n-close))
-           (if (< depth 0)
-             (setq err (strcat "лишняя закрывающая ) — строка " (itoa line)))))
-          (t nil)))
-      (close f)
-      (cond
-        (err
-         (list nil err))
-        (in-str
-         (list nil (strcat "незакрытая строка \"..., строка " (itoa line))))
-        ((/= depth 0)
-         (list nil
-               (strcat "дисбаланс глубины " (itoa depth)
-                       " (открыто " (itoa n-open)
-                       ", закрыто " (itoa n-close) ")")))
-        (t
-         (list t
-               (strcat "OK, открытых (: " (itoa n-open)
-                       ", закрытых ): " (itoa n-close)
-                       ", строк: " (itoa line))))))))
-
-;; Есть ли загруженная команда (тестер AutoExtraction): CHKALL/CHKFILE.
-;; В AutoLISP нет способа «спросить тип команды»: (type 'c:CHKALL) возвращает
-;; SUBR всегда, а прямое обращение к незагруженной c:CHKALL — ошибка.
-;; Правильный способ — atoms-family: список имён определённых символов.
-(defun mark:has-command? (cmd / lst hit)
-  (setq lst (vl-catch-all-apply 'atoms-family (list 1)))
-  (if (or (null lst) (vl-catch-all-error-p lst))
-    nil
-    (progn
-      (foreach nm lst
-        (if (and (null hit) (mark:strp nm)
-                 (= (strcase nm) (strcase (strcat "C:" cmd))))
-          (setq hit t)))
-      hit)))
-
-(defun mark:test-parens (/ path res)
-  (mark:out "")
-  (cond
-    ;; Ред. 48.36: синтаксис проверяет CHKALL — он один на весь проект
-    ;; (все модули и плагины), встроенный сканер только дублировал его.
-    ((mark:has-command? "CHKALL")
-     (progn
-       (mark:out "[TEST 00] Прогон скобок — CHKALL (AutoExtraction)")
-       (setq res (vl-catch-all-apply 'c:CHKALL nil))
-       (if (vl-catch-all-error-p res)
-         (progn
-           (mark:out (strcat "       CHKALL: " (vl-catch-all-error-message res)))
-           (mark:note-warning))
-         (mark:out "[TEST 00] Отчёт CHKALL — выше в логе."))
-       nil))
-    ;; CHKALL не загружен — встроенный сканер (файл исходника по кандидатам)
-    ((null (setq path (mark:find-source)))
-     (progn
-       (mark:out "[TEST 00] Прогон скобок — WARNING")
-       (mark:out "Файл исходника для прогона скобок не найден.")
-       (mark:out "[INFO] Искали findfile MARKZ.lsp, D:/MarkZ/MARKZ.lsp и D:/MARKZ.lsp.")
-       (mark:note-warning)))
-    (t
-     (progn
-       (setq res (mark:scan-parens path))
-       (cond
-         ((car res)
-          (progn
-            (mark:out "[TEST 00] Прогон скобок — OK")
-            (mark:out (strcat "Файл: " path))
-            (mark:out (cadr res))))
-         (t
-          (progn
-            (mark:out "[TEST 00] Прогон скобок — ERROR")
-            (mark:out (strcat "Файл: " path))
-            (mark:out (strcat "Синтаксис исходника нарушен: " (cadr res)))
-            (mark:out "[ERROR] Немедленно исправьте MARKZ.lsp — запись запрещена.")
-            (mark:note-error))))))))
 
 ;;;--------------------- TEST 01 — блоки заполнений -------------------
 
@@ -2220,7 +2103,6 @@
     r))
 
 (defun mark:diagnostics ()
-  (mark:safe 'mark:test-parens             "TEST 00")
   (mark:safe 'mark:test-fillings            "TEST 01")
   (mark:safe 'mark:test-glazing-attr        "TEST 02/03")
   (if *mark:records*
@@ -9193,7 +9075,7 @@
         (mark:emit (strcat "\n[ERROR] Не удалось открыть файл " fn "\n")))))
   (princ))
 
-;;; ---- TEST 00 + сообщение загрузки ------------------------------------
+;;; ---- Сообщение загрузки и краткая справка ---------------------------
 
 (defun mark:repeat (ch n / out)
   (setq out "")
@@ -9209,7 +9091,6 @@
   (mark:emit (strcat "\n  +" (mark:repeat "-" 26) "+" (mark:repeat "-" 36) "+")))
 (defun mark:help-header ()
   (mark:emit (strcat "\n  | " (mark:ljust "КОМАНДА" 25) "| " (mark:ljust "ЧТО ДЕЛАЕТ" 34) " |")))
-(mark:test-parens)
 (mark:emit (strcat "\n[MARKZ] " (if (mark:strp *mark:rev*) *mark:rev* "Ред. неизвестна")
   " / " (if (mark:strp *mark:build*) *mark:build* "Ред. неизвестна") " загружена."))
 (mark:help-border)

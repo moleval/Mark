@@ -8,6 +8,7 @@ mark:fill-main-axis / mark:fill-frame-segs / mark:fill-inner-edge.  Коорди
 """
 from pathlib import Path
 from math import hypot
+import re
 
 SLOPE = 0.0033
 
@@ -100,8 +101,9 @@ if len(kept) != 1 or axis(kept[0]) != "v":
 
 # Структурные якоря реальной правки в CP1251-файле.
 mz = (Path(__file__).resolve().parents[1] / "MARKZ.lsp").read_bytes().decode("cp1251")
-if '*mark:rev*    "Ред. 48.39"' not in mz:
-    failures.append("не обновлена редакция MARKZ")
+rev = re.search(r'\*mark:rev\*\s+"Ред\. (\d+)\.(\d+)"', mz)
+if not rev or tuple(map(int, rev.groups())) < (48, 39):
+    failures.append("редакция MARKZ старше 48.39")
 for marker in ("(defun mark:fill-main-axis", "(defun mark:fill-frame-segs"):
     if marker not in mz:
         failures.append(f"нет {marker}")
