@@ -20,9 +20,49 @@
 
 (vl-load-com)
 
+;;;=====================================================================
+;;;  ЕДИНОЕ ЯДРО (Ред. 1.0). MARKCORE.lsp — общие примитивы MarkZ/MarkV:
+;;;  строки, числа, ActiveX, имена блоков, журнал, атрибуты, динамические
+;;;  свойства, строки шкалы. Модуль находит ядро сам (findfile по путям
+;;;  поддержки), поэтому порядок APPLOAD не важен; повторная загрузка
+;;;  безопасна. Свой путь можно задать до загрузки:
+;;;      (setq *mc:core-file* "D:/MARKCORE.lsp")
+;;;  Без ядра модуль не работает: обёртки mark:* вызывают функции mc:*.
+;;;=====================================================================
+(setq *mc:core-file* "MARKCORE.lsp")
+
+(defun mark:core-ensure (/ p r)
+  (if (fboundp 'mc:strp)
+    t
+    (progn
+      (setq p (vl-catch-all-apply 'findfile (list *mc:core-file*)))
+      (cond
+        ((or (vl-catch-all-error-p p) (null p))
+         (princ (strcat "\n[MARKZ][ERROR] Не найден " *mc:core-file*
+                        ". Положите ядро рядом с MARKZ.lsp или задайте путь:"
+                        " (setq *mc:core-file* \"D:/MARKCORE.lsp\") и загрузите снова."))
+         nil)
+        (t
+         (setq r (vl-catch-all-apply 'load (list p)))
+         (cond
+           ((fboundp 'mc:strp)
+            (princ (strcat "\n[MARKZ] Ядро MARKCORE.lsp "
+                           (mc:core-version) " загружено: " p))
+            t)
+           (t
+            (princ (strcat "\n[MARKZ][ERROR] " *mc:core-file*
+                           " найден, но не загрузился: "
+                           (if (vl-catch-all-error-p r)
+                             (vl-catch-all-error-message r)
+                             "неизвестная ошибка")))
+            nil)))))))
+
+(mark:core-ensure)
+
 ;;;--------------------- Шапка: имена и допуски (править здесь) ------
 
 ;; Точное имя или маска wcmatch, напр.: "*аполнение*витраж*"
+
 (setq *mark:block-fill*    "Заполнение в витраж")
 (setq *mark:block-glazing* "Атрибуты витража")
 (setq *mark:attr-vitrage*  "Витраж")
@@ -203,54 +243,31 @@
 (setq *mark:log-file*   nil)
 (setq *mark:log-failed* nil)
 
-(defun mark:log-path (/ dir ch)
+;; Ред. 49 (ядро): путь журнала строит mc:log-path.
+;; *mark:log-file* остаётся ручным переопределением для пакетных прогонов.
+(defun mark:log-path ()
   (if (and (mark:strp *mark:log-file*)
            (> (strlen *mark:log-file*) 0))
     *mark:log-file*
-    (progn
-      (setq dir (vl-catch-all-apply 'getvar (list "DWGPREFIX")))
-      (if (or (vl-catch-all-error-p dir)
-              (not (mark:strp dir)))
-        (setq dir ""))
-      (if (> (strlen dir) 0)
-        (progn
-          (setq ch (substr dir (strlen dir) 1))
-          (if (and (/= ch "/") (/= ch "\\"))
-            (setq dir (strcat dir "/")))))
-      (strcat dir "MARKZ_LOG.txt"))))
+    (mc:log-path "MARKZ_LOG.txt")))
 
 ;; Файл открывается на каждую строку: даже при Esc/сбое уже напечатанное
 ;; не остаётся в незакрытом буфере. Ошибка записи не должна ронять маркировку.
-(defun mark:log-write (msg / path f r text)
+;; Ред. 49 (ядро): дозапись строки — mc:log-append. Флаг ошибки остаётся
+;; в модуле: после первой неудачи журнал больше не трогаем.
+(defun mark:log-write (msg)
   (if (not *mark:log-failed*)
-    (progn
-      (setq path (mark:log-path))
-      (if (and (mark:strp path) (> (strlen path) 0)
-               (mark:strp msg))
-        (progn
-          (setq f (vl-catch-all-apply 'open (list path "a")))
-          (if (or (null f) (vl-catch-all-error-p f))
-            (setq *mark:log-failed* t)
-            (progn
-              ;; Если сообщение уже заканчивается \n, не удваиваем пустую строку.
-              (setq text msg)
-              (if (and (> (strlen text) 0)
-                       (= (substr text (strlen text) 1) "\n"))
-                (setq text (substr text 1 (1- (strlen text)))))
-              (setq r (vl-catch-all-apply 'write-line (list text f)))
-              (vl-catch-all-apply 'close (list f))
-              (if (vl-catch-all-error-p r)
-                (setq *mark:log-failed* t))))))))
+    (if (not (mc:log-append (mark:log-path) msg))
+      (setq *mark:log-failed* t)))
   nil)
 
 ;; Каждый пакет добавляет свой блок; одиночные команды дописывают в него.
-(defun mark:log-start (/ path f)
+;; Ред. 49 (ядро): проверка доступности файла — mc:log-touch.
+(defun mark:log-start (/ path)
   (setq *mark:log-failed* nil
-        path (mark:log-path)
-        f (vl-catch-all-apply 'open (list path "a")))
-  (if (or (null f) (vl-catch-all-error-p f))
-    (setq *mark:log-failed* t)
-    (vl-catch-all-apply 'close (list f)))
+        path               (mark:log-path))
+  (if (not (mc:log-touch path))
+    (setq *mark:log-failed* t))
   (if (not *mark:log-failed*)
     (mark:log-write
       (strcat "=== MARKZ " *mark:rev* " / " *mark:build* " ===")))
@@ -293,68 +310,32 @@
 
 ;; Переносимая проверка строки (не зависит от `stringp` из Visual LISP)
 (defun mark:strp (x)
-  (and x (eq (type x) 'STR)))
+  (mc:strp x))
 
 (defun mark:trim (s)
-  (if (mark:strp s)
-    (vl-string-trim " \t\r\n" s)
-    s))
+  (mc:trim s))
 
 (defun mark:name= (s1 s2)
-  (and (mark:strp s1)
-       (mark:strp s2)
-       (= (strcase (mark:trim s1))
-          (strcase (mark:trim s2)))))
+  (mc:name= s1 s2))
 
-(defun mark:fmt-raw (v / u)
-  (setq u (mark:unwrap v))
-  (if (or (numberp u) (mark:strp u))
-    (setq v u))
-  (cond
-    ((null v) "NIL")
-    ((numberp v)
-     (if (= (float v) (fix (float v)))
-       (itoa (fix (float v)))
-       (rtos (float v) 2 8)))
-    ((mark:strp v) (strcat "\"" v "\""))
-    (t (vl-princ-to-string (mark:unwrap v)))))
+(defun mark:fmt-raw (v)
+  (mc:fmt-raw v))
 
-(defun mark:mm-key (v / u)
-  ;; Ред. 48.7: размер в целых мм (ключ сортировки); nil — не число.
-  (setq u (mark:unwrap v))
-  (if (numberp u)
-    (mark:round1 u)
-    nil))
+(defun mark:mm-key (v)
+  (mc:mm-key v))
 
-(defun mark:fmt-mm (v / u)
-  ;; Ред. 48.7: печать размеров в целых мм — без хвостов вида 409.99999847.
-  (setq u (mark:unwrap v))
-  (if (numberp u)
-    (rtos (mark:round1 u) 2 0)
-    (mark:fmt-raw v)))
+(defun mark:fmt-mm (v)
+  (mc:fmt-mm v))
 
-(defun mark:numval (v / u)
-  (setq u (mark:unwrap v))
-  (cond
-    ((numberp u) (float u))
-    ((numberp v) (float v))
-    ((and (mark:strp u) (distof u 2)) (distof u 2))
-    ((and (mark:strp v) (distof v 2)) (distof v 2))
-    (t nil)))
+(defun mark:numval (v)
+  (mc:numval v))
 
 (defun mark:pad-line (label value)
-  (strcat " "
-          label
-          (substr "                                  " 1
-                  (max 1 (- 36 (strlen label))))
-          value))
+  (mc:pad-line label value))
 
 ;; Выравнивание вправо: колонки лога «ячейка/вставка» стоят ровно.
-(defun mark:rjust (s w / d)
-  (setq d (- w (strlen s)))
-  (if (> d 0)
-    (strcat (substr "                            " 1 d) s)
-    s))
+(defun mark:rjust (s w)
+  (mc:rjust s w))
 
 ;; Печать списка строк с ограничением *mark:max-err-lines*
 (defun mark:print-limited (lines / total shown)
@@ -370,137 +351,65 @@
                       (itoa (- total *mark:max-err-lines*))
                       " строк(и)."))))
 
-(defun mark:insert-sorted (lst n / res done hit)
-  (setq res nil
-        done nil
-        hit   nil)
-  (foreach x lst
-    (if (mark:same-num? n x)
-      (setq hit t))
-    (if (and (null done)
-             (null hit)
-             (< n x))
-      (progn
-        (setq res (cons n res))
-        (setq done t)))
-    (setq res (cons x res)))
-  (if (and (not done) (not hit))
-    (setq res (cons n res)))
-  (reverse res))
+(defun mark:insert-sorted (lst n)
+  (mc:insert-sorted lst n))
 
 (defun mark:same-num? (a b)
-  ;; одинаковый размер: 0.5 мм — шум float/округление, не «другой типоразмер»
-  (and (numberp a) (numberp b) (equal a b 0.5)))
+  (mc:same-num? a b))
 
 ;; округление размера для ключа индекса (0.5 мм)
 (defun mark:dim-key (x)
-  (if (and (numberp x) (> x 0.0))
-    (fix (+ (* x 2.0) 0.5))  ; half-mm integer key
-    nil))
+  (mc:dim-key x))
 
-(defun mark:sort-unique (nums / res n hit x)
-  (setq res nil)
-  (foreach n nums
-    (setq hit nil)
-    (foreach x res
-      (if (and (null hit) (mark:same-num? x n))
-        (setq hit t)))
-    (if (not hit)
-      (setq res (mark:insert-sorted res n))))
-  res)
+(defun mark:sort-unique (nums)
+  (mc:sort-unique nums))
 
-(defun mark:positives (lst / out)
-  (setq out nil)
-  (foreach n lst
-    (if (and (numberp n) (> n 0.0))
-      (setq out (cons (float n) out))))
-  (reverse out))
+(defun mark:positives (lst)
+  (mc:positives lst))
 
-(defun mark:index-of (lst v / i found)
-  (setq i 0
-        found nil)
-  (foreach x lst
-    (if (and (null found) (mark:same-num? x v))
-      (setq found i))
-    (setq i (1+ i)))
-  found)
+(defun mark:index-of (lst v)
+  (mc:index-of lst v))
 
 (defun mark:rec-get (r key)
-  (cdr (assoc key r)))
+  (mc:rec-get r key))
 
 (defun mark:rec-put (r key val)
-  (if (assoc key r)
-    (subst (cons key val) (assoc key r) r)
-    (append r (list (cons key val)))))
+  (mc:rec-put r key val))
 
 (defun mark:vla (e)
-  (vlax-ename->vla-object e))
+  (mc:e->vla e))
 
 ;; Имя блока: DXF-код 2 + имя через ActiveX (для динамических блоков)
 ;; Безопасное чтение ActiveX-свойства через vlax-get-property
-(defun mark:ax-get (obj prop / r)
-  (setq r (vl-catch-all-apply 'vlax-get-property (list obj prop)))
-  (if (vl-catch-all-error-p r)
-    nil
-    r))
+(defun mark:ax-get (obj prop)
+  (mc:ax-get obj prop))
 
 ;; Безопасная запись ActiveX-свойства
-(defun mark:ax-put (obj prop val / r)
-  (setq r (vl-catch-all-apply 'vlax-put-property (list obj prop val)))
-  (if (vl-catch-all-error-p r)
-    nil
-    t))
+(defun mark:ax-put (obj prop val)
+  (mc:ax-put obj prop val))
 
 ;; Вызов ActiveX-метода (аргументы после method)
-(defun mark:ax-invoke (obj method arg / r)
-  (setq r (vl-catch-all-apply 'vlax-invoke-method
-                              (if arg
-                                (list obj method arg)
-                                (list obj method))))
-  (if (vl-catch-all-error-p r)
-    nil
-    r))
+(defun mark:ax-invoke (obj method arg)
+  (mc:ax-invoke obj method arg))
 
 ;; T если метод вызван без ошибки (void-методы возвращают nil — это OK)
-(defun mark:ax-invoke-ok (obj method arg / r)
-  (setq r (vl-catch-all-apply 'vlax-invoke-method
-                              (if arg
-                                (list obj method arg)
-                                (list obj method))))
-  (not (vl-catch-all-error-p r)))
+(defun mark:ax-invoke-ok (obj method arg)
+  (mc:ax-invoke-ok obj method arg))
 
 ;; Все известные имена вставки: DXF-2, Name, EffectiveName
-(defun mark:block-names (e / obj names nm)
-  (setq names nil
-        nm    (cdr (assoc 2 (entget e))))
-  (if (mark:strp nm)
-    (setq names (cons nm names)))
-  (setq obj (vl-catch-all-apply 'vlax-ename->vla-object (list e)))
-  (if (and (not (vl-catch-all-error-p obj)) obj)
-    (progn
-      (setq nm (mark:ax-get obj "Name"))
-      (if (and (mark:strp nm) (not (member nm names)))
-        (setq names (cons nm names)))
-      (setq nm (mark:ax-get obj "EffectiveName"))
-      (if (and (mark:strp nm) (not (member nm names)))
-        (setq names (cons nm names)))))
-  (reverse names))
+(defun mark:block-names (e)
+  (mc:block-names e))
 
 ;; Точное имя ИЛИ маска wcmatch в target (* ?)
-(defun mark:name-match? (actual target / a t*)
-  (and (mark:strp actual)
-       (mark:strp target)
-       (progn
-         (setq a   (strcase (mark:trim actual))
-               t*  (strcase (mark:trim target)))
-         (or (= a t*)
-             (wcmatch a t*)))))
+(defun mark:name-match? (actual target)
+  (mc:name-match? actual target))
 
+;; Ред. 49 (ядро): имена и сравнение — mc:block-names / mc:name-match?.
 (defun mark:blk-match? (e target / names nm ok)
   (setq ok    nil
-        names (mark:block-names e))
+        names (mc:block-names e))
   (foreach nm names
-    (if (and (null ok) (mark:name-match? nm target))
+    (if (and (null ok) (mc:name-match? nm target))
       (setq ok t)))
   ok)
 
@@ -510,156 +419,38 @@
 ;; Возвращает ename атрибута или nil.
 ;; Принимает ename вставки.
 ;; Универсальный поиск: tag передаём явно
-(defun mark:find-attr-in-ename (e tag / head ent data result)
-  ;; 1) классическая цепочка INSERT -2
-  (setq head   e
-        result nil
-        ent    (cdr (assoc -2 (entget e))))
-  (while (and ent (null result))
-    (if (eq ent head)
-      (setq ent nil)
-      (progn
-        (setq data (entget ent))
-        (cond
-          ((null data)
-           (setq ent nil))
-          ((and (cdr (assoc 2 data))
-                (mark:name= (cdr (assoc 2 data)) tag))
-           (setq result ent))
-          (t
-           (setq ent (cdr (assoc -2 data))))))))
-  ;; 2) fallback: entnext — ATTRIB/SEQEND сразу после INSERT (66=1)
-  (if (null result)
-    (progn
-      (setq ent (entnext e))
-      (while (and ent (null result))
-        (setq data (entget ent))
-        (cond
-          ((null data)
-           (setq ent nil))
-          ((mark:name= (cdr (assoc 0 data)) "ATTRIB")
-           (if (mark:name= (cdr (assoc 2 data)) tag)
-             (setq result ent)
-             (setq ent (entnext ent))))
-          ((mark:name= (cdr (assoc 0 data)) "SEQEND")
-           (setq ent nil))
-          (t
-           ;; не ATTRIB — дальше не ищем в этой ветке
-           (setq ent nil))))))
-  result)
+(defun mark:find-attr-in-ename (e tag)
+  (mc:attr-rec e tag))
 
 ;; Через ActiveX-коллекцию Attributes (без vla-get-*)
-(defun mark:find-attr-obj (obj tag / result attrs i cnt a tagv)
-  (setq result nil)
-  (if obj
-    (progn
-      (setq attrs (mark:ax-get obj "Attributes"))
-      (if attrs
-        (progn
-          (setq cnt (mark:ax-get attrs "Count"))
-          (if (and (numberp cnt) (> cnt 0))
-            (progn
-              (setq i 0)
-              (while (and (< i cnt) (null result))
-                (setq a    (mark:ax-invoke attrs "Item" i)
-                      tagv (if a (mark:ax-get a "TagString") nil))
-                (if (and tagv (mark:name= tagv tag))
-                  (setq result a))
-                (setq i (1+ i)))))))))
-  result)
+(defun mark:find-attr-obj (obj tag)
+  (mc:attr-obj obj tag))
 
 ;; Чтение значения атрибута по ename вставки: (T значение) | (NIL NIL)
-(defun mark:find-attr (e tag / a data val obj)
-  (setq a (mark:find-attr-in-ename e tag))
-  (cond
-    (a
-     (progn
-       (setq data (entget a)
-             val  (cdr (assoc 1 data)))
-       (list t (if (mark:strp val) val ""))))
-    (t
-     (progn
-       (setq obj (vl-catch-all-apply 'vlax-ename->vla-object (list e)))
-       (if (or (vl-catch-all-error-p obj) (null obj))
-         (list nil nil)
-         (progn
-           (setq a (mark:find-attr-obj obj tag))
-           (if a
-             (progn
-               (setq val (mark:ax-get a "TextString"))
-               (list t (if (mark:strp val) val "")))
-             (list nil nil))))))))
+(defun mark:find-attr (e tag)
+  (mc:attr-find e tag))
 
 ;;;--------------------- Dynamic Properties ---------------------------
 
 ;; (T значение) | (NIL NIL), если свойство недоступно
 ;; Развернуть VARIANT > значение
-(defun mark:unwrap (v / w)
-  (setq w (vl-catch-all-apply 'vlax-variant-value (list v)))
-  (if (vl-catch-all-error-p w)
-    v
-    w))
+(defun mark:unwrap (v)
+  (mc:unwrap v))
 
 ;; Имя свойства dynamic block: PropertyName | Name | Description
-(defun mark:dyn-item-name (item / nm)
-  (setq nm (mark:ax-get item "PropertyName"))
-  (if (not (mark:strp nm))
-    (setq nm (mark:ax-get item "Name")))
-  (if (not (mark:strp nm))
-    (setq nm (mark:ax-get item "Description")))
-  nm)
+(defun mark:dyn-item-name (item)
+  (mc:dyn-item-name item))
 
-(defun mark:dyn-item-value (item / val)
-  (setq val (mark:ax-get item "Value"))
-  (if (null val)
-    (setq val (mark:ax-get item "PropertyValue")))
-  (mark:unwrap val))
+(defun mark:dyn-item-value (item)
+  (mc:dyn-item-value item))
 
 ;; Разбор одного элемента коллекции свойств > cons или nil
-(defun mark:dyn-item-pair (item / nm val)
-  (setq nm  (mark:dyn-item-name item)
-        val (mark:dyn-item-value item))
-  (if (mark:strp nm)
-    (cons nm val)
-    nil))
+(defun mark:dyn-item-pair (item)
+  (mc:dyn-item-pair item))
 
 ;; Пары (имя . значение) из GetDynamicBlockProperties
-(defun mark:load-dyn-pairs (obj / r v lst item pair out)
-  (setq out nil)
-  (setq r (vl-catch-all-apply 'vlax-invoke-method
-                              (list obj "GetDynamicBlockProperties")))
-  (if (or (vl-catch-all-error-p r) (null r))
-    nil
-    (progn
-      (setq v (mark:unwrap r))
-      ;; safearray > list (без get-ubound)
-      (setq lst (vl-catch-all-apply 'vlax-safearray->list (list v)))
-      (cond
-        ((and (not (vl-catch-all-error-p lst)) (listp lst))
-         (progn
-           (foreach item lst
-             ;; item может быть variant
-             (setq item (mark:unwrap item)
-                   pair (mark:dyn-item-pair item))
-             (if pair
-               (setq out (cons pair out))))
-           (reverse out)))
-        (t
-         (progn
-           ;; не список — пробуем как одиночный объект
-           (setq pair (mark:dyn-item-pair v))
-           (if pair
-             (list pair)
-             (progn
-               ;; последняя попытка: сам r как коллекция Count/Item
-               (setq out nil
-                     item (mark:ax-invoke r "Item" 0))
-               (if item
-                 (progn
-                   (setq item (mark:unwrap item)
-                         pair  (mark:dyn-item-pair item))
-                   (if pair (setq out (list pair)))))
-               out))))))))
+(defun mark:load-dyn-pairs (obj)
+  (mc:dyn-pairs obj))
 
 ;; Кэш: ename > alist
 (defun mark:dyn-pairs (e / cache pair obj)
@@ -5847,7 +5638,7 @@
   (reverse segs))
 
 (defun mark:round1 (v)
-  (atof (rtos (float v) 2 0)))
+  (mc:round1 v))
 
 (defun mark:mline-warn (msg)
   (if (and (numberp *mark:mline-warns*) (< *mark:mline-warns* 3))
@@ -9223,9 +9014,7 @@
             (setq i   (1+ i)
                   src (mark:sec-src-of w))
             (write-line
-              (strcat (itoa i) ";"
-                      (rtos w 2 0) ";"
-                      src)
+              (mc:scale-row (itoa i) w src)
               f))
           (setq rest nil)
           (foreach row *mark:scale-final*
@@ -9233,9 +9022,7 @@
               (setq rest (cons row rest))))
           (foreach row (reverse rest)
             (write-line
-              (strcat "-;"
-                      (rtos (float (nth 0 row)) 2 0) ";"
-                      (nth 1 row))
+              (mc:scale-row-reserve (nth 0 row) (nth 1 row))
               f))
           ;; Ред. 48.37: итог по шкале номеров (строки «-» — ригель
           ;; без столбца, номер за размером закреплён)
@@ -9243,9 +9030,7 @@
             (progn
               (setq n (length *mark:beam-scale*))
               (write-line
-                (strcat "; ригелей MarkZV: " (itoa n)
-                        ", номеров всего: " (itoa (length ws))
-                        ", без столбца: " (itoa (length rest)))
+                (mc:scale-trailer n (length ws) (length rest))
                 f)))
           (close f)
           (mark:out (strcat "[OK] Шкала: " path)))
@@ -9271,17 +9056,14 @@
             (foreach w ws
               (setq i (1+ i) src (mark:sec-src-of w))
               (write-line
-                (strcat (car state) ";" (itoa i) ";"
-                        (rtos w 2 0) ";" src) f))
+                (strcat (car state) ";" (mc:scale-row (itoa i) w src)) f))
             (setq rest nil)
             (foreach row *mark:scale-final*
               (if (null (mark:index-of ws (nth 0 row)))
                 (setq rest (cons row rest))))
             (foreach row (reverse rest)
               (write-line
-                (strcat (car state) ";-;"
-                        (rtos (float (nth 0 row)) 2 0) ";"
-                        (nth 1 row)) f))
+                (strcat (car state) ";-;" (rtos (float (nth 0 row)) 2 0) ";" (nth 1 row)) f))
             (if *mark:beam-scale*
               (progn
                 (setq n (length *mark:beam-scale*))

@@ -59,7 +59,8 @@
 - `tests/lisp_structure.py`: MARKZ top-level=514, defun=424; MarkV
   top-level=492, defun=322; оба `OK`;
 - `git diff --check`;
-- MARKZ: 9879 строк, CP1251 без BOM и CRLF сохранены.
+- MARKZ: 9879 строк на момент приёмки (после выноса ядра — 9662, см.
+  `acceptance/CORE_REFACTOR.md`), CP1251 без BOM и CRLF сохранены.
 
 AutoCAD в sandbox недоступен, поэтому фактический прогон выполнен пользователем;
 его результаты и посегментная сверка приложенных файлов зафиксированы в §5.

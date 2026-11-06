@@ -10,6 +10,46 @@
 (vl-load-com)
 
 ;;;=====================================================================
+;;;  ЕДИНОЕ ЯДРО (Ред. 1.0). MARKCORE.lsp — общие примитивы MarkZ/MarkV:
+;;;  строки, числа, ActiveX, имена блоков, журнал, атрибуты, динамические
+;;;  свойства, строки шкалы. Модуль находит ядро сам (findfile по путям
+;;;  поддержки), поэтому порядок APPLOAD не важен; повторная загрузка
+;;;  безопасна. Свой путь можно задать до загрузки:
+;;;      (setq *mc:core-file* "D:/MARKCORE.lsp")
+;;;  Без ядра модуль не работает: обёртки mark:* вызывают функции mc:*.
+;;;=====================================================================
+(setq *mc:core-file* "MARKCORE.lsp")
+
+(defun mk:core-ensure (/ p r)
+  (if (fboundp 'mc:strp)
+    t
+    (progn
+      (setq p (vl-catch-all-apply 'findfile (list *mc:core-file*)))
+      (cond
+        ((or (vl-catch-all-error-p p) (null p))
+         (princ (strcat "\n[MarkV][ERROR] Не найден " *mc:core-file*
+                        ". Положите ядро рядом с MarkV.lsp или задайте путь:"
+                        " (setq *mc:core-file* \"D:/MARKCORE.lsp\") и загрузите снова."))
+         nil)
+        (t
+         (setq r (vl-catch-all-apply 'load (list p)))
+         (cond
+           ((fboundp 'mc:strp)
+            (princ (strcat "\n[MarkV] Ядро MARKCORE.lsp "
+                           (mc:core-version) " загружено: " p))
+            t)
+           (t
+            (princ (strcat "\n[MarkV][ERROR] " *mc:core-file*
+                           " найден, но не загрузился: "
+                           (if (vl-catch-all-error-p r)
+                             (vl-catch-all-error-message r)
+                             "неизвестная ошибка")))
+            nil)))))))
+
+(mk:core-ensure)
+
+
+;;;=====================================================================
 ;;; 0. АВТОПРОВЕРКА СКОБОК
 ;;;=====================================================================
 (defun mk:check-brackets (filepath / f line num depth in-str i c len err-line ch)
@@ -133,6 +173,7 @@
 ;;;=====================================================================
 ;; Версия — как у заказчика: редакция и билд отдельными записями «Ред. N.N».
 ;; В логах печатается «Ред. 7.0 / Ред. 33.19» — две редакции, без слова build.
+
 (setq *mk:ver*            "Ред. 7.0")
 (setq *mk:build*          "Ред. 33.19")
 
@@ -439,53 +480,30 @@
 ;;;=====================================================================
 ;;; 2. УТИЛИТЫ
 ;;;=====================================================================
-(defun mk:strp (x) (and x (eq (type x) 'STR)))
+(defun mk:strp (x)
+  (mc:strp x))
 
 ;; Ред. 33.18: весь prompt-вывод идёт через mk:emit и дублируется в файл.
 ;; Это не дамп MARKZV_MODEL.txt, а полный протокол команд и ошибок.
-(defun mk:log-path (/ dir ch)
-  (if (and (mk:strp *mk:log-file*) (> (strlen *mk:log-file*) 0))
+;; Ред. 33.20 (ядро): путь журнала строит mc:log-path.
+(defun mk:log-path ()
+  (if (and (mc:strp *mk:log-file*) (> (strlen *mk:log-file*) 0))
     *mk:log-file*
-    (progn
-      (setq dir (vl-catch-all-apply 'getvar (list "DWGPREFIX")))
-      (if (or (vl-catch-all-error-p dir)
-              (not (mk:strp dir)))
-        (setq dir ""))
-      (if (> (strlen dir) 0)
-        (progn
-          (setq ch (substr dir (strlen dir) 1))
-          (if (and (/= ch "/") (/= ch "\\"))
-            (setq dir (strcat dir "/")))))
-      (strcat dir "MARKV_LOG.txt"))))
+    (mc:log-path "MARKV_LOG.txt")))
 
-(defun mk:log-write (msg / path f r text)
+;; Ред. 33.20 (ядро): дозапись строки — mc:log-append.
+(defun mk:log-write (msg)
   (if (not *mk:log-failed*)
-    (progn
-      (setq path (mk:log-path))
-      (if (and (mk:strp path) (> (strlen path) 0) (mk:strp msg))
-        (progn
-          (setq f (vl-catch-all-apply 'open (list path "a")))
-          (if (or (null f) (vl-catch-all-error-p f))
-            (setq *mk:log-failed* t)
-            (progn
-              ;; Если сообщение уже заканчивается \n, не удваиваем пустую строку.
-              (setq text msg)
-              (if (and (> (strlen text) 0)
-                       (= (substr text (strlen text) 1) "\n"))
-                (setq text (substr text 1 (1- (strlen text)))))
-              (setq r (vl-catch-all-apply 'write-line (list text f)))
-              (vl-catch-all-apply 'close (list f))
-              (if (vl-catch-all-error-p r)
-                (setq *mk:log-failed* t))))))))
+    (if (not (mc:log-append (mk:log-path) msg))
+      (setq *mk:log-failed* t)))
   nil)
 
-(defun mk:log-start (/ path f)
+;; Ред. 33.20 (ядро): проверка доступности файла — mc:log-touch.
+(defun mk:log-start (/ path)
   (setq *mk:log-failed* nil
-        path (mk:log-path)
-        f (vl-catch-all-apply 'open (list path "a")))
-  (if (or (null f) (vl-catch-all-error-p f))
-    (setq *mk:log-failed* t)
-    (vl-catch-all-apply 'close (list f)))
+        path             (mk:log-path))
+  (if (not (mc:log-touch path))
+    (setq *mk:log-failed* t))
   (if (not *mk:log-failed*)
     (mk:log-write
       (strcat "=== MarkV " *mk:ver* " / " *mk:build* " ===")))
@@ -502,58 +520,32 @@
 ;; Обновление поля записи: замена через subst, а не append.
 ;; (append …) добавлял бы ВТОРУЮ пару с тем же ключом, а assoc
 ;; всегда возвращает первую — значение молча не менялось.
-(defun mk:rec-put (rec key val / old)
-  (setq old (assoc key rec))
-  (if old
-    (subst (cons key val) old rec)
-    (append rec (list (cons key val)))))
+(defun mk:rec-put (rec key val)
+  (mc:rec-put rec key val))
 
 (defun mk:rec-get (rec key)
-  (cdr (assoc key rec)))
+  (mc:rec-get rec key))
 
 (defun mk:numval (x)
-  (cond ((numberp x) (float x))
-        ((and (mk:strp x) (distof x 2)) (distof x 2))
-        (t nil)))
+  (mc:numval x))
 
-(defun mk:ax-get (obj prop / r)
-  (setq r (vl-catch-all-apply 'vlax-get-property (list obj prop)))
-  (if (vl-catch-all-error-p r) nil r))
+(defun mk:ax-get (obj prop)
+  (mc:ax-get obj prop))
 
 ;; Симметричная запись свойства — через vlax-put-property, как и чтение
-(defun mk:ax-put (obj prop val / r)
-  (setq r (vl-catch-all-apply 'vlax-put-property (list obj prop val)))
-  (if (vl-catch-all-error-p r) nil t))
+(defun mk:ax-put (obj prop val)
+  (mc:ax-put obj prop val))
 
 (defun mk:trim (s)
-  (if (mk:strp s) (vl-string-trim " \t\n\r" s) s))
+  (mc:trim s))
 
 (defun mk:name= (s1 s2)
-  (and (mk:strp s1) (mk:strp s2)
-       (= (strcase (mk:trim s1)) (strcase (mk:trim s2)))))
+  (mc:name= s1 s2))
 
-(defun mk:blk-match? (ename target / obj eff-name names nm found ed)
-  (setq found nil names nil ed (entget ename))
-  ;; ВАЖНО: только вставки блоков. У MLINE в DXF 2 лежит имя стиля мультилинии
-  ;; (например «Стойка (вертикальный профиль)») — без этой проверки
-  ;; мультилинии принимались за блоки.
-  (if (not (= (cdr (assoc 0 ed)) "INSERT"))
-    (setq names nil ed nil))
-  (if (null ed)
-    nil
-    (progn
-  (setq nm (cdr (assoc 2 ed)))
-  (if (mk:strp nm) (setq names (cons nm names)))
-  (setq obj (vl-catch-all-apply 'vlax-ename->vla-object (list ename)))
-  (if (and (not (vl-catch-all-error-p obj)) obj)
-    (progn
-      (setq nm (mk:ax-get obj "EffectiveName"))
-      (if (and (mk:strp nm) (not (member nm names)))
-        (setq names (cons nm names)))))
-  (foreach nm names
-    (if (and (null found) (wcmatch (strcase nm) (strcase target)))
-      (setq found t)))))
-  found)
+;; Ред. 33.20 (ядро): только INSERT; имена — mc:block-names, сравнение —
+;; mc:name-match?. У MLINE в DXF-2 лежит имя стиля мультилинии.
+(defun mk:blk-match? (ename target)
+  (mc:blk-match? ename target))
 
 ;;;=====================================================================
 ;;; 3. ИЗВЛЕЧЕНИЕ АТРИБУТОВ
@@ -561,84 +553,32 @@
 ;; У обычных объектов (MLINE, LINE, LWPOLYLINE…) entnext возвращает СЛЕДУЮЩИЙ
 ;; объект чертежа, а не подобъект. Без этой проверки обход уходил в соседние
 ;; блоки и читал/писал ЧУЖИЕ атрибуты «Марка».
-(defun mk:has-attrs-insert? (ename / ed)
-  (setq ed (if ename (entget ename) nil))
-  (and ed
-       (= (cdr (assoc 0 ed)) "INSERT")
-       (equal (cdr (assoc 66 ed)) 1)))
+(defun mk:has-attrs-insert? (ename)
+  (mc:attr-insert? ename))
 
-(defun mk:get-attr (ename tag / sub data val)
-  (if (not (mk:has-attrs-insert? ename))
-    (setq sub nil val nil)
-    (setq sub (entnext ename) val nil))
-  (while sub
-    (setq data (entget sub))
-    (cond
-      ((= (cdr (assoc 0 data)) "ATTRIB")
-       (if (mk:name= (cdr (assoc 2 data)) tag)
-         (setq val (cdr (assoc 1 data)))))
-      ((= (cdr (assoc 0 data)) "SEQEND")
-       (setq sub nil)))
-    (if sub (setq sub (entnext sub))))
-  (if (mk:strp val) (mk:trim val) nil))
+(defun mk:get-attr (ename tag)
+  (mc:attr-dxf ename tag))
 
-(defun mk:get-all-attrs (ename / sub data attrs)
-  (setq sub (entnext ename) attrs nil)
-  (while sub
-    (setq data (entget sub))
-    (cond
-      ((= (cdr (assoc 0 data)) "ATTRIB")
-       (setq attrs (cons (cons (cdr (assoc 2 data))
-                                (cdr (assoc 1 data))) attrs)))
-      ((= (cdr (assoc 0 data)) "SEQEND")
-       (setq sub nil)))
-    (if sub (setq sub (entnext sub))))
-  (reverse attrs))
+(defun mk:get-all-attrs (ename)
+  (mc:attr-list ename))
 
-(defun mk:has-attr? (ename tag / sub data found)
-  (if (not (mk:has-attrs-insert? ename))
-    (setq sub nil found nil)
-    (setq sub (entnext ename) found nil))
-  (while (and sub (not found))
-    (setq data (entget sub))
-    (cond
-      ((= (cdr (assoc 0 data)) "ATTRIB")
-       (if (mk:name= (cdr (assoc 2 data)) tag)
-         (setq found t)))
-      ((= (cdr (assoc 0 data)) "SEQEND")
-       (setq sub nil)))
-    (if sub (setq sub (entnext sub))))
-  found)
+(defun mk:has-attr? (ename tag)
+  (mc:attr-has? ename tag))
 
 ;;;=====================================================================
 ;;; 4. ДИНАМИЧЕСКИЕ СВОЙСТВА И ГАБАРИТЫ
 ;;;=====================================================================
-(defun mk:dynamic? (obj / v)
-  (setq v (mk:ax-get obj "IsDynamicBlock"))
-  (and v (= v :vlax-true)))
+(defun mk:dynamic? (obj)
+  (mc:dynamic? obj))
 
 ;; Все пары (имя . значение) динамического блока; VARIANT развёрнут
-(defun mk:dyn-pairs-raw (obj / props out p nm val)
+;; Ред. 33.20 (ядро): пары свойств — mc:dyn-pairs; имена обрезаются здесь,
+;; потому что MarkV сравнивает их с маской без краевых пробелов.
+(defun mk:dyn-pairs-raw (obj / out)
   (setq out nil)
-  (if (mk:dynamic? obj)
-    (progn
-      (setq props (vl-catch-all-apply 'vlax-invoke-method
-                    (list obj "GetDynamicBlockProperties")))
-      (if (not (vl-catch-all-error-p props))
-        (progn
-          (if (= (type props) 'VARIANT)
-            (setq props (vl-catch-all-apply 'vlax-safearray->list
-                          (list (vlax-variant-value props)))))
-          (if (and props (listp props) (not (vl-catch-all-error-p props)))
-            (foreach p props
-              (setq nm  (mk:ax-get p "PropertyName")
-                    val (mk:ax-get p "Value"))
-              (if (= (type val) 'VARIANT)
-                (progn
-                  (setq val (vl-catch-all-apply 'vlax-variant-value (list val)))
-                  (if (vl-catch-all-error-p val) (setq val nil))))
-              (if (mk:strp nm)
-                (setq out (cons (cons (mk:trim nm) val) out)))))))))
+  (if (mc:dynamic? obj)
+    (foreach pr (mc:dyn-pairs obj)
+      (setq out (cons (cons (mc:trim (car pr)) (cdr pr)) out))))
   (reverse out))
 
 ;; То же, но с кэшем по ename (сбор на большом фасаде идёт в разы быстрее)
@@ -2244,23 +2184,8 @@
 ;;;=====================================================================
 ;;; 18. АВТОЗАПОЛНЕНИЕ АТРИБУТОВ
 ;;;=====================================================================
-(defun mk:set-attr (ename tag newval / sub data done)
-  (if (not (mk:has-attrs-insert? ename))
-    (setq sub nil done nil)
-    (setq sub (entnext ename) done nil))
-  (while (and sub (not done))
-    (setq data (entget sub))
-    (cond
-      ((= (cdr (assoc 0 data)) "ATTRIB")
-       (if (mk:name= (cdr (assoc 2 data)) tag)
-         (progn
-           (entmod (subst (cons 1 newval) (assoc 1 data) data))
-           (entupd ename)
-           (setq done t))))
-      ((= (cdr (assoc 0 data)) "SEQEND")
-       (setq sub nil)))
-    (if (and sub (not done)) (setq sub (entnext sub))))
-  done)
+(defun mk:set-attr (ename tag newval)
+  (mc:attr-set ename tag newval))
 
 ;; Ключ размера с допуском *mk:tol-size* (0.5 мм):
 ;; 1500.4 и 1500.6 должны попадать в одну группу.
@@ -2664,12 +2589,9 @@
     (if (not (member v out)) (setq out (cons v out))))
   (reverse out))
 
-(defun mk:scale-index (v scale / i idx)
-  (setq i 1 idx 0)
-  (foreach s scale
-    (if (and (= idx 0) (equal s v *mk:tol-size*)) (setq idx i))
-    (setq i (1+ i)))
-  idx)
+;; Ред. 33.20 (ядро): номер в шкале — mc:scale-index с допуском *mk:tol-size*.
+(defun mk:scale-index (v scale)
+  (mc:scale-index v scale *mk:tol-size*))
 
 ;; Уровни ригелей (горизонтальные ряды) снизу вверх
 (defun mk:row-levels (beams / ys sorted out last)

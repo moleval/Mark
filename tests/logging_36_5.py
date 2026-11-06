@@ -10,12 +10,16 @@ import re
 ROOT = Path(__file__).resolve().parents[1]
 mz = (ROOT / "MARKZ.lsp").read_bytes().decode("cp1251")
 mv = (ROOT / "MarkV.lsp").read_bytes().decode("cp1251")
+core = (ROOT / "MARKCORE.lsp").read_bytes().decode("cp1251")
 
 checks = [
     ("MARKZ build", bool(re.search(r'\*mark:build\*\s+"Ред\. \d+\.\d+"', mz))),
     ("MarkV build", bool(re.search(r'\*mk:build\*\s+"Ред\. \d+\.\d+"', mv))),
-    ("MARKZ default path", 'DWGPREFIX' in mz and 'MARKZ_LOG.txt' in mz),
-    ("MarkV default path", 'DWGPREFIX' in mv and 'MARKV_LOG.txt' in mv),
+    # Ред. 49 (ядро): каталог DWGPREFIX и путь журнала считает MARKCORE.lsp;
+    # в модулях остаются только имена файлов протоколов.
+    ("MARKZ default path", 'MARKZ_LOG.txt' in mz and '(mc:log-path "MARKZ_LOG.txt")' in mz),
+    ("MarkV default path", 'MARKV_LOG.txt' in mv and '(mc:log-path "MARKV_LOG.txt")' in mv),
+    ("core knows DWGPREFIX", 'DWGPREFIX' in core and '(defun mc:log-path' in core),
     ("MARKZ tee", '(defun mark:emit' in mz and '(mark:log-write msg)' in mz
      and '(princ msg)' in mz),
     ("MarkV tee", '(defun mk:emit' in mv and '(mk:log-write msg)' in mv
