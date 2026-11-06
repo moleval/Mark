@@ -124,7 +124,7 @@
 ;;;--------------------- Состояние сеанса -----------------------------
 
 ;; Редакция модуля — видно в консоли при загрузке и в баннерах
-(setq *mark:rev*    "Ред. 48.44")
+(setq *mark:rev*    "Ред. 48.45")
 (setq *mark:build*  "Ред. 36.6")
 
 ;; МАРКАЗАП: один выбор; один UNDO на весь пакет
@@ -7622,7 +7622,7 @@
 
 ;; Этап МАРКАРОВКАЗАП по витражам: один кластер — как раньше
 ;; (лог прежний); несколько — полный блок диагностики per витраж
-(defun mark:vz-marks (/ af ag ageo cls n i c was-reuse ans)
+(defun mark:vz-marks (/ af ag ageo geo-out cls n i c was-reuse ans)
   (if (and (not *mark:reuse-sel*) (null *mark:fills*))
     (mark:select))
   (if *mark:fills*
@@ -7630,6 +7630,7 @@
       (setq af   *mark:fills*
             ag   *mark:glazings*
             ageo *mark:fill-geo*
+            geo-out nil
             cls  (mark:vz-split af ag)
             n    (length cls)
             i    0
@@ -7659,7 +7660,8 @@
         ((= *mark:vz-mode* "joint")
          (progn
            (setq *mark:vz-map* (mark:vz-map-build cls))
-           (mark:main)))
+           (mark:main)
+           (setq geo-out *mark:fill-geo*)))
         ;; раздельная: полный блок диагностики per витраж
         ((= *mark:vz-mode* "separate")
          (progn
@@ -7674,13 +7676,21 @@
                        (mark:vz-title (cadr c))
                        " — заполнений " (itoa (length (car c))) " ---"))
              (mark:vz-set c ageo)
-             (mark:main))))
+             (mark:main)
+             ;; Ред. 48.45: ветка готовых блоков входит с ageo=nil.
+             ;; Сохраняем геометрию всех проходов для Шкала.txt/ведомости.
+             (setq geo-out (append geo-out *mark:fill-geo*)))))
         ;; один витраж — прежний путь (лог побайтово)
-        (t (mark:main)))
+        (t
+         (mark:main)
+         (setq geo-out *mark:fill-geo*)))
       (setq *mark:reuse-sel* was-reuse
             *mark:fills*     af
             *mark:glazings*  ag
-            *mark:fill-geo*  ageo))))
+            ;; Прежнюю геометрию сетки сохраняем как раньше. Если её не
+            ;; было (источник «Заполнения»), нельзя возвращать nil после
+            ;; успешного standalone-расчёта: mark:num-keys терял секции.
+            *mark:fill-geo*  (if ageo ageo geo-out)))))
 
 ;; Этап МАРКАЗАПРЯД по витражам: каждому — свои базы рядовки
 ;; (Y снизу и X справа своего габарита) и своя группа

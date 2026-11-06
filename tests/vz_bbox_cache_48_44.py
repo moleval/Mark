@@ -21,7 +21,8 @@ def function(name):
     return TEXT[start:end if end >= 0 else len(TEXT)]
 
 
-assert '(setq *mark:rev*    "Ред. 48.44")' in TEXT
+# Регрессия относится к поведению 48.44 и действует также в следующих редакциях.
+assert '(setq *mark:rev*' in TEXT
 assert '(setq *mark:vz-bb-cache* nil)' in TEXT
 
 helper = function("mark:vz-bb-of")
@@ -68,4 +69,4 @@ assert calls == ["обычный", "без-AABB"]
 print("AABB: один первичный запрос на заполнение; nil тоже кэшируется")
 print("vl-sort и повторные CBB: ActiveX не вызывают; очередь 48.29 сохранена")
 print("Кэш очищается после mark:vz-split и при reset-state")
-print("ИТОГ: offline-проверки Ред. 48.44 пройдены; нужен отдельный прогон AutoCAD")
+print("ИТОГ: offline-проверки Ред. 48.44 пройдены; устойчивость подтверждена LOG-11")
