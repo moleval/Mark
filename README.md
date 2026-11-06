@@ -482,6 +482,7 @@ MARKZ.lsp                          MarkV.lsp
 - [TZ.md](TZ.md) — техническое задание MarkZ
 - [SYNC_MARKZV.md](SYNC_MARKZV.md) — синхронизация номеров MarkZ ↔ MarkV
 - [MARKUP_LOGIC.md](MARKUP_LOGIC.md) — единая маркировка и рядовка (заполнения ↔ каркас), решения 48.37
+- [MERGE_MODULES.md](MERGE_MODULES.md) — пошаговая инструкция слияния в один загрузочный модуль
 - [FAST_TABLES.md](FAST_TABLES.md) — скоростное создание таблиц AutoCAD (ActiveX)
 - [AGENTS.md](AGENTS.md) — правила для агентов/редактирования кода
 
