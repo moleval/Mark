@@ -118,7 +118,7 @@
 ;;;--------------------- Состояние сеанса -----------------------------
 
 ;; Редакция модуля — видно в консоли при загрузке и в баннерах
-(setq *mark:rev*    "Ред. 48.38")
+(setq *mark:rev*    "Ред. 48.39")
 (setq *mark:build*  "Ред. 36.6")
 
 ;; МАРКАЗАП: один выбор; один UNDO на весь пакет
@@ -6266,6 +6266,50 @@
       (setq out (cons it out))))
   out)
 
+;; Ред. 48.39: у блока стойки/ригеля поперечные отрезки — это торцы
+;; профиля, а не самостоятельные оси каркаса. Раньше они попадали в vs/hs,
+;; а fill-inner-edge брал экстремум «ось ± полуширина» по всему кластеру.
+;; В результате торец ригеля мог сместить грань ячейки внутрь неё.
+;; Оставляем у именованного блока каркаса только продольные отрезки. Для вертикального
+;; ригеля (импоста) главная ось определяется по самому длинному отрезку,
+;; поэтому его вертикаль сохраняется, а горизонтальные торцы отбрасываются.
+(defun mark:fill-frame-role? (e / nm)
+  (setq nm (mark:fill-eff-name e))
+  (if (mark:strp nm)
+    (progn
+      (setq nm (strcase nm))
+      (or (wcmatch nm "*СТОЙКА*")
+          (wcmatch nm "*РИГЕЛЬ*")
+          (wcmatch nm "*ИМПОСТ*")))
+    nil))
+
+(defun mark:fill-main-axis (segs / s ax dx dy len best best-len)
+  (setq best nil
+        best-len 0.0)
+  (foreach s segs
+    (setq dx  (- (float (nth 2 s)) (float (nth 0 s)))
+          dy  (- (float (nth 3 s)) (float (nth 1 s)))
+          ax  (mark:fill-axis s)
+          len (sqrt (+ (* dx dx) (* dy dy))))
+    (if (and ax (> len best-len))
+      (setq best ax
+            best-len len)))
+  best)
+
+(defun mark:fill-frame-segs (e segs / main s out)
+  (if (not (mark:fill-frame-role? e))
+    segs
+    (progn
+      (setq main (mark:fill-main-axis segs)
+            out nil)
+      (if (null main)
+        segs
+        (progn
+          (foreach s segs
+            (if (eq (mark:fill-axis s) main)
+              (setq out (cons s out))))
+          (reverse out))))))
+
 (defun mark:fill-owned-axes (hits / i n vs hs part s x0 y0 x1 y1 dx dy ln hw nm ed
                                  hwmin hwmax)
   (setq i 0
@@ -6289,7 +6333,8 @@
     (setq i (1+ i)
           ed (entget (cadr hit))
           nm (if ed (cdr (assoc 2 ed)) nil)
-          part (mark:fill-segs-of-ins (cadr hit)))
+          part (mark:fill-frame-segs
+                 (cadr hit) (mark:fill-segs-of-ins (cadr hit))))
     (if (and part (not (mark:fill-mline-p nm)))
       (setq *mark:line-vis* (1+ *mark:line-vis*)))
     (if (and (> n 100) (= (rem i 250) 0))
