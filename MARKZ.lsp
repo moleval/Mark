@@ -78,6 +78,7 @@
 
 ;; Ред. 48.0: секции/ярусы и шкала «в свету» (зеркало MarkZV)
 (setq *mark:fill-geo*    nil)     ;; (ename . (ширина секции высота яруса))
+(setq *mark:sec-reserve*  nil)     ;; ширины объединённых секций: резерв номеров
 (setq *mark:cell-hs*     nil)     ;; Ред. 48.8: высоты всех ячеек каркаса (З-1)
 (setq *mark:scale1*      nil)     ;; Блок 1: ключи длин ригелей, мм
 (setq *mark:scale-final* nil)     ;; ((размер источник) ...), Р/З/РЗ
@@ -119,7 +120,7 @@
 ;;;--------------------- Состояние сеанса -----------------------------
 
 ;; Редакция модуля — видно в консоли при загрузке и в баннерах
-(setq *mark:rev*    "Ред. 48.42")
+(setq *mark:rev*    "Ред. 48.43")
 (setq *mark:build*  "Ред. 36.6")
 
 ;; МАРКАЗАП: один выбор; один UNDO на весь пакет
@@ -1160,6 +1161,9 @@
         (mark:num-shift-out))
       (setq *mark:heights* hlist))
     (progn
+      ;; Нет геометрии секций — резерв объединённых Т-половин не переносим
+      ;; из предыдущего прогона.
+      (setq *mark:sec-reserve* nil)
       (setq wlist
         (mark:sort-unique
           (mark:positives (mark:recs-widths))))
@@ -1276,16 +1280,20 @@
     (if suffix suffix "")))
 
 (defun mark:build-marks (/ out r w h geo secw tierh iw ih letter hnum suffix m
-                            subw subl subh mapW mapH fullH lst pos v)
+                            subw subl subh mapW mapH fullH fullW lst pos v)
   ;; Ред. 48.0: марка от секции и яруса. Подындексы — глобально по
   ;; номеру секции (.1/.2/.3 по возрастанию ширины) и букве яруса
   ;; (.а/.б/.в по возрастанию высоты). Без гео — марка не формируется.
   ;; Ред. 48.38: литера по высоте нужна только для различения нескольких
   ;; фактических высот внутри одного геометрического яруса. fullH —
   ;; ярусы, где есть заполнение полной высоты tierh.
+  ;; Ред. 48.43: тот же принцип для ширины. Одинаковые Т-половины не
+  ;; получают ".1" только из-за отличия от ширины секции. Подындекс нужен
+  ;; при полной ширине + подъячейке или при двух и более разных подъячейках.
   (setq mapW  nil
         mapH  nil
         fullH nil
+        fullW nil
         out   nil)
   (foreach r *mark:records*
     (setq geo (cdr (assoc (mark:rec-get r 'ename) *mark:fill-geo*)))
@@ -1300,6 +1308,8 @@
               h  (mark:rec-get r 'height))
         (if (and ih (mark:same-num? h (nth 1 geo)))
           (setq fullH (cons ih fullH)))
+        (if (and iw (mark:same-num? w (nth 0 geo)))
+          (setq fullW (cons iw fullW)))
         (if (and iw (not (mark:same-num? w (nth 0 geo))))
           (setq mapW (mark:map-add mapW iw w)))
         (if (and ih (not (mark:same-num? h (nth 1 geo))))
@@ -1334,10 +1344,13 @@
           (progn
             (setq lst (cdr (assoc iw mapW))
                   pos 0)
-            (foreach v lst
-              (setq pos (1+ pos))
-              (if (and (null subw) (mark:same-num? v w))
-                (setq subw pos)))))
+            ;; Одна фактическая ширина у всех подъячеек секции ничего не
+            ;; различает: без полноразмерного заполнения подындекс не нужен.
+            (if (or (member iw fullW) (> (length lst) 1))
+              (foreach v lst
+                (setq pos (1+ pos))
+                (if (and (null subw) (mark:same-num? v w))
+                  (setq subw pos))))))
         (if (and ih (not (mark:same-num? h tierh)))
           (progn
             (setq lst (cdr (assoc ih mapH))
@@ -1409,6 +1422,9 @@
   (foreach geo *mark:fill-geo*
     (if (and (cdr geo) (numberp (cadr geo)))
       (setq ws (cons (float (mark:sec-key (cadr geo))) ws))))
+  ;; Объединение равных Т-половин не должно сдвигать номера следующих
+  ;; секций: прежняя ширина остаётся незанятым резервным номером.
+  (setq ws (append ws *mark:sec-reserve*))
   (mark:sort-unique (mark:positives ws)))
 
 ;; Шкала номеров секций, чистая: длины ригелей (как «Рг N» в MarkZV),
@@ -4488,7 +4504,8 @@
   (mark:out "5-Сетка-все-типы: каркас — блоки (динамика) и мультилинии; отрезки, дуги, полилинии — не каркас (Ред. 48.6).")
   (mark:out "Выберите объекты каркаса рамкой. Enter — отмена.")
   (setq *mark:fill-geo* nil
-        *mark:cell-hs*  nil)
+        *mark:cell-hs*  nil
+        *mark:sec-reserve* nil)
   (setq ss (mark:fill-all-ss))
   (if (null ss)
     (list cells pts 'cancel)
@@ -4632,6 +4649,7 @@
       (foreach bb boxes
         (setq out (cons (append bb (mark:sec-geo-one bb vs2 hs)) out)))
       (setq boxes (reverse out))
+      (setq boxes (mark:fill-equal-t-cells boxes hs))
       ;; Ред. 48.8 (З-1): высоты всех ячеек каркаса (включая проёмные) —
       ;; источник ярусной шкалы: буквы не зависят от наличия заполнений.
       (setq *mark:cell-hs* nil)
@@ -6379,13 +6397,13 @@
                         vs))))))
   (list vs hs))
 
-;; Ред. 48.42: вертикальная грань не должна заходить внутрь пролёта
+;; Ред. 48.43: вертикальная грань не должна заходить внутрь пролёта
 ;; верхнего/нижнего ригеля. Если конец ригеля лежит снаружи вычисленной
-;; грани на расстоянии (5; *mark:fill-tol*] мм, привязываем грань к ближайшему
-;; такому концу. Отклонения до 5 мм — штатный зазор/округление: на контрольном
-;; чертеже шесть правильных ячеек имеют именно 5 мм и не должны расширяться.
-;; Дальние концы не трогаем: они могут принадлежать длинному ригелю через
-;; несколько секций. Сужение по внутренним концам здесь не выполняется.
+;; грани более чем на 5 мм (5.5 — защита от погрешности координат) и не
+;; далее *mark:fill-tol*, привязываем грань к ближайшему такому концу.
+;; Номинальные 5 мм здесь не меняются: разрешённый случай равных Т-половин
+;; отдельно проверяется mark:fill-equal-t-cells по соседней ячейке и ригелю.
+;; Дальние концы не трогаем; сужение по внутренним концам не выполняется.
 (defun mark:fill-rail-cell-x (bot top xL xR / it a b d left right)
   (setq left  nil
         right nil)
@@ -6395,14 +6413,14 @@
     (if (< a xL)
       (progn
         (setq d (- xL a))
-        (if (and (> d 5.0)
+        (if (and (> d 5.5)
                  (<= d *mark:fill-tol*)
                  (or (null left) (> a left)))
           (setq left a))))
     (if (> b xR)
       (progn
         (setq d (- b xR))
-        (if (and (> d 5.0)
+        (if (and (> d 5.5)
                  (<= d *mark:fill-tol*)
                  (or (null right) (< b right)))
           (setq right b)))))
@@ -7976,6 +7994,116 @@
       (if (null yt) (setq yt y1))
       (list (mark:round1 (- xr xl)) (mark:round1 (- yt yb))))))
 
+
+;; Ред. 48.43: вспомогательные функции равных Т-половин.
+(defun mark:fill-nth-set (lst idx val / out i x)
+  (setq out nil
+        i   0)
+  (foreach x lst
+    (setq out (cons (if (= i idx) val x) out)
+          i   (1+ i)))
+  (reverse out))
+
+(defun mark:fill-t-rail-end? (hs bb target side / xL xR yB yT h hit gap)
+  ;; target — наружный конец, на который предлагается расширить меньшую
+  ;; Т-половину. Разрешаем только фактический конец её bot/top.
+  (setq xL   (nth 0 bb)
+        yB   (nth 1 bb)
+        xR   (nth 2 bb)
+        yT   (nth 3 bb)
+        gap  (+ *mark:fill-tol* 25.0)
+        hit  nil)
+  (foreach h hs
+    (if (and (or (<= (abs (- (+ (nth 0 h) (nth 3 h)) yB)) 1.0)
+                 (<= (abs (- (- (nth 0 h) (nth 3 h)) yT)) 1.0))
+             (<= (nth 1 h) (+ xL gap))
+             (>= (nth 2 h) (- xR gap))
+             (or (and (> side 0)
+                      (<= (abs (- (nth 1 h) target)) 1.0))
+                 (and (< side 0)
+                      (<= (abs (- (nth 2 h) target)) 1.0))))
+      (setq hit t)))
+  hit)
+
+(defun mark:fill-equal-t-cells (boxes hs / i j n a b lb rb li ri lw rw dw
+                                  gap uni secw tier target newsec oldsec
+                                  newbox changed)
+  ;; Две соседние ячейки одной ярусной строки, которые вместе покрывают
+  ;; всю секцию, — равные Т-половины. Если их ширины различаются не более
+  ;; чем на 5 мм (0.5 — допуск представления), меньшую расширяем только
+  ;; наружу до ширины большей и только при подтверждённом конце ригеля.
+  ;; Обе получают новую общую ширину секции. Старая ширина резервируется
+  ;; в шкале, чтобы техническое объединение не сдвинуло следующие номера.
+  (setq i       0
+        n       (length boxes)
+        changed 0)
+  (while (< i (1- n))
+    (setq j (1+ i))
+    (while (< j n)
+      (setq a (nth i boxes)
+            b (nth j boxes))
+      (if (and (>= (length a) 6) (>= (length b) 6)
+               (numberp (nth 4 a)) (numberp (nth 4 b))
+               (numberp (nth 5 a)) (numberp (nth 5 b))
+               (<= (abs (- (nth 1 a) (nth 1 b))) 0.1)
+               (<= (abs (- (nth 3 a) (nth 3 b))) 0.1)
+               (<= (abs (- (nth 4 a) (nth 4 b))) 0.1)
+               (<= (abs (- (nth 5 a) (nth 5 b))) 0.1))
+        (progn
+          (if (<= (nth 0 a) (nth 0 b))
+            (setq lb a rb b li i ri j)
+            (setq lb b rb a li j ri i))
+          (setq lw    (- (nth 2 lb) (nth 0 lb))
+                rw    (- (nth 2 rb) (nth 0 rb))
+                dw    (abs (- lw rw))
+                gap   (- (nth 0 rb) (nth 2 lb))
+                uni   (- (nth 2 rb) (nth 0 lb))
+                secw  (nth 4 lb)
+                tier  (nth 5 lb))
+          (if (and (> dw 0.1) (<= dw 5.5)
+                   (> gap 1.0) (<= gap (+ *mark:fill-tol* 25.0))
+                   (<= (abs (- secw uni)) 1.0))
+            (progn
+              (if (< lw rw)
+                (setq target (- (nth 2 lb) rw))
+                (setq target (+ (nth 0 rb) lw)))
+              (if (mark:fill-t-rail-end?
+                    hs (if (< lw rw) lb rb) target
+                    (if (< lw rw) 1.0 -1.0))
+                (progn
+                  (setq newsec (if (< lw rw)
+                                 (- (nth 2 rb) target)
+                                 (- target (nth 0 lb)))
+                        oldsec secw)
+                  (if (< lw rw)
+                    (progn
+                      (setq newbox (list target (nth 1 lb) (nth 2 lb) (nth 3 lb)
+                                         newsec tier)
+                            boxes  (mark:fill-nth-set boxes li newbox)
+                            newbox (list (nth 0 rb) (nth 1 rb) (nth 2 rb) (nth 3 rb)
+                                         newsec tier)
+                            boxes  (mark:fill-nth-set boxes ri newbox)))
+                    (progn
+                      (setq newbox (list (nth 0 lb) (nth 1 lb) (nth 2 lb) (nth 3 lb)
+                                         newsec tier)
+                            boxes  (mark:fill-nth-set boxes li newbox)
+                            newbox (list (nth 0 rb) (nth 1 rb) target (nth 3 rb)
+                                         newsec tier)
+                            boxes  (mark:fill-nth-set boxes ri newbox))))
+                  (if (not (member oldsec *mark:sec-reserve*))
+                    (setq *mark:sec-reserve* (cons oldsec *mark:sec-reserve*)))
+                  (setq changed (1+ changed))
+                  (mark:out
+                    (strcat "[INFO] Равные Т-половины: секция "
+                            (rtos oldsec 2 0) " -> " (rtos newsec 2 0)
+                            ", ширина " (rtos (if (< lw rw) rw lw) 2 0) "."))))))))
+      (setq j (1+ j)))
+    (setq i (1+ i)))
+  (mark:out
+    (strcat "[INFO] Выровнено пар равных Т-половин: "
+            (itoa changed) "."))
+  boxes)
+
 ;; Значение динамического свойства по маске имени
 (defun mark:dyn-by-mask (e mask / pairs p v out)
   (setq pairs (mark:dyn-pairs e)
@@ -8165,7 +8293,7 @@
         (setq row sc))))
   (if row
     (nth 1 row)
-    "?"))
+    (if (mark:index-of *mark:sec-reserve* w) "З" "?")))
 
 ;; Карта подындексов: ((ключ . (размеры)) ...)
 (defun mark:map-add (map key val / hit)
@@ -8235,7 +8363,8 @@
                                n-polyo n-line vs2 out ins hit cnt glaz cs)
   ;; Ред. 48.32: сначала кэш предыдущего выбора каркаса — следующие
   ;; проходы витражей не спрашивают рамку заново
-  (setq ss nil)
+  (setq ss nil
+        *mark:sec-reserve* nil)
   (if *mark:carc-cache*
     (progn
       (setq cs (mark:carc-ss))
@@ -8353,14 +8482,18 @@
       ;; Ред. 48.8 (З-1): высоты всех ячеек каркаса (включая проёмные
       ;; и глухие) — источник ярусной шкалы, как в режиме 5 МАРКАЗАП.
       ;; Та же функция, что для заполнений (sec-geo-one, целые мм).
-      (setq *mark:cell-hs* nil)
+      (setq *mark:cell-hs* nil
+            out nil)
       (foreach bb boxes
-        (setq hit (mark:sec-geo-one bb vs2 hs))
-        (if (and hit (numberp (nth 1 hit)))
-          (setq *mark:cell-hs* (cons (nth 1 hit) *mark:cell-hs*))))
-      ;; сопоставление: точка вставки блока = угол ячейки
-      (setq out nil
-            cnt 0)
+        (setq out (cons (append bb (mark:sec-geo-one bb vs2 hs)) out)))
+      (setq boxes (mark:fill-equal-t-cells (reverse out) hs)
+            out   nil)
+      (foreach bb boxes
+        (if (numberp (nth 5 bb))
+          (setq *mark:cell-hs* (cons (nth 5 bb) *mark:cell-hs*))))
+      ;; сопоставление: точка вставки блока = угол ячейки; геометрия
+      ;; секции уже уточнена общим правилом равных Т-половин.
+      (setq cnt 0)
       (foreach e *mark:fills*
         (setq ins (cdr (assoc 10 (entget e)))
               hit nil)
@@ -8370,7 +8503,7 @@
               (if (and (null hit)
                        (<= (abs (- (float (nth 0 bb)) (float (car ins)))) 2.0)
                        (<= (abs (- (float (nth 1 bb)) (float (cadr ins)))) 2.0))
-                (setq hit (mark:sec-geo-one bb vs2 hs))))))
+                (setq hit (list (nth 4 bb) (nth 5 bb)))))))
         (if hit
           (setq out (cons (cons e hit) out))
           (setq cnt (1+ cnt))))

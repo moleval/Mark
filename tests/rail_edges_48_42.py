@@ -4,8 +4,10 @@
 MARKZ_LOG-7 доказал, что нормализация 48.41 дала 124/439 осей, но не изменила
 ни одну из 351 ячейки. Семь последующих фактических распечаток показали, что
 пролёты ригелей равны правильным границам. Проверка на всей модели дала 29
-кандидатов: 23 с ошибкой 10/15/25 мм и 6 правильных ячеек с допустимыми 5 мм.
-Правило (5; 30] мм исправляет первые и не трогает вторые.
+кандидатов: 23 с ошибкой 10/15/25 мм и 6 ячеек с отличием 5 мм. LOG-8
+показал, что порог 5 мм был слишком мягким: изолированные 195 мм расширялись
+до 200. Ред. 48.43 оставляет обычной привязке правило (5.5; 30] мм; особый
+случай равных Т-половин 1095/1100 проверяется отдельной регрессией 48.43.
 """
 from pathlib import Path
 import re
@@ -26,11 +28,11 @@ def snap_edges(bot, top, xL, xR):
         a, b = float(item[1]), float(item[2])
         if a < xL:
             distance = xL - a
-            if 5.0 < distance <= TOL and (left is None or a > left):
+            if 5.5 < distance <= TOL and (left is None or a > left):
                 left = a
         if b > xR:
             distance = b - xR
-            if 5.0 < distance <= TOL and (right is None or b < right):
+            if 5.5 < distance <= TOL and (right is None or b < right):
                 right = b
     return (left if left is not None else xL,
             right if right is not None else xR)
@@ -47,10 +49,10 @@ CASES = [
     ("ВН-1", 4, 51380.0, 51730.0, 51380.0, 51755.0),
 ]
 
-# Правильные ячейки, где конец ригеля отличается ровно на 5 мм.
-FIVE_MM = [
+# Изолированные правильные ячейки: конец ригеля отличается ровно на 5 мм.
+# Пара 1095/1100 сюда не входит — это отдельное правило равных Т-половин.
+ISOLATED_FIVE_MM = [
     ("ВН-5", 3, 5800.0, 5995.0, 5795.0, 5995.0),
-    ("ВН-3", 3, 4650.0, 5745.0, 4650.0, 5750.0),
 ]
 
 failures = []
@@ -69,7 +71,7 @@ if changed != 23:
     failures.append(f"изменено {changed}, ожидалось 23")
 
 unchanged = 0
-for name, count, x0, x1, rail0, rail1 in FIVE_MM:
+for name, count, x0, x1, rail0, rail1 in ISOLATED_FIVE_MM:
     for _ in range(count):
         got = snap_edges([rail_item(rail0, rail1, 1)],
                          [rail_item(rail0, rail1, 2)], x0, x1)
@@ -77,8 +79,8 @@ for name, count, x0, x1, rail0, rail1 in FIVE_MM:
             failures.append(f"{name}: штатные 5 мм не должны менять {x0}..{x1}: {got}")
         else:
             unchanged += 1
-if unchanged != 6:
-    failures.append(f"сохранено {unchanged}, ожидалось 6 ячеек с 5 мм")
+if unchanged != 3:
+    failures.append(f"сохранено {unchanged}, ожидалось 3 изолированные ячейки с 5 мм")
 
 # ВН-4 Б24.1: нижний длинный ригель 2950..5200 не должен протянуть ячейку
 # через соседнюю секцию; ближний конец верхнего ригеля 4050 — правильный.
@@ -104,6 +106,10 @@ if not rev or tuple(map(int, rev.groups())) < (48, 42):
     failures.append("редакция MARKZ старше 48.42")
 if mz.count("(defun mark:fill-rail-cell-x") != 1:
     failures.append("нет единственного mark:fill-rail-cell-x")
+rail_body = mz[mz.index("(defun mark:fill-rail-cell-x"):]
+rail_body = rail_body[:rail_body.index("(defun mark:fill-t-rail-end?")]
+if "(> d 5.5)" not in rail_body or "(> d 5.0)" in rail_body:
+    failures.append("обычная привязка должна пропускать только отличие >5.5 мм")
 body = mz[mz.index("(defun mark:fill-items->cells"):]
 body = body[:body.index("(defun mark:fill-closed-cells")]
 if "xedges (mark:fill-rail-cell-x bot top xL xR)" not in body:
@@ -128,6 +134,6 @@ if failures:
     raise SystemExit(1)
 
 print("7 групп / 23 ячейки: наружные границы привязаны к фактическим ригелям")
-print("6 правильных ячеек с отличием 5 мм сохранены без изменений")
+print("3 изолированные ячейки 195 мм сохранены без расширения до 200")
 print("Длинный ригель ВН-4 не расширяет ячейку через соседнюю секцию")
 print("ИТОГ: проверки Ред. 48.42 пройдены")
