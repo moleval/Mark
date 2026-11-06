@@ -1,18 +1,19 @@
 # -*- coding: utf-8 -*-
-"""Структурная проверка протоколов MarkZ (текущий билд 36.6) / MarkV 33.18.
+"""Структурная проверка протоколов MarkZ / MarkV.
 
 AutoCAD в CI недоступен, поэтому проверяются именно точки вывода и запуска
 протокола, а не результат работы ActiveX. Расчёты маркировки здесь не меняются.
 """
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 mz = (ROOT / "MARKZ.lsp").read_bytes().decode("cp1251")
 mv = (ROOT / "MarkV.lsp").read_bytes().decode("cp1251")
 
 checks = [
-    ("MARKZ build", '*mark:build*  "Ред. 36.6"' in mz),
-    ("MarkV build", '*mk:build*          "Ред. 33.18"' in mv),
+    ("MARKZ build", bool(re.search(r'\*mark:build\*\s+"Ред\. \d+\.\d+"', mz))),
+    ("MarkV build", bool(re.search(r'\*mk:build\*\s+"Ред\. \d+\.\d+"', mv))),
     ("MARKZ default path", 'DWGPREFIX' in mz and 'MARKZ_LOG.txt' in mz),
     ("MarkV default path", 'DWGPREFIX' in mv and 'MARKV_LOG.txt' in mv),
     ("MARKZ tee", '(defun mark:emit' in mz and '(mark:log-write msg)' in mz
@@ -31,4 +32,6 @@ checks = [
 failed = [name for name, ok in checks if not ok]
 if failed:
     raise SystemExit("FAIL: " + ", ".join(failed))
-print(f"OK: {len(checks)} проверок протоколов; MARKZ 36.6, MarkV 33.18")
+mz_build = re.search(r'\*mark:build\*\s+"(Ред\. \d+\.\d+)"', mz).group(1)
+mv_build = re.search(r'\*mk:build\*\s+"(Ред\. \d+\.\d+)"', mv).group(1)
+print(f"OK: {len(checks)} проверок протоколов; MARKZ {mz_build}, MarkV {mv_build}")

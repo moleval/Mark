@@ -132,9 +132,9 @@
 ;;; 1. КОНФИГУРАЦИЯ
 ;;;=====================================================================
 ;; Версия — как у заказчика: редакция и билд отдельными записями «Ред. N.N».
-;; В логах печатается «Ред. 7.0 / Ред. 33.18» — две редакции, без слова build.
+;; В логах печатается «Ред. 7.0 / Ред. 33.19» — две редакции, без слова build.
 (setq *mk:ver*            "Ред. 7.0")
-(setq *mk:build*          "Ред. 33.18")
+(setq *mk:build*          "Ред. 33.19")
 
 (setq *mk:block-fill*     "Заполнение в витраж")
 (setq *mk:block-vitrage*  "Атрибуты витража")
@@ -247,6 +247,12 @@
 (setq *mk:batch-mode*           nil)   ; "Блоки" / "Мультилинии" / "Все-типы"
 (setq *mk:scope-mode*           "Блоки") ; режим последнего сбора — его же берут МАРКАВСТ/МАРКАВРГ
 (setq *mk:batch-keep-grid*      nil)   ; оставлять ли сетку после пакета
+;; Ред. 33.19: область нумерации MarkV/MarkZ.
+(setq *mk:mark-mode*           nil)   ; "joint" / "separate"
+(setq *mk:joint-scale*         nil)   ; общая шкала, полученная probe MarkZ
+(setq *mk:joint-scale-source*  nil)
+(setq *mk:vitrage-scales*      nil)   ; (tag scale source), только separate
+(setq *mk:current-scale-source* nil)
 ;; Режим «Все-типы»: слияние параллельных линий одного профиля и отсев мусора
 (setq *mk:merge-width*          200.0) ; макс. расстояние между линиями профиля
 (setq *mk:min-seg*              50.0)  ; короче — не элемент каркаса
@@ -2523,12 +2529,84 @@
 ;; Шкала размеров «в свету»: уникальные длины ригелей и ширины заполнений,
 ;; по возрастанию. Индекс в этой шкале и есть цифра марки ригеля —
 ;; так она совпадает с цифрой марки заполнения (в MarkZ: номер = ширина).
+;; Общая шкала для совместного режима. Точный список включает не только
+;; длины ригелей, но и ширины ячеек/резерв MarkZ; поэтому объединять только
+;; LEN_IDX всех групп недостаточно. MarkZ уже загружен в штатном рабочем
+;; комплекте и возвращает тот же список, который попадёт в Шкала.txt.
+(defun mk:joint-fallback-scale (/ all beams b v out g saved-prefix)
+  (setq all nil
+        saved-prefix *mk:last-prefix*)
+  (foreach g *mk:last-groups*
+    (setq beams (cdr (assoc 'BEAMS (mk:group-data g))))
+    (foreach b beams
+      (setq v (mk:rec-get b 'LENGTH))
+      (if (and (numberp v) (null (mk:rec-get b 'VERT)))
+        (setq all (cons (atof (mk:size-key v)) all)))))
+  (setq out nil)
+  (foreach v (vl-sort all '<)
+    (if (not (member v out)) (setq out (cons v out))))
+  (setq *mk:last-prefix* saved-prefix)
+  (reverse out))
+
+(defun mk:joint-length-scale (/ r)
+  (setq *mk:current-scale-source* "fallback")
+  (if (null *mk:joint-scale*)
+    (progn
+      ;; Undefined function тоже перехватывается: MarkV можно загрузить
+      ;; отдельно, но тогда честно сообщаем о неполной fallback-шкале.
+      (setq r (vl-catch-all-apply 'mark:scale-probe (list *mk:last-scope*)))
+      (if (and (not (vl-catch-all-error-p r)) r)
+        (progn
+          (setq *mk:joint-scale* r
+                *mk:joint-scale-source* "MarkZ"
+                *mk:current-scale-source* "MarkZ")
+          (mk:emit (strcat "\n  [INFO] Общая шкала MarkZ: "
+                           (itoa (length r)) " номеров (ригели + ячейки + резерв).")))
+        (progn
+          (setq *mk:joint-scale* (mk:joint-fallback-scale)
+                *mk:joint-scale-source* "fallback")
+          (mk:emit
+            "\n  [WARN] MarkZ scale-probe недоступен или dynamic block требует Explode: использована только общая шкала ригелей; синхронизация не подтверждена.")))))
+  *mk:joint-scale*)
+
+
+
+;; Раздельный режим: probe вызывается на enames одной рамки. Это даёт
+;; независимые полные шкалы MarkZ (ригели + ячейки + локальный резерв), а не
+;; девять копий общей шкалы и не прежнее несовпадение «только ригели vs ячейки».
+(defun mk:vitrage-length-scale (fallback / tag grp hit r result source)
+  (setq tag *mk:last-prefix*
+        grp (if tag (assoc tag *mk:last-groups*) nil)
+        hit (if tag (assoc tag *mk:vitrage-scales*) nil))
+  (if hit
+    (progn
+      (setq *mk:current-scale-source* (nth 2 hit))
+      (nth 1 hit))
+    (progn
+      (setq r (if grp
+                (vl-catch-all-apply 'mark:scale-probe (list (nth 2 grp)))
+                nil))
+      (if (and (not (vl-catch-all-error-p r)) r)
+        (setq result r source "MarkZ")
+        (setq result fallback source "fallback"))
+      (setq *mk:vitrage-scales*
+            (cons (list tag result source) *mk:vitrage-scales*)
+            *mk:current-scale-source* source)
+      (if (= source "MarkZ")
+        (mk:say-once
+          (strcat "\n  [INFO] " (if tag tag "<витраж>")
+                  ": локальная шкала MarkZ, " (itoa (length result)) " номеров."))
+        (mk:say-once
+          (strcat "\n  [WARN] " (if tag tag "<витраж>")
+                  ": MarkZ scale-probe недоступен или dynamic block требует Explode; оставлена локальная шкала только по ригелям, синхронизация не подтверждена.")))
+      result)))
+
 (defun mk:length-scale (beams panels / bvals pvals out extra v)
-  ;; Шкала номеров = длины горизонтальных ригелей «в свету», по возрастанию.
-  ;; Ред. 3.9: ширины заполнений шкалу больше НЕ расширяют — секция всегда
-  ;; ограничена ригелями, а узкие подъячейки под Т-узлом в MarkZ получают
-  ;; подындекс (.1/.2), а не собственный номер. Несовпавшие ширины
-  ;; выводятся отдельной строкой — для сверки с «<dwg> Шкала.txt» MarkZ.
+  (setq *mk:current-scale-source* "local")
+  ;; Сначала собираем прежнюю шкалу ригелей как fallback и для одиночного
+  ;; витража. В мультивитражном joint/separate она заменяется read-only
+  ;; расчётом MarkZ: общим для joint или scoped по текущей рамке для separate.
+  ;; Поэтому Блок 2 (З) и резерв не теряются и не расходятся между модулями.
   (setq bvals nil)
   (foreach b beams
     (setq v (mk:rec-get b 'LENGTH))
@@ -2538,6 +2616,13 @@
   (foreach v (vl-sort bvals '<)
     (if (not (member v out)) (setq out (cons v out))))
   (setq out (reverse out))
+  (cond
+    ((and (= *mk:mark-mode* "joint")
+          (> (length *mk:last-groups*) 1))
+     (setq out (mk:joint-length-scale)))
+    ((and (= *mk:mark-mode* "separate")
+          (> (length *mk:last-groups*) 1))
+     (setq out (mk:vitrage-length-scale out))))
   ;; диагностика: ширины заполнений без парного ригеля
   (setq pvals nil extra nil)
   (foreach pn panels
@@ -2550,7 +2635,10 @@
     (if (not (member v extra)) (setq extra (cons v extra))))
   (setq extra (reverse extra))
   (mk:say-once (strcat "\n  [INFO] Шкала размеров в свету: " (itoa (length out))
-                       " (по ригелям): "
+                       (cond
+                         ((= *mk:mark-mode* "joint") " (совместная MarkZ): ")
+                         ((= *mk:current-scale-source* "MarkZ") " (витраж MarkZ): ")
+                         (t " (по ригелям): "))
                        (mk:join (mapcar '(lambda (v) (rtos v 2 0)) out) " ")))
   ;; Не дефект: в MarkZ заполнение шириной, которой нет среди длин ригелей,
   ;; получает подындекс .1/.2 у Т-узла. Печатается один раз за прогон и с
@@ -4867,7 +4955,11 @@
 ;; t — идёт сбор внутри витража: префикс витража задан группой
 (setq *mk:in-group* nil)
 
-(defun mk:group-cache-clear () (setq *mk:group-cache* nil))
+(defun mk:group-cache-clear ()
+  (setq *mk:group-cache* nil
+        *mk:joint-scale* nil
+        *mk:joint-scale-source* nil
+        *mk:vitrage-scales* nil))
 
 (defun mk:group-data (grp / tag enames sub data hit)
   (setq tag (nth 0 grp) enames (nth 2 grp))
@@ -4961,6 +5053,22 @@
             *mk:last-ss*     (mk:ss-of enames))
       (mk:print-kinds)
       (mk:print-groups *mk:last-groups* *mk:last-extra*)
+      ;; Одна рамка — локальная шкала по определению. Для нескольких
+      ;; витражей спрашиваем до ЭТАПА 1, чтобы все четыре этапа видели режим.
+      (setq *mk:joint-scale* nil *mk:joint-scale-source* nil
+            *mk:vitrage-scales* nil)
+      (if (> (length *mk:last-groups*) 1)
+        (progn
+          (initget "Совместная Раздельная С Р")
+          (setq mode
+            (getkword "\nМаркировка нескольких витражей [Совместная/Раздельная] <Совместная>: "))
+          (setq *mk:mark-mode*
+                (if (member mode '("Раздельная" "Р")) "separate" "joint"))
+          (mk:emit
+            (if (= *mk:mark-mode* "joint")
+              "\n  [INFO] Совместная маркировка: одна общая шкала MarkZ для всех витражей."
+              "\n  [INFO] Раздельная маркировка: шкала независима внутри каждого витража.")))
+        (setq *mk:mark-mode* "separate"))
       ;; «Вне типов MarkV» печатается один раз и ОДНИМ списком: подробный
       ;; список (<имя> [DXF-тип]) уже содержит имена вставок, а прежний
       ;; второй список («Вставок вне типов MarkV: N — имена блоков ниже»)
@@ -5479,7 +5587,9 @@
   (if *mk:log-failed*
     (mk:emit "\n  [WARN] Файл протокола недоступен; сообщения только в командной строке."))
   (setq *mk:batch* nil *mk:batch-ss* nil *mk:batch-mode* nil
-        *mk:last-groups* nil *mk:last-extra* nil *mk:last-frames* nil)
+        *mk:last-groups* nil *mk:last-extra* nil *mk:last-frames* nil
+        *mk:mark-mode* nil *mk:joint-scale* nil *mk:joint-scale-source* nil
+        *mk:vitrage-scales* nil *mk:current-scale-source* nil)
   (mk:diag-reset)
   (setq *mk:dyn-cache* nil *mk:vitrage-cache* nil *mk:no-vitrage-prompted* nil
         *mk:manual-vitrage-prefix* nil *mk:allowance-unknown* nil)

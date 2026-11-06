@@ -29,7 +29,8 @@ helper = function("mark:vz-bb-of")
 minx = function("mark:vz-minx")
 clusters = function("mark:vz-clusters")
 cbb = function("mark:vz-cbb")
-split = function("mark:vz-split")
+split = function("mark:vz-split-geometric")
+public_split = function("mark:vz-split")
 reset = function("mark:reset-state")
 
 # Только первый обход заполнений обращается к ActiveX. Comparator vl-sort и
@@ -45,6 +46,9 @@ assert "bb0   (cdr e0)" in clusters, "исправление очереди 48.2
 assert "queue (append queue hit)" in clusters
 assert "*mark:vz-bb-cache*  nil" in reset
 assert "(setq out (reverse out)\n        *mark:vz-bb-cache* nil)\n  out)" in split
+# 48.46: сначала рамки, геометрическая связность остаётся fallback.
+assert "mark:vz-frame-split" in public_split
+assert "mark:vz-split-geometric" in public_split
 
 # nil — тоже закэшированный результат. Проверка через наличие ключа, а не через
 # truthiness значения, не делает повторный запрос для блока без габарита.

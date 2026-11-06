@@ -104,6 +104,16 @@
 ;; режим: "joint" (общие шкалы) / "separate" (свои per витраж) / nil
 (setq *mark:vz-map*     nil)
 (setq *mark:vz-mode*    nil)
+;; Ред. 48.46: рамки и состояние независимых шкал по витражам.
+(setq *mark:vz-frames*        nil)
+(setq *mark:vz-by-frames*     nil)
+(setq *mark:vz-current-frame* nil)
+(setq *mark:vz-carc-map*      nil)
+(setq *mark:vz-state-list*    nil)
+;; t только во время read-only probe для MarkV: не писать промежуточный лог.
+(setq *mark:probe-quiet*      nil)
+(setq *mark:probe-readonly*    nil)
+(setq *mark:probe-unsupported* nil)
 ;; Ред. 48.44: краткоживущий кэш AABB на время mark:vz-split.
 ;; Один GetBoundingBox на заполнение; ActiveX не вызывается из comparator
 ;; vl-sort и не повторяется для каждого блока «Атрибуты витража».
@@ -124,7 +134,7 @@
 ;;;--------------------- Состояние сеанса -----------------------------
 
 ;; Редакция модуля — видно в консоли при загрузке и в баннерах
-(setq *mark:rev*    "Ред. 48.45")
+(setq *mark:rev*    "Ред. 48.46")
 (setq *mark:build*  "Ред. 36.6")
 
 ;; МАРКАЗАП: один выбор; один UNDO на весь пакет
@@ -251,8 +261,12 @@
 (defun mark:emit (msg)
   (if (not (mark:strp msg))
     (setq msg (vl-princ-to-string msg)))
-  (mark:log-write msg)
-  (princ msg)
+  ;; Probe MarkV вызывает геометрию MarkZ до основного прогона. Его
+  ;; промежуточные строки не должны попадать ни в консоль, ни в MARKZ_LOG.
+  (if (not *mark:probe-quiet*)
+    (progn
+      (mark:log-write msg)
+      (princ msg)))
   nil)
 
 (defun mark:out (msg)
@@ -733,7 +747,10 @@
      ;; Ред. 48.32: и кэш каркаса тоже
      (setq *mark:vz-map*  nil
            *mark:vz-mode* nil
-           *mark:carc-cache* nil)
+           *mark:carc-cache* nil
+           *mark:vz-carc-map* nil
+           *mark:vz-state-list* nil
+           *mark:vz-current-frame* nil)
      (mark:out "")
      (mark:out (strcat "[INFO] Выбрано объектов: " (itoa *mark:sel-total*)))
      (mark:out (strcat "[INFO] Заполнений: " (itoa (length *mark:fills*))))
@@ -6802,6 +6819,16 @@
               (setq n (1+ n))))))))
   n)
 
+(defun mark:fill-explode-segs (e)
+  ;; Probe не имеет права создавать/перемещать/удалять даже временные копии.
+  ;; Если для чтения нужен Explode, результат считается неподтверждённым;
+  ;; вызывающий MarkV должен показать fallback, а не получить ложную шкалу.
+  (if *mark:probe-readonly*
+    (progn
+      (setq *mark:probe-unsupported* t)
+      nil)
+    (mark:fill-explode-segs-impl e)))
+
 (defun mark:fill-exploded-segs (lst depth force-hid / segs hid ent en ed typ sub
                                      piece shown pair)
   ;; (видимые . скрытые). Скрытые — другие состояния видимости.
@@ -6866,7 +6893,7 @@
           (1+ (if (numberp *mark:copy-left*) *mark:copy-left* 0)))))))
 
 
-(defun mark:fill-explode-segs (e / doc obj copy lst segs p0 dx dy moved fx fy pair)
+(defun mark:fill-explode-segs-impl (e / doc obj copy lst segs p0 dx dy moved fx fy pair)
   ;; Копия в стороне и невидима: на каркасе её нет, даже если стирание сорвётся.
   ;; Разборка даёт текущую видимость, не габарит всех состояний.
   (setq doc (mark:ax-get (vlax-get-acad-object) "ActiveDocument")
@@ -7402,13 +7429,14 @@
   (reverse out))
 
 ;; AABB из краткоживущего кэша группировки; вне её — прежний прямой расчёт.
-(defun mark:vz-bb-of (e / hit)
+(defun mark:vz-bb-of (e / hit bb)
   (setq hit (assoc e *mark:vz-bb-cache*))
   (if hit
     (cdr hit)
-    (mark:fill-e-bb e)))
-
-;; Минимальный X кластера — порядок витражей «слева направо»
+    (progn
+      (setq bb (mark:fill-e-bb e)
+            *mark:vz-bb-cache* (cons (cons e bb) *mark:vz-bb-cache*))
+      bb)))
 (defun mark:vz-minx (cluster / m bb x)
   (setq m nil)
   (foreach e cluster
@@ -7525,9 +7553,96 @@
          "\"Атрибуты витража\" без значения")))))
 
 ;; Подмена состояния под кластер: fills, glazings, префикс, fill-geo
+;; Ключ состояния — ename рамки; для старого geometric fallback — префикс.
+(defun mark:vz-state-key (c / g)
+  (setq g (if (cadr c) (car (cadr c)) nil))
+  (if g g (mark:vz-pfx-of (cadr c))))
+
+;; В состояние входят именно данные, от которых зависят номера и рядовка.
+;; Состояние хранится как (prefix . (('*mark:...* . value) ...)).
+(defun mark:vz-state-save (c / key state)
+  (setq key (mark:vz-state-key c)
+        state
+        (cons (mark:vz-pfx-of *mark:glazings*)
+          (list
+            (cons '*mark:fills*        *mark:fills*)
+            (cons '*mark:glazings*     *mark:glazings*)
+            (cons '*mark:fill-geo*     *mark:fill-geo*)
+            (cons '*mark:scale1*       *mark:scale1*)
+            (cons '*mark:scale-final*  *mark:scale-final*)
+            (cons '*mark:beam-scale*   *mark:beam-scale*)
+            (cons '*mark:scale-shift*  *mark:scale-shift*)
+            (cons '*mark:num-was*      *mark:num-was*)
+            (cons '*mark:widths*       *mark:widths*)
+            (cons '*mark:heights*      *mark:heights*)
+            (cons '*mark:sec-reserve*  *mark:sec-reserve*)
+            (cons '*mark:cell-hs*      *mark:cell-hs*))))
+  (setq *mark:vz-state-list*
+        (cons (cons key state) *mark:vz-state-list*))
+  state)
+
+(defun mark:vz-state-apply (state / p)
+  (foreach p (cdr state)
+    (set (car p) (cdr p)))
+  state)
+
+(defun mark:vz-state-restore (c / hit)
+  (setq hit (assoc (mark:vz-state-key c) *mark:vz-state-list*))
+  (if hit (mark:vz-state-apply (cdr hit)))
+  hit)
+
+;; В раздельном режиме каркас тоже принадлежит текущей рамке. Карта строится
+;; один раз на общий выбор, поэтому девять проходов не повторяют AABB-запросы.
+(defun mark:vz-carcass-map-build (ss / i e ed typ bb fr best besta ar)
+  (setq i (sslength ss))
+  (while (> i 0)
+    (setq i (1- i)
+          e (ssname ss i)
+          ed (entget e)
+          typ (if ed (cdr (assoc 0 ed)) nil))
+    ;; Для прочих DXF-типов ActiveX не нужен: sec-standalone их не использует
+    ;; как каркас (в частности, не трогаем SPDSPOLYMORPHMARK).
+    (if (member typ '("INSERT" "MLINE"))
+      (progn
+        (setq bb (mark:fill-e-bb e)
+              best nil
+              besta 0.0)
+        (foreach fr *mark:vz-frames*
+          (setq ar (mark:vz-overlap-area bb (cadr fr)))
+          (if (> ar besta) (setq besta ar best fr)))
+        (setq *mark:vz-carc-map*
+              (cons (cons e (if (and best (> besta 0.0)) (car best) nil))
+                    *mark:vz-carc-map*)))))
+  (mark:out (strcat "[INFO] Раздельный каркас: привязка к рамкам, объектов "
+                    (itoa (length *mark:vz-carc-map*)) "."))
+  *mark:vz-carc-map*)
+
+(defun mark:vz-carcass-filter (ss / pair out n)
+  (cond
+    ((or (null ss)
+         (not (= *mark:vz-mode* "separate"))
+         (not *mark:vz-by-frames*)
+         (null *mark:vz-current-frame*))
+     ss)
+    (t
+     (if (null *mark:vz-carc-map*)
+       (mark:vz-carcass-map-build ss))
+     (setq out nil n 0)
+     (foreach pair *mark:vz-carc-map*
+       (if (equal (cdr pair) *mark:vz-current-frame*)
+         (progn
+           (setq out (if out (ssadd (car pair) out) (ssadd (car pair)))
+                 n (1+ n)))))
+     (mark:out (strcat "[INFO] Каркас витража "
+                       (mark:vz-pfx-of (list *mark:vz-current-frame*))
+                       ": " (itoa n) " объект(ов)."))
+     out)))
+
 (defun mark:vz-set (c ageo / out)
   (setq *mark:fills*        (car c)
         *mark:glazings*     (cadr c)
+        *mark:vz-current-frame*
+          (if (and *mark:vz-by-frames* (cadr c)) (car (cadr c)) nil)
         *mark:prefix*       ""
         *mark:prefix-found* nil
         out                 nil)
@@ -7579,7 +7694,125 @@
 
 ;; Кластеры + привязка блоков «Атрибуты витража».
 ;; Возвращает ((fills blocks) ...), слева направо.
-(defun mark:vz-split (fills glazings / cls res c g pt d best bd r blks out)
+(defun mark:vz-frame-point (p dx dy ang / c z)
+  (setq c (cos ang) z (sin ang))
+  (list (+ (car p) (- (* dx c) (* dy z)))
+        (+ (cadr p) (+ (* dx z) (* dy c)))))
+
+;; CaptureBBox блока «Атрибуты витража»: то же правило, что mk:frame-capture-bb
+;; в MarkV. Если динамические свойства недоступны, используется обычный AABB.
+(defun mark:vz-frame-bb (e / d p o w h vf hf sx sy ang pts xlo xhi ylo yhi)
+  (setq d (entget e)
+        p (cdr (assoc 10 d))
+        o (vl-catch-all-apply 'vlax-ename->vla-object (list e)))
+  (if (or (null p) (null o) (vl-catch-all-error-p o))
+    nil
+    (progn
+      (setq w  (mark:dyn-by-mask e "*Ширина рамки*")
+            h  (mark:dyn-by-mask e "*Высота рамки*")
+            vf (mark:dyn-by-mask e "*Вертикаль*")
+            hf (mark:dyn-by-mask e "*Горизонталь*")
+            sx (if (cdr (assoc 41 d)) (cdr (assoc 41 d)) 1.0)
+            sy (if (cdr (assoc 42 d)) (cdr (assoc 42 d)) sx)
+            ang (if (cdr (assoc 50 d)) (cdr (assoc 50 d)) 0.0))
+      (if (and (numberp w) (numberp h) (> w 0.0) (> h 0.0))
+        (progn
+          (setq pts
+            (list
+              (mark:vz-frame-point p 0.0 0.0 ang)
+              (mark:vz-frame-point p (if (= vf 1) (- (* w sx)) (* w sx)) 0.0 ang)
+              (mark:vz-frame-point p (if (= vf 1) (- (* w sx)) (* w sx))
+                                  (if (= hf 1) (* h sy) (- (* h sy))) ang)
+              (mark:vz-frame-point p 0.0 (if (= hf 1) (* h sy) (- (* h sy))) ang)))
+          (setq xlo (apply 'min (mapcar 'car pts))
+                xhi (apply 'max (mapcar 'car pts))
+                ylo (apply 'min (mapcar 'cadr pts))
+                yhi (apply 'max (mapcar 'cadr pts)))
+          (list xlo ylo xhi yhi))
+        (mark:fill-e-bb e)))))
+
+(defun mark:vz-overlap-area (a b / x1 x2 y1 y2)
+  (if (and a b)
+    (progn
+      (setq x1 (max (nth 0 a) (nth 0 b))
+            x2 (min (nth 2 a) (nth 2 b))
+            y1 (max (nth 1 a) (nth 1 b))
+            y2 (min (nth 3 a) (nth 3 b)))
+      (if (and (> x2 x1) (> y2 y1)) (* (- x2 x1) (- y2 y1)) 0.0))
+    0.0))
+
+;; ((ename (x0 y0 x1 y1) prefix) ...), сортировка не вызывает ActiveX.
+(defun mark:vz-frame-list (glazings / out g bb)
+  (setq out nil)
+  (foreach g glazings
+    (setq bb (mark:vz-frame-bb g))
+    (if bb
+      (setq out (cons (list g bb (mark:vz-pfx-of (list g))) out))))
+  (vl-sort (reverse out)
+    '(lambda (a b)
+       (if (= (nth 0 (cadr a)) (nth 0 (cadr b)))
+         (< (nth 1 (cadr a)) (nth 1 (cadr b)))
+         (< (nth 0 (cadr a)) (nth 0 (cadr b)))))))
+
+;; Назначение по максимальной площади пересечения, а не по близости
+;; геометрических кластеров. Возвращает ((fills (glazing)) ...) либо nil,
+;; если хотя бы одно заполнение осталось вне рамок (тогда нужен старый fallback).
+(defun mark:vz-frame-split (fills glazings / frames groups e bb fr best besta ar
+                                  hit old new extra out g)
+  (setq frames (mark:vz-frame-list glazings)
+        *mark:vz-frames* frames
+        groups nil
+        extra nil)
+  (foreach fr frames (setq groups (cons (list (car fr) nil) groups)))
+  (setq groups (reverse groups))
+  (foreach e fills
+    (setq bb (mark:vz-bb-of e)
+          best nil
+          besta 0.0)
+    (foreach fr frames
+      (setq ar (mark:vz-overlap-area bb (cadr fr)))
+      (if (> ar besta) (setq besta ar best fr)))
+    (if (and best (> besta 0.0))
+      (progn
+        (setq old (assoc (car best) groups)
+              new (list (car best) (cons e (cadr old)))
+              groups (mark:vz-replace groups old new)))
+      (setq extra (cons e extra))))
+  (if (or (null frames) extra)
+    nil
+    (progn
+      (setq out nil)
+      (foreach g groups
+        (if (cadr g)
+          (setq out (cons (list (reverse (cadr g)) (list (car g))) out))))
+      (setq out (reverse out))
+      (if out
+        (progn
+          (mark:out (strcat "[INFO] Группировка по рамкам: витражей "
+                            (itoa (length out)) ", заполнений "
+                            (itoa (length fills)) ", вне рамок 0."))
+          out)
+        nil))))
+
+;; Публичная группировка: сначала рамки, затем прежняя геометрическая связность.
+(defun mark:vz-split (fills glazings / framed out)
+  (setq *mark:vz-by-frames* nil
+        *mark:vz-frames* nil
+        *mark:vz-bb-cache* nil)
+  (setq framed (mark:vz-frame-split fills glazings))
+  (if framed
+    (progn
+      (setq *mark:vz-by-frames* t
+            *mark:vz-bb-cache* nil)
+      framed)
+    (progn
+      (setq *mark:vz-frames* nil
+            out (mark:vz-split-geometric fills glazings))
+      out)))
+
+(defun mark:vz-split-geometric (fills glazings / cls res c g pt d best bd r blks out)
+  (setq *mark:vz-by-frames* nil
+        *mark:vz-frames* nil)
   (setq cls (mark:vz-clusters fills)
         res nil)
   (foreach c cls
@@ -7622,6 +7855,12 @@
 
 ;; Этап МАРКАРОВКАЗАП по витражам: один кластер — как раньше
 ;; (лог прежний); несколько — полный блок диагностики per витраж
+(defun mark:vz-split-for-mode (fills glazings)
+  (if (= *mark:vz-mode* "separate")
+    (mark:vz-split fills glazings)
+    ;; LOG-9: совместная и одиночная геометрия не меняются.
+    (mark:vz-split-geometric fills glazings)))
+
 (defun mark:vz-marks (/ af ag ageo geo-out cls n i c was-reuse ans)
   (if (and (not *mark:reuse-sel*) (null *mark:fills*))
     (mark:select))
@@ -7631,11 +7870,14 @@
             ag   *mark:glazings*
             ageo *mark:fill-geo*
             geo-out nil
-            cls  (mark:vz-split af ag)
+            cls  (mark:vz-split-geometric af ag)
             n    (length cls)
             i    0
             *mark:vz-map*  nil
-            *mark:vz-mode* nil)
+            *mark:vz-mode* nil
+            *mark:vz-state-list* nil
+            *mark:vz-carc-map* nil
+            *mark:vz-current-frame* nil)
       (setq was-reuse       *mark:reuse-sel*
             *mark:reuse-sel* t)
       ;; Ред. 48.30: несколько витражей — спрашиваем режим маркировки
@@ -7655,6 +7897,13 @@
             (if (= *mark:vz-mode* "joint")
               "[INFO] Совместная: шкалы секций и строк общие на все витражи, марки с префиксами витражей."
               "[INFO] Раздельная: каждому витражу свои шкалы секций и строк."))))
+      (if (= *mark:vz-mode* "separate")
+        (progn
+          (setq cls (mark:vz-split af ag)
+                n (length cls))
+          (mark:out
+            (strcat "[INFO] Раздельная привязка по рамкам: витражей "
+                    (itoa n) " (" (mark:vz-join (mark:vz-names cls) ", ") ")."))))
       (cond
         ;; совместная: один расчёт на всё выделение, per-витражный префикс
         ((= *mark:vz-mode* "joint")
@@ -7677,6 +7926,7 @@
                        " — заполнений " (itoa (length (car c))) " ---"))
              (mark:vz-set c ageo)
              (mark:main)
+             (mark:vz-state-save c)
              ;; Ред. 48.45: ветка готовых блоков входит с ageo=nil.
              ;; Сохраняем геометрию всех проходов для Шкала.txt/ведомости.
              (setq geo-out (append geo-out *mark:fill-geo*)))))
@@ -7700,7 +7950,7 @@
       (setq af   *mark:fills*
             ag   *mark:glazings*
             ageo *mark:fill-geo*
-            cls  (mark:vz-split af ag)
+            cls  (mark:vz-split-for-mode af ag)
             n    (length cls)
             i    0)
       (if (= n 1)
@@ -7716,7 +7966,15 @@
               (strcat "--- Витраж " (itoa i) " из " (itoa n) ": "
                       (mark:vz-title (cadr c)) " ---"))
             (mark:vz-set c ageo)
-            (mark:ar-main))))
+            (if (= *mark:vz-mode* "separate")
+              (if (mark:vz-state-restore c)
+                (mark:ar-main)
+                (progn
+                  (mark:out (strcat "[ERROR] Нет сохранённой шкалы витража "
+                                    (mark:vz-title (cadr c))
+                                    "; рядовка пропущена, чтобы не наследовать чужую шкалу."))
+                  (mark:note-error)))
+              (mark:ar-main)))))
       (setq *mark:fills*    af
             *mark:glazings* ag
             *mark:fill-geo* ageo))))
@@ -8413,6 +8671,8 @@
       (setq ss (vl-catch-all-apply 'ssget nil))
       (if (and ss (not (vl-catch-all-error-p ss)))
         (setq *mark:carc-cache* (mark:ss-list ss)))))
+  (if (and ss (not (vl-catch-all-error-p ss)))
+    (setq ss (mark:vz-carcass-filter ss)))
   (if (or (vl-catch-all-error-p ss) (null ss))
     (progn
       (mark:out "[INFO] Каркас не выбран.")
@@ -8854,7 +9114,7 @@
 ;; *mark:widths* к этому моменту перезаписан mark:ar-reindex
 ;; строками обозначений («1» … «9.1»), читать его как числа
 ;; нельзя (поломка 48.20: numberp "9.1").
-(defun mark:scale-write-file (/ path f row i w src rest ws n)
+(defun mark:scale-write-file-one (/ path f row i w src rest ws n)
   (if *mark:scale-final*
     (progn
       (setq path (strcat (getvar "dwgprefix")
@@ -8900,6 +9160,160 @@
           (close f)
           (mark:out (strcat "[OK] Шкала: " path)))
         (mark:out "[WARN] Шкала не записана: файл недоступен.")))))
+
+;; Раздельная шкала: каждый витраж имеет собственные номера. Не смешиваем
+;; их в один список и не берём состояние последнего прохода.
+(defun mark:scale-write-file-separate (/ path f state-entry state row ws i w src rest n
+                                        af ag ageo)
+  (setq af *mark:fills* ag *mark:glazings* ageo *mark:fill-geo*
+        path (strcat (getvar "dwgprefix")
+                     (vl-filename-base (getvar "dwgname")) " Шкала.txt")
+        f (open path "w"))
+  (if f
+    (progn
+      (write-line "витраж;индекс;размер_мм;источник" f)
+      (foreach state-entry (reverse *mark:vz-state-list*)
+        (setq state (cdr state-entry))
+        (mark:vz-state-apply state)
+        (if *mark:scale-final*
+          (progn
+            (setq ws (mark:num-keys) i 0)
+            (foreach w ws
+              (setq i (1+ i) src (mark:sec-src-of w))
+              (write-line
+                (strcat (car state) ";" (itoa i) ";"
+                        (rtos w 2 0) ";" src) f))
+            (setq rest nil)
+            (foreach row *mark:scale-final*
+              (if (null (mark:index-of ws (nth 0 row)))
+                (setq rest (cons row rest))))
+            (foreach row (reverse rest)
+              (write-line
+                (strcat (car state) ";-;"
+                        (rtos (float (nth 0 row)) 2 0) ";"
+                        (nth 1 row)) f))
+            (if *mark:beam-scale*
+              (progn
+                (setq n (length *mark:beam-scale*))
+                (write-line
+                  (strcat "; " (car state) ": ригелей MarkZV " (itoa n)
+                          ", номеров всего: " (itoa (length ws))
+                          ", без столбца: " (itoa (length rest))) f))))))
+      (close f)
+      (setq *mark:fills* af *mark:glazings* ag *mark:fill-geo* ageo)
+      (mark:out (strcat "[OK] Раздельная шкала: " path)))
+    (progn
+      (setq *mark:fills* af *mark:glazings* ag *mark:fill-geo* ageo)
+      (mark:out "[WARN] Шкала не записана: файл недоступен."))))
+
+(defun mark:scale-write-file ()
+  (if (and (= *mark:vz-mode* "separate") *mark:vz-state-list*)
+    (mark:scale-write-file-separate)
+    (mark:scale-write-file-one)))
+
+;;;---------------------------------------------------------------------
+;;; Read-only источник общей/локальной шкалы для MarkV (Ред. 48.46).
+;;; MarkV вызывает probe до маркировки и ведомости. Используются те же ячейки,
+;;; длины ригелей и резерв Т-половин, что в обычном МАРКАЗАП; атрибуты,
+;;; вставки, рядовка и геометрия чертежа не изменяются.
+;;;---------------------------------------------------------------------
+(defun mark:probe-save (symbols / out s v)
+  (setq out nil)
+  (foreach s symbols
+    (setq v (vl-catch-all-apply 'eval (list s)))
+    (if (vl-catch-all-error-p v) (setq v nil))
+    (setq out (cons (cons s v) out)))
+  (reverse out))
+
+(defun mark:probe-restore (saved / p)
+  (foreach p saved (set (car p) (cdr p)))
+  nil)
+
+(defun mark:scale-probe-run (enames / fills glazings e)
+  (if (null enames)
+    nil
+    (progn
+      (setq fills nil glazings nil)
+      (foreach e enames
+        (cond
+          ((mark:blk-match? e *mark:block-fill*)
+           (setq fills (cons e fills)))
+          ((mark:blk-match? e *mark:block-glazing*)
+           (setq glazings (cons e glazings)))))
+      (setq *mark:fills* (reverse fills)
+            *mark:glazings* (reverse glazings)
+            *mark:sel-total* (length enames)
+            *mark:found-names* nil
+            *mark:others* 0
+            *mark:prefix* ""
+            *mark:prefix-found* nil
+            *mark:carc-cache* enames
+            *mark:reuse-sel* t
+            *mark:vz-mode* "joint"
+            *mark:vz-by-frames* nil
+            *mark:vz-frames* nil
+            *mark:vz-current-frame* nil
+            *mark:vz-carc-map* nil
+            *mark:vz-state-list* nil
+            *mark:vz-map* nil
+            *mark:fill-geo* nil
+            *mark:scale1* nil
+            *mark:scale-final* nil
+            *mark:beam-scale* nil
+            *mark:scale-shift* 0
+            *mark:num-was* nil
+            *mark:widths* nil
+            *mark:heights* nil
+            *mark:sec-reserve* nil
+            *mark:cell-hs* nil
+            *mark:sec-diag* nil
+            *mark:dyn-cache* nil
+            *mark:seg-cache* nil
+            *mark:vz-bb-cache* nil
+            *mark:opening-bbs* nil
+            *mark:opening-loaded* nil
+            *mark:opening-partial* nil
+            *mark:grid-zone* nil
+            *mark:records* nil
+            *mark:errors* 0
+            *mark:warnings* 0
+            *mark:cnt-stem* 0
+            *mark:cnt-sand* 0
+            *mark:written* 0
+            *mark:precheck-ok* nil
+            *mark:apply-failed* 0
+            *mark:probe-quiet* t
+            *mark:probe-readonly* t
+            *mark:probe-unsupported* nil)
+      (mark:sec-standalone)
+      (if (or *mark:probe-unsupported*
+              (not (or *mark:fill-geo* *mark:scale1*)))
+        nil
+        (mark:num-keys)))))
+
+(defun mark:scale-probe (enames / saved r)
+  ;; Сохраняем даже счётчики и кэши: следующий настоящий МАРКАЗАП должен
+  ;; начаться с состояния, которое было до вызова MarkV.
+  (setq saved
+    (mark:probe-save
+      '(*mark:fills* *mark:glazings* *mark:sel-total* *mark:found-names*
+        *mark:others* *mark:prefix* *mark:prefix-found* *mark:carc-cache*
+        *mark:reuse-sel* *mark:vz-mode* *mark:vz-by-frames* *mark:vz-frames*
+        *mark:vz-current-frame* *mark:vz-carc-map* *mark:vz-state-list*
+        *mark:vz-map* *mark:fill-geo* *mark:scale1* *mark:scale-final*
+        *mark:beam-scale* *mark:scale-shift* *mark:num-was* *mark:widths*
+        *mark:heights* *mark:sec-reserve* *mark:cell-hs* *mark:sec-diag*
+        *mark:dyn-cache* *mark:seg-cache* *mark:vz-bb-cache*
+        *mark:opening-bbs* *mark:opening-loaded* *mark:opening-partial*
+        *mark:grid-zone* *mark:records* *mark:errors* *mark:warnings*
+        *mark:cnt-stem* *mark:cnt-sand* *mark:written* *mark:precheck-ok*
+        *mark:apply-failed* *mark:probe-quiet* *mark:probe-readonly*
+        *mark:probe-unsupported* *mark:h-bins* *mark:line-vis* *mark:expl-n*
+        *mark:def-n* *mark:vis-n* *mark:hid-n* *mark:vis-open*
+        *mark:copy-left* *mark:dyn-quiet* *mark:no-expl-undo* *mark:pt-undo*)))
+  (setq r (vl-catch-all-apply 'mark:scale-probe-run (list enames)))
+  (mark:probe-restore saved)
+  (if (vl-catch-all-error-p r) nil r))
 
 (defun c:МАРКАРОВКАЗАП () (mark:main))
 (defun c:MARKZ () (mark:main))
