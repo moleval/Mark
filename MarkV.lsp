@@ -16,7 +16,7 @@
   (setq f (open filepath "r"))
   (if (null f)
     (progn
-      (prompt (strcat "\n[CHECK] Файл не найден: " filepath))
+      (mk:emit (strcat "\n[CHECK] Файл не найден: " filepath))
       nil)
     (progn
       (setq num 0 depth 0 in-str nil err-line nil)
@@ -57,19 +57,19 @@
       (close f)
       (cond
         (err-line
-         (prompt (strcat "\n[CHECK ERROR] Лишняя ')' на строке: " (itoa err-line)))
+         (mk:emit (strcat "\n[CHECK ERROR] Лишняя ')' на строке: " (itoa err-line)))
          nil
         )
         ((> depth 0)
-         (prompt (strcat "\n[CHECK ERROR] Не закрыто '(' : " (itoa depth) " шт."))
+         (mk:emit (strcat "\n[CHECK ERROR] Не закрыто '(' : " (itoa depth) " шт."))
          nil
         )
         (in-str
-         (prompt "\n[CHECK ERROR] Не закрыта кавычка")
+         (mk:emit "\n[CHECK ERROR] Не закрыта кавычка")
          nil
         )
         (t
-         (prompt (strcat "\n[CHECK OK] Скобки сбалансированы. Строк: " (itoa num)))
+         (mk:emit (strcat "\n[CHECK OK] Скобки сбалансированы. Строк: " (itoa num)))
          t
         )
       )
@@ -105,36 +105,36 @@
       hit)))
 
 (defun c:МАРКАВСКОБКИ (/ result path)
-  (prompt "\n[МАРКАВСКОБКИ] Проверка MarkV.lsp...")
+  (mk:emit "\n[МАРКАВСКОБКИ] Проверка MarkV.lsp...")
   (if (mk:ext-checker? "CHKALL")
     (progn
-      (prompt "\n  Тестер AutoExtraction найден: CHKALL (все модули и плагины).")
+      (mk:emit "\n  Тестер AutoExtraction найден: CHKALL (все модули и плагины).")
       ;; пакетный прогон может быть прерван — состояние сбрасываем до вызова
       (setq *mk:batch* nil *mk:batch-ss* nil *mk:batch-mode* nil
             *mk:run-scope* nil *mk:in-group* nil)
       (c:CHKALL)
-      (prompt "\n[МАРКАВСКОБКИ] Готово: отчёт CHKALL — выше."))
+      (mk:emit "\n[МАРКАВСКОБКИ] Готово: отчёт CHKALL — выше."))
     (progn
       (setq path (mk:find-source))
       (cond
         ((null path)
-         (prompt "\n  [WARN] Файл MarkV.lsp не найден среди кандидатов."))
+         (mk:emit "\n  [WARN] Файл MarkV.lsp не найден среди кандидатов."))
         (t
-         (prompt (strcat "\n  Файл: " path))
-         (prompt "\n  AutoExtraction не загружен — встроенный сканер MarkV.")
+         (mk:emit (strcat "\n  Файл: " path))
+         (mk:emit "\n  AutoExtraction не загружен — встроенный сканер MarkV.")
          (setq result (mk:check-brackets path))
          (if result
-           (prompt "\n[OK] Файл корректен.")
-           (prompt "\n[ERROR] Обнаружены проблемы. См. сообщение выше."))))))
+           (mk:emit "\n[OK] Файл корректен.")
+           (mk:emit "\n[ERROR] Обнаружены проблемы. См. сообщение выше."))))))
   (princ))
 
 ;;;=====================================================================
 ;;; 1. КОНФИГУРАЦИЯ
 ;;;=====================================================================
 ;; Версия — как у заказчика: редакция и билд отдельными записями «Ред. N.N».
-;; В логах печатается «Ред. 7.0 / Ред. 33.17» — две редакции, без слова build.
+;; В логах печатается «Ред. 7.0 / Ред. 33.18» — две редакции, без слова build.
 (setq *mk:ver*            "Ред. 7.0")
-(setq *mk:build*          "Ред. 33.17")
+(setq *mk:build*          "Ред. 33.18")
 
 (setq *mk:block-fill*     "Заполнение в витраж")
 (setq *mk:block-vitrage*  "Атрибуты витража")
@@ -183,6 +183,8 @@
 (setq *mk:out-file*       "D:/MARKZV_MODEL.txt")
 (setq *mk:diag-file*      "D:/MARKZV_DIAG.txt")
 (setq *mk:diag-all-file*  "D:/MARKZV_DIAG_ALL.txt")   ; МАРКАВДИАГНОЗОПТОМ
+(setq *mk:log-file*       nil)   ; nil = <папка текущего DWG>/MARKV_LOG.txt
+(setq *mk:log-failed*     nil)
 (setq *mk:cached-data*    nil)
 (setq *mk:last-ss*        nil)   ; выборка последней МАРКАВГЕОМЕТРИЯ
 (setq *mk:dyn-cache*      nil)   ; кэш динамических свойств: ename -> alist
@@ -432,6 +434,64 @@
 ;;; 2. УТИЛИТЫ
 ;;;=====================================================================
 (defun mk:strp (x) (and x (eq (type x) 'STR)))
+
+;; Ред. 33.18: весь prompt-вывод идёт через mk:emit и дублируется в файл.
+;; Это не дамп MARKZV_MODEL.txt, а полный протокол команд и ошибок.
+(defun mk:log-path (/ dir ch)
+  (if (and (mk:strp *mk:log-file*) (> (strlen *mk:log-file*) 0))
+    *mk:log-file*
+    (progn
+      (setq dir (vl-catch-all-apply 'getvar (list "DWGPREFIX")))
+      (if (or (vl-catch-all-error-p dir)
+              (not (mk:strp dir)))
+        (setq dir ""))
+      (if (> (strlen dir) 0)
+        (progn
+          (setq ch (substr dir (strlen dir) 1))
+          (if (and (/= ch "/") (/= ch "\\"))
+            (setq dir (strcat dir "/")))))
+      (strcat dir "MARKV_LOG.txt"))))
+
+(defun mk:log-write (msg / path f r text)
+  (if (not *mk:log-failed*)
+    (progn
+      (setq path (mk:log-path))
+      (if (and (mk:strp path) (> (strlen path) 0) (mk:strp msg))
+        (progn
+          (setq f (vl-catch-all-apply 'open (list path "a")))
+          (if (or (null f) (vl-catch-all-error-p f))
+            (setq *mk:log-failed* t)
+            (progn
+              ;; Если сообщение уже заканчивается \n, не удваиваем пустую строку.
+              (setq text msg)
+              (if (and (> (strlen text) 0)
+                       (= (substr text (strlen text) 1) "\n"))
+                (setq text (substr text 1 (1- (strlen text)))))
+              (setq r (vl-catch-all-apply 'write-line (list text f)))
+              (vl-catch-all-apply 'close (list f))
+              (if (vl-catch-all-error-p r)
+                (setq *mk:log-failed* t))))))))
+  nil)
+
+(defun mk:log-start (/ path f)
+  (setq *mk:log-failed* nil
+        path (mk:log-path)
+        f (vl-catch-all-apply 'open (list path "a")))
+  (if (or (null f) (vl-catch-all-error-p f))
+    (setq *mk:log-failed* t)
+    (vl-catch-all-apply 'close (list f)))
+  (if (not *mk:log-failed*)
+    (mk:log-write
+      (strcat "=== MarkV " *mk:ver* " / " *mk:build* " ===")))
+  path)
+
+;; Возвращаем nil, как prompt; princ не добавляет лишних кавычек/строк.
+(defun mk:emit (msg)
+  (if (not (mk:strp msg))
+    (setq msg (vl-princ-to-string msg)))
+  (mk:log-write msg)
+  (princ msg)
+  nil)
 
 ;; Обновление поля записи: замена через subst, а не append.
 ;; (append …) добавлял бы ВТОРУЮ пару с тем же ключом, а assoc
@@ -749,11 +809,11 @@
     ((= (length lst) 1) (setq *mk:vitrage-src* "выборка" e (car lst)))
     ((> (length lst) 1)
      (setq *mk:vitrage-src* "выборка, ближайший")
-     (prompt (strcat "\n  [WARN] В выборке несколько блоков «" *mk:block-vitrage* "». Взят ближайший."))
+     (mk:emit (strcat "\n  [WARN] В выборке несколько блоков «" *mk:block-vitrage* "». Взят ближайший."))
      (setq e (mk:nearest-insert lst pt)))
     (t
      (setq *mk:vitrage-src* "не выбран" e nil)
-     (prompt (strcat "\n  [WARN] Блок «" *mk:block-vitrage* "» не выбран в текущей области."))))
+     (mk:emit (strcat "\n  [WARN] Блок «" *mk:block-vitrage* "» не выбран в текущей области."))))
   (mk:vitrage-rec e))
 
 (defun mk:read-vitrage-block ()
@@ -772,7 +832,7 @@
     (setq *mk:no-vitrage-prompted* nil)
     (if (null *mk:no-vitrage-prompted*)
       (progn
-        (prompt "\n  Блок атрибутов не выбран. Введите префикс витража или нажмите Enter: ")
+        (mk:emit "\n  Блок атрибутов не выбран. Введите префикс витража или нажмите Enter: ")
         (setq prefix (getstring T)
               *mk:manual-vitrage-prefix* prefix
               *mk:no-vitrage-prompted* t))))
@@ -1192,7 +1252,7 @@
            (null *mk:said-collect*))
     (progn
       (setq *mk:said-collect* t)
-      (prompt (strcat "\n  Все-типы: отрезков " (itoa (length segs))
+      (mk:emit (strcat "\n  Все-типы: отрезков " (itoa (length segs))
                       ", из геометрии стоек " (itoa (length posts))
                       ", ригелей " (itoa (length beams))
                       "; из блоков " (itoa (length bposts))
@@ -1372,7 +1432,7 @@
       (setq out (cons el out))
       (setq bad (1+ bad))))
   (if (> bad 0)
-    (prompt (strcat "\n  [WARN] " label ": отброшено без габаритов — " (itoa bad))))
+    (mk:emit (strcat "\n  [WARN] " label ": отброшено без габаритов — " (itoa bad))))
   (reverse out))
 
 (defun mk:sanitize-frame (els label / out bad)
@@ -1382,7 +1442,7 @@
       (setq out (cons el out))
       (setq bad (1+ bad))))
   (if (> bad 0)
-    (prompt (strcat "\n  [WARN] " label ": отброшено без размеров — " (itoa bad))))
+    (mk:emit (strcat "\n  [WARN] " label ": отброшено без размеров — " (itoa bad))))
   (reverse out))
 
 (defun mk:find-blocks-in-ss (ss mask / i e lst)
@@ -1481,10 +1541,10 @@
       (setq new-x (car ins-pt) new-y (cadr ins-pt))
       (if (< xsc 0.0)
         (progn (setq new-x (+ new-x w))
-               (prompt (strcat "\n  [WARN] Панель скорректирована по X: " (rtos new-x 2 1)))))
+               (mk:emit (strcat "\n  [WARN] Панель скорректирована по X: " (rtos new-x 2 1)))))
       (if (< ysc 0.0)
         (progn (setq new-y (+ new-y h))
-               (prompt (strcat "\n  [WARN] Панель скорректирована по Y: " (rtos new-y 2 1)))))
+               (mk:emit (strcat "\n  [WARN] Панель скорректирована по Y: " (rtos new-y 2 1)))))
       ;; Панель у самого края витража — НЕ зеркалим и НЕ сдвигаем.
       ;; Раньше здесь вычиталась ширина: панель, стоящая вплотную к правой
       ;; границе, уезжала на свой размер влево — отсюда были и «панель за
@@ -1494,12 +1554,12 @@
       ;; Предупреждаем, но НЕ двигаем панель: сдвиг «на ширину» был ошибкой.
       (if (and (> (+ new-x w) (+ max-x *mk:tol-skew*))
                (null *mk:quiet-edges*))
-        (prompt (strcat "\n  [WARN] Панель за правой границей витража: "
+        (mk:emit (strcat "\n  [WARN] Панель за правой границей витража: "
                         (rtos (+ new-x w) 2 1) " > " (rtos max-x 2 1)
                         " — положение не меняется")))
       (if (and (> (+ new-y h) (+ max-y *mk:tol-skew*))
                (null *mk:quiet-edges*))
-        (prompt (strcat "\n  [WARN] Панель за верхней границей витража: "
+        (mk:emit (strcat "\n  [WARN] Панель за верхней границей витража: "
                         (rtos (+ new-y h) 2 1) " > " (rtos max-y 2 1)
                         " — положение не меняется")))
       (setq panel (mk:rec-put panel 'INS_PT (list new-x new-y 0.0)))))
@@ -1521,13 +1581,13 @@
                    (< (abs (- (car pt1) (car pt2))) tol)
                    (< (abs (- (cadr pt1) (cadr pt2))) tol))
             (progn
-              (prompt (strcat "\n  [ERROR] Дубликат: " (mk:safe-str (cdr (assoc 'TYPE el1)))
+              (mk:emit (strcat "\n  [ERROR] Дубликат: " (mk:safe-str (cdr (assoc 'TYPE el1)))
                               " в точке " (rtos (car pt1) 2 1) "," (rtos (cadr pt1) 2 1)))
               (setq count (1+ count))))))
       (setq j (1+ j)))
     (setq i (1+ i)))
   (if (> count 0)
-    (prompt (strcat "\n  [ИТОГО] Дубликатов: " (itoa count))))
+    (mk:emit (strcat "\n  [ИТОГО] Дубликатов: " (itoa count))))
   count)
 
 ;; Пара «заполнение + окно/дверь» одного проёма — не ошибка: это один
@@ -1561,14 +1621,14 @@
                    (< x1 (+ x2 w2)) (> (+ x1 w1) x2)
                    (< y1 (+ y2 h2)) (> (+ y1 h1) y2))
             (progn
-              (prompt (strcat "\n  [ERROR] Перекрытие: " (mk:safe-str (cdr (assoc 'TYPE p1)))
+              (mk:emit (strcat "\n  [ERROR] Перекрытие: " (mk:safe-str (cdr (assoc 'TYPE p1)))
                               " и " (mk:safe-str (cdr (assoc 'TYPE p2)))
                               " в области " (mk:safe-num x1) "," (mk:safe-num y1)))
               (setq count (1+ count))))))
       (setq j (1+ j)))
     (setq i (1+ i)))
   (if (> count 0)
-    (prompt (strcat "\n  [ИТОГО] Перекрытий: " (itoa count))))
+    (mk:emit (strcat "\n  [ИТОГО] Перекрытий: " (itoa count))))
   count)
 
 (defun mk:check-out-of-grid (elements bounds / min-x max-x min-y max-y count x y)
@@ -1585,11 +1645,11 @@
         (if (or (< x (- min-x *mk:tol-skew*)) (> x (+ max-x *mk:tol-skew*))
                 (< y (- min-y *mk:tol-skew*)) (> y (+ max-y *mk:tol-skew*)))
           (progn
-            (prompt (strcat "\n  [WARN] Вне сетки: " (mk:safe-str (cdr (assoc 'TYPE el)))
+            (mk:emit (strcat "\n  [WARN] Вне сетки: " (mk:safe-str (cdr (assoc 'TYPE el)))
                             " в точке " (rtos x 2 1) "," (rtos y 2 1)))
             (setq count (1+ count)))))))
   (if (> count 0)
-    (prompt (strcat "\n  [ИТОГО] Вне сетки: " (itoa count))))
+    (mk:emit (strcat "\n  [ИТОГО] Вне сетки: " (itoa count))))
   count)
 
 (defun mk:identify-protruding-posts (posts bounds / min-y max-y new-posts protruding-count x y len)
@@ -1605,7 +1665,7 @@
         (if (or (< y (- min-y *mk:tol-skew*))
                 (> (+ y len) (+ max-y *mk:tol-skew*)))
           (progn
-            (prompt (strcat "\n  [INFO] Выступающая стойка: " (rtos x 2 1) "," (rtos y 2 1)))
+            (mk:emit (strcat "\n  [INFO] Выступающая стойка: " (rtos x 2 1) "," (rtos y 2 1)))
             (setq post (mk:rec-put post 'PROTRUDING t))
             (setq protruding-count (1+ protruding-count)))
           (setq post (mk:rec-put post 'PROTRUDING nil)))
@@ -1660,7 +1720,7 @@
                        (< (abs (- by oy)) *mk:tol-adjacency*)))
             (setq has-connection t))))))
   (if (not has-connection)
-    (prompt (strcat "\n  [ERROR] Ригель без примыкания: "
+    (mk:emit (strcat "\n  [ERROR] Ригель без примыкания: "
                     (rtos bx 2 1) "," (rtos by 2 1))))))
   has-connection)
 
@@ -1674,7 +1734,7 @@
         right-post (mk:find-right-post fill bounds))
   (if (or (null left-post) (null right-post))
     (progn
-      (prompt (strcat "\n  [ERROR] Заполнение вне ячейки: "
+      (mk:emit (strcat "\n  [ERROR] Заполнение вне ячейки: "
                       (mk:safe-num (car (cdr (assoc 'INS_PT fill)))) ","
                       (mk:safe-num (cadr (cdr (assoc 'INS_PT fill))))))
       nil)
@@ -1872,7 +1932,7 @@
       (setq doc    (mk:ax-get (vlax-get-acad-object) "ActiveDocument")
             groups (if doc (mk:ax-get doc "Groups") nil))
       (if (null groups)
-        (prompt "\n  [WARN] Коллекция Groups недоступна — группа не создана.")
+        (mk:emit "\n  [WARN] Коллекция Groups недоступна — группа не создана.")
         (progn
           (setq old (vl-catch-all-apply 'vlax-invoke-method
                       (list groups "Item" name)))
@@ -1881,7 +1941,7 @@
           (setq grp (vl-catch-all-apply 'vlax-invoke-method
                       (list groups "Add" name)))
           (if (or (vl-catch-all-error-p grp) (null grp))
-            (prompt (strcat "\n  [WARN] Группа \"" name "\" не создана."))
+            (mk:emit (strcat "\n  [WARN] Группа \"" name "\" не создана."))
             (progn
               (setq n   (length enames)
                     arr (vlax-make-safearray vlax-vbObject (cons 0 (1- n)))
@@ -1891,7 +1951,7 @@
                 (setq i (1+ i)))
               (vl-catch-all-apply 'vlax-invoke-method
                 (list grp "AppendItems" arr))
-              (prompt (strcat "\n[OK] Группа \"" name "\": "
+              (mk:emit (strcat "\n[OK] Группа \"" name "\": "
                               (itoa n) " объект(ов)"))))))))
   nil)
 (defun mk:draw-post (post / pt len)
@@ -1949,7 +2009,7 @@
   (foreach beam beams (mk:draw-beam beam))
   (foreach panel (append fills windows doors) (mk:draw-panel panel))
   (setvar "CLAYER" prev-layer)
-  (prompt (strcat "\n[OK] 2D модель отрисована на слое: " layer))
+  (mk:emit (strcat "\n[OK] 2D модель отрисована на слое: " layer))
   (mk:make-group *mk:group-model* (reverse *mk:drawn*)))
 
 ;;;=====================================================================
@@ -2070,7 +2130,7 @@
   (foreach win windows (mk:draw-window-label win))
   (foreach door doors (mk:draw-door-label door))
   (setvar "CLAYER" prev-layer)
-  (prompt (strcat "\n[OK] Тестовая модель отрисована на слое: " layer))
+  (mk:emit (strcat "\n[OK] Тестовая модель отрисована на слое: " layer))
   (mk:make-group *mk:group-test* (reverse *mk:drawn*)))
 
 ;;;=====================================================================
@@ -2172,8 +2232,8 @@
         (write-line (strcat "  NAME: " (if (cdr (assoc 'NAME door)) (cdr (assoc 'NAME door)) "НЕТ")) f)
         (write-line "" f))
       (close f)
-      (prompt (strcat "\n[OK] Данные сохранены в: " fn)))
-    (prompt "\n[ERROR] Не удалось создать файл.")))
+      (mk:emit (strcat "\n[OK] Данные сохранены в: " fn)))
+    (mk:emit "\n[ERROR] Не удалось создать файл.")))
 
 ;;;=====================================================================
 ;;; 18. АВТОЗАПОЛНЕНИЕ АТРИБУТОВ
@@ -2267,7 +2327,7 @@
 (defun mk:say-once (msg)
   (if (not (member msg *mk:diag-said*))
     (progn (setq *mk:diag-said* (cons msg *mk:diag-said*))
-           (prompt msg))))
+           (mk:emit msg))))
 
 (defun mk:diag-reset ()
   (setq *mk:diag-said* nil *mk:said-collect* nil))
@@ -2583,7 +2643,7 @@
     (progn
       (setq sorted (vl-sort pairs '(lambda (a b) (< (cdr a) (cdr b)))))
       (if (equal (cdr (car sorted)) (cdr (last sorted)) *mk:tol-size*)
-        (prompt (strcat "\n  [WARN] Габариты сечений артикулов ригелей одинаковы"
+        (mk:emit (strcat "\n  [WARN] Габариты сечений артикулов ригелей одинаковы"
                         " — маркеры размера не присвоены. Задайте *mk:article-size*."))
         (progn
           (setq labels (mk:size-labels (length sorted)))
@@ -2720,26 +2780,26 @@
 (defun mk:scope-ss (/ ss n)
   (if (and *mk:batch* *mk:last-ss*)
     (progn
-      (prompt "\n  Область: выборка пакета МАРКАВ")
+      (mk:emit "\n  Область: выборка пакета МАРКАВ")
       (setq ss *mk:last-ss*))
     (progn
-      (prompt "\nВыберите элементы витража (Enter — выборка последней МАРКАВГЕОМЕТРИЯ): ")
+      (mk:emit "\nВыберите элементы витража (Enter — выборка последней МАРКАВГЕОМЕТРИЯ): ")
       (setq ss (if (= *mk:scope-mode* "Блоки")
                  (ssget (list (cons 0 "INSERT")))
                  (ssget)))))
   (cond
     (ss
      (setq *mk:last-ss* ss)
-     (prompt (strcat "\n  Область: выборка, объектов " (itoa (sslength ss))))
+     (mk:emit (strcat "\n  Область: выборка, объектов " (itoa (sslength ss))))
      ss)
     (t
      (setq n (vl-catch-all-apply 'sslength (list *mk:last-ss*)))
      (if (and *mk:last-ss* (not (vl-catch-all-error-p n)) (> n 0))
        (progn
-         (prompt (strcat "\n  Область: выборка последней МАРКАВГЕОМЕТРИЯ, объектов " (itoa n)))
+         (mk:emit (strcat "\n  Область: выборка последней МАРКАВГЕОМЕТРИЯ, объектов " (itoa n)))
          *mk:last-ss*)
        (progn
-         (prompt "\n  [WARN] Выборки нет — обрабатывается ВЕСЬ чертёж.")
+         (mk:emit "\n  [WARN] Выборки нет — обрабатывается ВЕСЬ чертёж.")
          (mk:ss-all-inserts))))))
 
 (defun mk:undo-begin (/ doc)
@@ -2775,7 +2835,7 @@
      (if (null *mk:style-warned*)
        (progn
          (setq *mk:style-warned* t)
-         (prompt (strcat "\n  [WARN] Текстовый стиль «" *mk:label-style*
+         (mk:emit (strcat "\n  [WARN] Текстовый стиль «" *mk:label-style*
                          "» не найден — выноски текущим стилем."))))
      nil)))
 
@@ -3076,7 +3136,7 @@
                                newbeams))
           (setq newposts (cons v newposts))))))
   (if (> nsym 0)
-    (prompt (strcat "\n  [INFO] Симметричных Т-узлов (оба ригеля «"
+    (mk:emit (strcat "\n  [INFO] Симметричных Т-узлов (оба ригеля «"
                     *mk:suffix-tjoint-lo* "»): " (itoa nsym))))
   ;; проставить суффиксы Т-соединений ригелям
   (setq beams (mapcar
@@ -3192,17 +3252,17 @@
   (reverse lines))
 
 (defun c:МАРКАВДИАГНОЗ (/ sel ename lines f)
-  (prompt "\n[МАРКАВДИАГНОЗ] Диагностика блока.")
+  (mk:emit "\n[МАРКАВДИАГНОЗ] Диагностика блока.")
   (setq sel (entsel "\nУкажите блок (стойку, ригель, заполнение, окно, дверь): "))
   (if (null sel)
-    (prompt "\n  [INFO] Блок не указан.")
+    (mk:emit "\n  [INFO] Блок не указан.")
     (progn
       (setq ename (car sel))
       (setq *mk:dyn-cache* nil *mk:vitrage-cache* nil)
       (setq lines (mk:diag-block ename))
-      (prompt "\n---------------------------------------------")
-      (foreach l lines (prompt (strcat "\n" l)))
-      (prompt "\n---------------------------------------------")
+      (mk:emit "\n---------------------------------------------")
+      (foreach l lines (mk:emit (strcat "\n" l)))
+      (mk:emit "\n---------------------------------------------")
       (setq f (open *mk:diag-file* "a"))
       (if f
         (progn
@@ -3210,8 +3270,8 @@
           (foreach l lines (write-line l f))
           (write-line "" f)
           (close f)
-          (prompt (strcat "\n[OK] Дописано в: " *mk:diag-file*)))
-        (prompt "\n[WARN] Файл диагностики не создан."))))
+          (mk:emit (strcat "\n[OK] Дописано в: " *mk:diag-file*)))
+        (mk:emit "\n[WARN] Файл диагностики не создан."))))
   (princ))
 
 ;;;=====================================================================
@@ -3285,7 +3345,7 @@
   (setq n (mk:beams-wo-article beams))
   (if (and (> n 0) *mk:ask-unknown-allowance* (null *mk:allowance-unknown*))
     (progn
-      (prompt (strcat "\n  Ригелей с нераспознанным артикулом: " (itoa n)))
+      (mk:emit (strcat "\n  Ригелей с нераспознанным артикулом: " (itoa n)))
       (initget "КП50 КП50К Ввод")
       (setq ans (getkword "\n  Припуск для них [КП50/КП50К/Ввод] <КП50>: "))
       (cond
@@ -3295,7 +3355,7 @@
          (setq v (getreal "\n  Припуск на элемент, мм <0>: "))
          (setq *mk:allowance-unknown* (if (numberp v) v 0.0)))
         (t (setq *mk:allowance-unknown* 0.0)))
-      (prompt (strcat "\n  Принято: +" (rtos *mk:allowance-unknown* 2 1)
+      (mk:emit (strcat "\n  Принято: +" (rtos *mk:allowance-unknown* 2 1)
                       " мм к " (itoa n) " ригел(ю/ям) без артикула."))))
   (if (numberp *mk:allowance-unknown*) *mk:allowance-unknown* 0.0))
 
@@ -3410,7 +3470,7 @@
   (setq res (vl-catch-all-apply 'vlax-invoke-method
               (list tbl "MergeCells" r r 1 3)))
   (if (vl-catch-all-error-p res)
-    (prompt "\n  [WARN] Объединение ячеек не выполнено."))
+    (mk:emit "\n  [WARN] Объединение ячеек не выполнено."))
   res)
 
 (defun mk:tab-set (tbl r c val)
@@ -3509,12 +3569,12 @@
                                      cnt-all mp-all grp-cnt grp-mp
                                      doc space old-echo t0 ms h)
   (if (null data)
-    (progn (prompt "\n  [INFO] Нет данных для таблицы.") nil)
+    (progn (mk:emit "\n  [INFO] Нет данных для таблицы.") nil)
     (progn
       (if (and (null pt) (not *mk:batch*))
         (setq pt (getpoint "\nУкажите точку вставки таблицы: ")))
       (if (null pt)
-        (progn (prompt "\n  [INFO] Таблица пропущена (нет точки вставки).") nil)
+        (progn (mk:emit "\n  [INFO] Таблица пропущена (нет точки вставки).") nil)
         (progn
           (mk:ensure-layer *mk:layer-table* 7)
           (setq doc      (vla-get-ActiveDocument (vlax-get-acad-object))
@@ -3545,7 +3605,7 @@
                         (list space (vlax-3d-point pt) nRows 6 10.0 30.0)))
             (if (vl-catch-all-error-p tbl)
               (progn
-                (prompt (strcat "\n  [ERROR] AddTable (таблица " (itoa ci)
+                (mk:emit (strcat "\n  [ERROR] AddTable (таблица " (itoa ci)
                                 " из " (itoa total) "): "
                                 (vl-catch-all-error-message tbl)))
                 (setq tbl nil))
@@ -3647,7 +3707,7 @@
                   (setq h (* 10.0 nRows)))
                 (setq pt (mk:tab-next-point pt h *mk:tab-gap*)))))))
           (setq ms (- (getvar "MILLISECS") t0))
-          (prompt (strcat "\n  [OK] Ведомость в чертеже: таблиц " (itoa total)
+          (mk:emit (strcat "\n  [OK] Ведомость в чертеже: таблиц " (itoa total)
                           ", позиций " (itoa (length data))
                           ", всего шт. " (itoa cnt-all)
                           ", м.п. " (mk:tab-num mp-all)
@@ -3731,7 +3791,7 @@
                      total-cnt total-mp hdr w0)
   (setq f (open file "w"))
   (if (null f)
-    (progn (prompt (strcat "\n  [ERROR] Нет доступа: " file)) nil)
+    (progn (mk:emit (strcat "\n  [ERROR] Нет доступа: " file)) nil)
     (progn
       (write-line "<?xml version=\"1.0\" encoding=\"windows-1251\"?>" f)
       (write-line "<?mso-application progid=\"Excel.Sheet\"?>" f)
@@ -3825,11 +3885,11 @@
       (setq sz (vl-file-size file))
       (if (and (numberp sz) (> sz 0))
         (progn
-          (prompt (strcat "\n  [OK] XLS: " file
+          (mk:emit (strcat "\n  [OK] XLS: " file
                           " (" (itoa sz) " байт)"))
           t)
         (progn
-          (prompt (strcat "\n  [WARN] XLS не записан (файл занят другой"
+          (mk:emit (strcat "\n  [WARN] XLS не записан (файл занят другой"
                           " программой или пуст): " file))
           nil)))))
 
@@ -3946,7 +4006,7 @@
                   (list space (vlax-3d-point pt) nRows 4 10.0 35.0)))
       (if (vl-catch-all-error-p tbl)
         (progn
-          (prompt (strcat "\n  [ERROR] AddTable: " (vl-catch-all-error-message tbl)))
+          (mk:emit (strcat "\n  [ERROR] AddTable: " (vl-catch-all-error-message tbl)))
           (vl-catch-all-apply 'setvar (list "CMDECHO" old-echo))
           nil)
         (progn
@@ -3985,7 +4045,7 @@
           (vl-catch-all-apply 'vla-SetRowHeight (list tbl row 8.0))
           (mk:tab-fast-end tbl)
           (vl-catch-all-apply 'setvar (list "CMDECHO" old-echo))
-          (prompt (strcat "\n  [OK] Таблица закладных, строк: " (itoa (length data))))
+          (mk:emit (strcat "\n  [OK] Таблица закладных, строк: " (itoa (length data))))
           tbl)))))
 
 ;;;--- Закладные в XLS (дополнительный лист) ----------------------------
@@ -4098,16 +4158,16 @@
 (defun mk:leg-print (sfx arts)
   (if sfx
     (progn
-      (prompt (strcat "\n  " *mk:leg-h1*))
+      (mk:emit (strcat "\n  " *mk:leg-h1*))
       (foreach p sfx
-        (prompt (strcat "\n    " (mk:pad (car p) 6) " - " (cdr p))))))
+        (mk:emit (strcat "\n    " (mk:pad (car p) 6) " - " (cdr p))))))
   ;; Таблица «маркер -> артикул (сечение)»: единственный полный список
   ;; артикулов всего прогона — остальные строки про артикулы убраны.
   (if arts
     (progn
-      (prompt (strcat "\n  " *mk:leg-h2*))
+      (mk:emit (strcat "\n  " *mk:leg-h2*))
       (foreach p arts
-        (prompt (strcat "\n    "
+        (mk:emit (strcat "\n    "
                         (mk:pad (if (> (strlen (car p)) 0) (car p) *mk:leg-none*) 16)
                         " - " (nth 1 p)
                         " (" (rtos (nth 2 p) 2 0) " мм)")))))
@@ -4133,7 +4193,7 @@
                   (list space (vlax-3d-point pt) nRows 2 10.0 40.0)))
       (if (vl-catch-all-error-p tbl)
         (progn
-          (prompt (strcat "\n  [ERROR] AddTable: " (vl-catch-all-error-message tbl)))
+          (mk:emit (strcat "\n  [ERROR] AddTable: " (vl-catch-all-error-message tbl)))
           (vl-catch-all-apply 'setvar (list "CMDECHO" old-echo))
           nil)
         (progn
@@ -4177,7 +4237,7 @@
                 (setq row (1+ row)))))
           (mk:tab-fast-end tbl)
           (vl-catch-all-apply 'setvar (list "CMDECHO" old-echo))
-          (prompt (strcat "\n  [OK] Таблица обозначений, строк: "
+          (mk:emit (strcat "\n  [OK] Таблица обозначений, строк: "
                           (itoa (+ (length sfx) (length arts)))))
           tbl)))))
 
@@ -4415,7 +4475,7 @@
 ;;;--- Этап 1. Выборка -------------------------------------------------
 
 (defun mk:select-scope (/ ss out e i all)
-  (prompt "\nВыберите элементы витражей (Enter — весь чертёж): ")
+  (mk:emit "\nВыберите элементы витражей (Enter — весь чертёж): ")
   (setq ss (ssget))
   (if ss
     (progn
@@ -4425,9 +4485,9 @@
         (if (not (mk:sub-entity? e)) (setq out (cons e out)))
         (setq i (1+ i)))
       (setq *mk:scope-source* "выборка" out (reverse out))
-      (prompt (strcat "\n  Область: выборка, объектов " (itoa (length out)))))
+      (mk:emit (strcat "\n  Область: выборка, объектов " (itoa (length out)))))
     (progn
-      (prompt "\n  [INFO] Выбор отменён — обрабатывается ВЕСЬ чертёж.")
+      (mk:emit "\n  [INFO] Выбор отменён — обрабатывается ВЕСЬ чертёж.")
       (setq all (ssget "_X" '((0 . "INSERT,MLINE,LINE,LWPOLYLINE,POLYLINE,ARC"))))
       (setq out nil i 0)
       (if all
@@ -4436,7 +4496,7 @@
           (if (not (mk:sub-entity? e)) (setq out (cons e out)))
           (setq i (1+ i))))
       (setq *mk:scope-source* "чертёж" out (reverse out))
-      (prompt (strcat "\n  Область: весь чертёж, объектов " (itoa (length out))))))
+      (mk:emit (strcat "\n  Область: весь чертёж, объектов " (itoa (length out))))))
   out)
 
 ;; Список ename -> набор SSGET (подвыборка годится для всех collect-функций)
@@ -4766,25 +4826,25 @@
           (setq kinds (subst (cons k (1+ (cdr (assoc k kinds))))
                              (assoc k kinds) kinds))
           (setq kinds (cons (cons k 1) kinds))))))
-  (prompt (strcat "\n  Видов объектов в выборке (" (itoa n) " из "
+  (mk:emit (strcat "\n  Видов объектов в выборке (" (itoa n) " из "
                   (itoa (length *mk:last-scope*)) "):"))
   (foreach pr (reverse kinds)
-    (prompt (strcat "\n    " (mk:pad (car pr) 14) (itoa (cdr pr)))))
+    (mk:emit (strcat "\n    " (mk:pad (car pr) 14) (itoa (cdr pr)))))
   kinds)
 
 (defun mk:print-groups (groups extra / n g c)
   (setq n 0)
-  (prompt "\n=== ГРУППЫ ПО ВИТРАЖАМ ===")
+  (mk:emit "\n=== ГРУППЫ ПО ВИТРАЖАМ ===")
   (foreach g groups
     (setq n (1+ n) c (nth 4 g))
-    (prompt (strcat "\n  " (mk:pad (nth 0 g) 10)
+    (mk:emit (strcat "\n  " (mk:pad (nth 0 g) 10)
                     " стойки " (itoa (nth 0 c))
                     ", ригели " (itoa (nth 1 c))
                     ", заполнения " (itoa (nth 2 c))
                     ", окна " (itoa (nth 3 c))
                     ", двери " (itoa (nth 4 c))
                     "   всего " (itoa (nth 5 c)))))
-  (prompt (strcat "\n  " (mk:pad *mk:vitrage-none* 10)
+  (mk:emit (strcat "\n  " (mk:pad *mk:vitrage-none* 10)
                   " объектов: " (itoa (length extra))
                   " — в маркировку не входят"))
   n)
@@ -4865,7 +4925,7 @@
 (defun mk:run-scope (/ enames)
   (if (and *mk:batch* *mk:run-scope*)
     (progn
-      (prompt (strcat "\n  Область: выборка пакета МАРКАВ, объектов "
+      (mk:emit (strcat "\n  Область: выборка пакета МАРКАВ, объектов "
                       (itoa (length *mk:run-scope*))))
       *mk:run-scope*)
     (mk:select-scope)))
@@ -4883,16 +4943,16 @@
       (setq mode (getkword
                    "\nРежим сбора каркаса [Блоки/Мультилинии/Все-типы] <Все-типы>: "))
       (setq *mk:last-mode* (mk:norm-mode mode))
-      (prompt (strcat "\n  Режим: " *mk:last-mode*))))
+      (mk:emit (strcat "\n  Режим: " *mk:last-mode*))))
   (setq *mk:scope-mode* (mk:norm-mode *mk:last-mode*))
   (setq enames (mk:run-scope))
   (if (null enames)
-    (progn (prompt "\n[INFO] Нечего обрабатывать — прогон прерван.") nil)
+    (progn (mk:emit "\n[INFO] Нечего обрабатывать — прогон прерван.") nil)
     (progn
       (setq frames (mk:frame-table))
-      (prompt (strcat "\n  Рамок витражей в чертеже: " (itoa (length frames))))
+      (mk:emit (strcat "\n  Рамок витражей в чертеже: " (itoa (length frames))))
       (if (null frames)
-        (prompt "\n  [WARN] Рамки «Атрибуты витража» не найдены — все объекты вне рамок."))
+        (mk:emit "\n  [WARN] Рамки «Атрибуты витража» не найдены — все объекты вне рамок."))
       (setq res (mk:split-by-vitrage enames frames))
       (setq *mk:last-scope*  enames
             *mk:last-frames* frames
@@ -4909,32 +4969,32 @@
       (setq n (mk:count-unknown))
       (if (> n 0)
         (progn
-          (prompt (strcat "\n  [INFO] Вне типов MarkV: " (itoa n)
+          (mk:emit (strcat "\n  [INFO] Вне типов MarkV: " (itoa n)
                           " — что это за объекты (до 10 имён):"))
           (setq shown 0)
           (foreach pr (mk:unknown-names)
             (if (< shown 10)
               (progn
-                (prompt (strcat "\n    " (car pr) " x" (itoa (cdr pr))))
+                (mk:emit (strcat "\n    " (car pr) " x" (itoa (cdr pr))))
                 (setq shown (1+ shown)))))
           (if (> (length (mk:unknown-names)) shown)
-            (prompt "\n    ... (остальные — в файле дампа)"))
-          (prompt (strcat "\n    дамп: " *mk:out-file*
+            (mk:emit "\n    ... (остальные — в файле дампа)"))
+          (mk:emit (strcat "\n    дамп: " *mk:out-file*
                           "; подробная диагностика — МАРКАВДИАГНОЗОПТОМ ("
                           *mk:diag-all-file* ")"))))
       ;; в пакете подробный дамп дописывает этап 1 (mk:dump-groups)
       (if (and *mk:last-unknown* (null *mk:batch*))
         (progn
           (mk:dump-unknown *mk:last-unknown*)
-          (prompt (strcat "\n  [OK] Объекты вне типов записаны: " *mk:out-file*))))
+          (mk:emit (strcat "\n  [OK] Объекты вне типов записаны: " *mk:out-file*))))
       (if (null (car res))
-        (progn (prompt "\n[WARN] Ни один объект не попал в рамки витражей.") nil)
+        (progn (mk:emit "\n[WARN] Ни один объект не попал в рамки витражей.") nil)
         res))))
 
 ;; Группы для этапа: в пакете — уже собранные, иначе новый прогон
 (defun mk:groups-or-prepare (/ res)
   (if (and *mk:batch* *mk:last-groups*)
-    (progn (prompt "\n  Группы: выборка пакета МАРКАВ") *mk:last-groups*)
+    (progn (mk:emit "\n  Группы: выборка пакета МАРКАВ") *mk:last-groups*)
     (progn
       (setq res (mk:prepare-run))
       (if res (car res) nil))))
@@ -5007,7 +5067,7 @@
   (setq fn *mk:out-file*)
   (setq f (open fn "w"))
   (if (null f)
-    (prompt (strcat "\n  [WARN] Дамп не создан: " fn))
+    (mk:emit (strcat "\n  [WARN] Дамп не создан: " fn))
     (progn
       (write-line "=== ДАННЫЕ ВИТРАЖЕЙ (MarkV, многовитражный прогон) ===" f)
       (write-line (strcat "  " *mk:ver* " / " *mk:build*) f)
@@ -5065,7 +5125,7 @@
       ;; подробный список объектов вне типов — в конец того же файла
       ;; (mk:dump-unknown открывает его на дозапись)
       (if *mk:last-unknown* (mk:dump-unknown *mk:last-unknown*))
-      (prompt (strcat "\n  [OK] Дамп по витражам: " fn
+      (mk:emit (strcat "\n  [OK] Дамп по витражам: " fn
                       (if *mk:last-unknown* " (витражи + объекты вне типов)" ""))))))
 
 ;;;--- ЭТАП 1/4. МАРКАВГЕОМЕТРИЯ ------------------------------------
@@ -5084,7 +5144,7 @@
         fills   (cdr (assoc 'FILLS data))
         windows (cdr (assoc 'WINDOWS data))
         doors   (cdr (assoc 'DOORS data)))
-  (prompt (strcat "\n  Стойки: " (itoa (length posts))
+  (mk:emit (strcat "\n  Стойки: " (itoa (length posts))
                   ", ригели: " (itoa (length beams))
                   ", заполнения: " (itoa (length fills))
                   ", окна: " (itoa (length windows))
@@ -5092,7 +5152,7 @@
   (if (or posts beams fills)
     (progn
       (setq bounds (mk:find-vitrage-bounds posts beams))
-      (prompt (strcat "\n  Границы: X=" (mk:safe-num (cdr (assoc 'MIN_X bounds)))
+      (mk:emit (strcat "\n  Границы: X=" (mk:safe-num (cdr (assoc 'MIN_X bounds)))
                       ".." (mk:safe-num (cdr (assoc 'MAX_X bounds)))
                       ", Y=" (mk:safe-num (cdr (assoc 'MIN_Y bounds)))
                       ".." (mk:safe-num (cdr (assoc 'MAX_Y bounds)))))
@@ -5117,7 +5177,7 @@
       (setq *mk:step* "2D модель и группа")
       (mk:draw-model posts beams fills windows doors bounds)
       (setq *mk:step* "итог по витражу")
-      (prompt (strcat "\n  Дубликатов: " (itoa dup)
+      (mk:emit (strcat "\n  Дубликатов: " (itoa dup)
                       ", перекрытий: " (itoa overlap)
                       ", вне сетки: " (itoa outj))))
     (progn
@@ -5125,7 +5185,7 @@
       (setq bounds (list (cons 'MIN_X nil) (cons 'MAX_X nil)
                          (cons 'MIN_Y nil) (cons 'MAX_Y nil))
             dup 0 overlap 0 outj 0)
-      (prompt "\n  [WARN] В витраже нет элементов каркаса и заполнений.")))
+      (mk:emit "\n  [WARN] В витраже нет элементов каркаса и заполнений.")))
   (list data posts beams fills windows doors bounds dup overlap outj))
 
 ;; Этап пакета под защитой: сбой фиксируется в *mk:run-errors* и печатается,
@@ -5139,13 +5199,13 @@
   (if (mk:strp cmd) (read (strcat "c:" cmd)) nil))
 
 (defun mk:run-stage (no name sym / r)
-  (prompt (strcat "\n\n===== [" no "] " name " ====="))
+  (mk:emit (strcat "\n\n===== [" no "] " name " ====="))
   (setq r (vl-catch-all-apply sym nil))
   (if (vl-catch-all-error-p r)
     (progn
-      (prompt (strcat "\n[ERROR] " name ": сбой — "
+      (mk:emit (strcat "\n[ERROR] " name ": сбой — "
                       (vl-catch-all-error-message r)))
-      (prompt "\n[INFO] Переход к следующему этапу.")
+      (mk:emit "\n[INFO] Переход к следующему этапу.")
       (setq *mk:run-errors* (cons (list name (vl-catch-all-error-message r))
                                  *mk:run-errors*))
       nil)
@@ -5157,15 +5217,15 @@
   (foreach e *mk:run-errors* (if (cadr e) (setq n (1+ n))))
   (if (> n 0)
     (progn
-      (prompt (strcat "\n[WARN] Сбоев в прогоне: " (itoa n) " из "
+      (mk:emit (strcat "\n[WARN] Сбоев в прогоне: " (itoa n) " из "
                       (itoa (length *mk:run-errors*))))
       (foreach e *mk:run-errors*
         (if (cadr e)
-          (prompt (strcat "\n   " (car e) ": " (cadr e))))))))
+          (mk:emit (strcat "\n   " (car e) ": " (cadr e))))))))
 
 (defun c:МАРКАВГЕОМЕТРИЯ (/ res groups grp data posts beams fills windows doors
                             dup overlap outj r err)
-  (prompt "\n[МАРКАВГЕОМЕТРИЯ] Сбор данных и 2D модель — по каждому витражу отдельно...")
+  (mk:emit "\n[МАРКАВГЕОМЕТРИЯ] Сбор данных и 2D модель — по каждому витражу отдельно...")
   (setq *mk:dyn-cache* nil *mk:vitrage-cache* nil)
   (setq *mk:cached-data* nil *mk:geo-summary* nil *mk:run-errors* nil)
   (if (setq res (mk:prepare-run))
@@ -5176,7 +5236,7 @@
         (setq *mk:group-model* (mk:group-model-name (nth 0 grp)))
         (setq *mk:scope-mode*  *mk:last-mode*)
         (setq *mk:step* nil)
-        (prompt (strcat "\n\n--- Витраж " (nth 0 grp) " ---"))
+        (mk:emit (strcat "\n\n--- Витраж " (nth 0 grp) " ---"))
         ;; один витраж не должен ронять весь прогон: сбой фиксируется и
         ;; прогон идёт дальше, остальные витражи обрабатываются
         (setq err nil)
@@ -5184,20 +5244,20 @@
         (if (vl-catch-all-error-p r)
           (progn
             (setq err (vl-catch-all-error-message r))
-            (prompt (strcat "\n  [ERROR] Витраж " (nth 0 grp)
+            (mk:emit (strcat "\n  [ERROR] Витраж " (nth 0 grp)
                             ": сбой обработки — " err
                             (if *mk:step* (strcat " | шаг: " *mk:step*) "")))
             (setq err (strcat err (if *mk:step*
                                     (strcat " | шаг: " *mk:step*) "")))
             (if (and *mk:debug-stack* posts)
               (progn
-                (prompt "\n  [DEBUG] Собрано до сбоя:")
-                (prompt (strcat "\n    стойки " (itoa (length posts))
+                (mk:emit "\n  [DEBUG] Собрано до сбоя:")
+                (mk:emit (strcat "\n    стойки " (itoa (length posts))
                                 ", ригели " (itoa (length beams))
                                 ", заполнения " (itoa (length fills))))
-                (prompt (strcat "\n    первые X-координаты стоек: "
+                (mk:emit (strcat "\n    первые X-координаты стоек: "
                                 (mk:first-coords posts)))))
-            (prompt "\n  [INFO] Прогон продолжается со следующего витража."))
+            (mk:emit "\n  [INFO] Прогон продолжается со следующего витража."))
           (progn
             (setq data    (nth 0 r) posts   (nth 1 r) beams  (nth 2 r)
                   fills   (nth 3 r) windows (nth 4 r) doors  (nth 5 r)
@@ -5216,17 +5276,17 @@
       (mk:dump-groups)
       (setq *mk:run-errors* (reverse *mk:run-errors*))
       (mk:print-run-errors)
-      (prompt (strcat "\n[ГОТОВО] Витражей обработано: "
+      (mk:emit (strcat "\n[ГОТОВО] Витражей обработано: "
                       (itoa (length groups))
                       ". Модели: слой «" *mk:layer-model* "», группы «"
                       *mk:group-model-base* "_<витраж>».")))
-    (prompt "\n[INFO] Сбор данных не выполнен."))
+    (mk:emit "\n[INFO] Сбор данных не выполнен."))
   (princ))
 
 ;;;--- ЭТАП 2/4. МАРКАВСТ --------------------------------------------
 
 (defun c:МАРКАВСТ (/ groups grp plan item res n cnt sk lab doc tag tot data npost)
-  (prompt "\n[МАРКАВСТ] Марки стоек по витражам...")
+  (mk:emit "\n[МАРКАВСТ] Марки стоек по витражам...")
   (setq *mk:dyn-cache* nil *mk:vitrage-cache* nil)
   (if (setq groups (mk:groups-or-prepare))
     (progn
@@ -5237,15 +5297,15 @@
               npost (length (cdr (assoc 'POSTS data)))
               plan (mk:group-plan-posts grp))
         (if (null plan)
-          (prompt (strcat "\n  " (mk:pad tag 10) " [INFO] стоек нет"))
+          (mk:emit (strcat "\n  " (mk:pad tag 10) " [INFO] стоек нет"))
           (progn
             (setq *mk:last-prefix* tag cnt 0)
-            (prompt (strcat "\n  " (mk:pad tag 10)
+            (mk:emit (strcat "\n  " (mk:pad tag 10)
                             " стоек: " (itoa npost)
                             ", марок: " (itoa (length plan))))
             (foreach item plan
               (setq res (mk:write-marks (cadr item) (car item)))
-              (prompt (strcat "\n    " (mk:pad (car item) 18)
+              (mk:emit (strcat "\n    " (mk:pad (car item) 18)
                               " шт.: " (mk:padl (itoa (length (cadr item))) 3)))
               (setq cnt (+ cnt (car res))
                     sk  (+ sk  (cadr res))
@@ -5253,18 +5313,18 @@
             (setq tot (+ tot cnt))
             ;; выноски этого витража — в свою группу
             (if (> (mk:group-labels-tag tag) 0)
-              (prompt (strcat "\n    выноски: группа «Маркировка_"
+              (mk:emit (strcat "\n    выноски: группа «Маркировка_"
                               (mk:slug tag) "»"))))))
       (mk:undo-end doc)
-      (prompt (strcat "\n[ГОТОВО] Стоек промаркировано: " (itoa tot)
+      (mk:emit (strcat "\n[ГОТОВО] Стоек промаркировано: " (itoa tot)
                       ", выносок: " (itoa lab) ", пропущено: " (itoa sk))))
-    (prompt "\n[INFO] Группы не собраны — маркировка стоек не выполнена."))
+    (mk:emit "\n[INFO] Группы не собраны — маркировка стоек не выполнена."))
   (princ))
 
 ;;;--- ЭТАП 3/4. МАРКАВРГ --------------------------------------------
 
 (defun c:МАРКАВРГ (/ groups grp plan item res n cnt sk lab doc tag tot data nbeam)
-  (prompt "\n[МАРКАВРГ] Марки ригелей по витражам...")
+  (mk:emit "\n[МАРКАВРГ] Марки ригелей по витражам...")
   (setq *mk:dyn-cache* nil *mk:vitrage-cache* nil)
   (if (null *mk:batch*) (setq *mk:allowance-unknown* nil))
   (if (setq groups (mk:groups-or-prepare))
@@ -5276,27 +5336,27 @@
               nbeam (length (cdr (assoc 'BEAMS data)))
               plan (mk:group-plan-beams grp))
         (if (null plan)
-          (prompt (strcat "\n  " (mk:pad tag 10) " [INFO] ригелей нет"))
+          (mk:emit (strcat "\n  " (mk:pad tag 10) " [INFO] ригелей нет"))
           (progn
             (setq *mk:last-prefix* tag cnt 0)
-            (prompt (strcat "\n  " (mk:pad tag 10)
+            (mk:emit (strcat "\n  " (mk:pad tag 10)
                             " ригелей: " (itoa nbeam)
                             ", марок: " (itoa (length plan))))
             (foreach item plan
               (setq res (mk:write-marks (cadr item) (car item)))
-              (prompt (strcat "\n    " (mk:pad (car item) 18)
+              (mk:emit (strcat "\n    " (mk:pad (car item) 18)
                               " шт.: " (mk:padl (itoa (length (cadr item))) 3)))
               (setq cnt (+ cnt (car res))
                     sk  (+ sk  (cadr res))
                     lab (+ lab (caddr res))))
             (setq tot (+ tot cnt))
             (if (> (mk:group-labels-tag tag) 0)
-              (prompt (strcat "\n    выноски: группа «Маркировка_"
+              (mk:emit (strcat "\n    выноски: группа «Маркировка_"
                               (mk:slug tag) "»"))))))
       (mk:undo-end doc)
-      (prompt (strcat "\n[ГОТОВО] Ригелей промаркировано: " (itoa tot)
+      (mk:emit (strcat "\n[ГОТОВО] Ригелей промаркировано: " (itoa tot)
                       ", выносок: " (itoa lab) ", пропущено: " (itoa sk))))
-    (prompt "\n[INFO] Группы не собраны — маркировка ригелей не выполнена."))
+    (mk:emit "\n[INFO] Группы не собраны — маркировка ригелей не выполнена."))
   (princ))
 
 ;;;--- Выноски одного витража -----------------------------------------
@@ -5319,7 +5379,7 @@
 
 (defun c:МАРКАВТАБЛ (/ groups grp data rows agg acc all-posts all-beams
                       doc do-tbl do-xls file res pt1 pt2 pt3 h h2 tbl2 suffix)
-  (prompt "\n[МАРКАВТАБЛ] Ведомость профилей — общая по всем витражам...")
+  (mk:emit "\n[МАРКАВТАБЛ] Ведомость профилей — общая по всем витражам...")
   (setq *mk:dyn-cache* nil *mk:vitrage-cache* nil)
   (if (null *mk:batch*) (setq *mk:allowance-unknown* nil))
   (if (setq groups (mk:groups-or-prepare))
@@ -5333,14 +5393,14 @@
       (mk:ask-unknown-allowance all-beams)
       (setq rows (mk:tab-rows all-posts all-beams)
             agg  (mk:tab-aggregate rows))
-      (prompt (strcat "\n  Стойки: " (itoa (length all-posts))
+      (mk:emit (strcat "\n  Стойки: " (itoa (length all-posts))
                       ", ригели: " (itoa (length all-beams))
                       ", витражей: " (itoa (length groups))))
-      (prompt (strcat "\n  Уникальных позиций: " (itoa (length agg))))
+      (mk:emit (strcat "\n  Уникальных позиций: " (itoa (length agg))))
       (setq acc (mk:acc-rows (append all-posts all-beams)))
       (if acc
-        (prompt (strcat "\n  Закладных (позиций): " (itoa (length acc))))
-        (prompt "\n  Закладные (Пятка/Кронштейн) не найдены."))
+        (mk:emit (strcat "\n  Закладных (позиций): " (itoa (length acc))))
+        (mk:emit "\n  Закладные (Пятка/Кронштейн) не найдены."))
       (setq *mk:leg-sfx*  (mk:leg-suffixes agg)
             *mk:leg-arts* (mk:leg-articles all-beams))
       (mk:leg-print *mk:leg-sfx* *mk:leg-arts*)
@@ -5367,7 +5427,7 @@
         (progn
           (setq res (mk:clear-old-tables))
           (if (> res 0)
-            (prompt (strcat "\n  [INFO] Таблиц прошлого прогона убрано: " (itoa res))))))
+            (mk:emit (strcat "\n  [INFO] Таблиц прошлого прогона убрано: " (itoa res))))))
       (if do-xls
         (progn
           (setq file (strcat (getvar "dwgprefix")
@@ -5375,7 +5435,7 @@
                              " Стойки ригели витража "
                              (mk:slug suffix) ".xls"))
           (if (null (mk:tab-xls agg file acc))
-            (prompt (strcat "\n  [WARN] Ведомость XLS не сохранена: " file)))))
+            (mk:emit (strcat "\n  [WARN] Ведомость XLS не сохранена: " file)))))
       (if do-tbl
         (progn
           (setq pt1 (if *mk:batch* *mk:table-ins-pt* nil))
@@ -5391,7 +5451,7 @@
               ;; не задавали — (cadr res), как было раньше.
               (setq pt2 (mk:tab-right-point (if pt1 pt1 (cadr res))
                                             *mk:acc-gap*))
-              (prompt (strcat "\n  Закладные и обозначения: справа от ведомости, X="
+              (mk:emit (strcat "\n  Закладные и обозначения: справа от ведомости, X="
                               (rtos (car pt2) 2 1) ", Y=" (rtos (cadr pt2) 2 1)))
               (setq tbl2 (if acc (mk:acc-table-create acc pt2) nil))
               (setq pt3 pt2)
@@ -5403,8 +5463,8 @@
                   (setq pt3 (list (car pt2) (- (cadr pt2) h2 *mk:acc-gap*) 0.0))))
               (mk:leg-table-create *mk:leg-sfx* *mk:leg-arts* pt3)))))
       (mk:undo-end doc)
-      (prompt "\n[ГОТОВО] Ведомость сформирована (общая по всем витражам)."))
-    (prompt "\n[INFO] Данных нет — ведомость не создана."))
+      (mk:emit "\n[ГОТОВО] Ведомость сформирована (общая по всем витражам)."))
+    (mk:emit "\n[INFO] Данных нет — ведомость не создана."))
   (princ))
 
 ;;;--- ПАКЕТ. МАРКАВ --------------------------------------------------
@@ -5412,8 +5472,12 @@
 ;;   удаление сеток -> одна общая ведомость. Один UNDO на весь пакет.
 
 (defun c:МАРКАВ (/ ss keep doc n r pt0)
-  (prompt (strcat "\n[МАРКАВ] Пакетный прогон, " *mk:ver* " / " *mk:build*))
-  (prompt "\n  Порядок: выборка -> витражи -> (сбор, стойки, ригели) по каждому -> ведомость.")
+  (mk:log-start)
+  (mk:emit (strcat "\n[МАРКАВ] Пакетный прогон, " *mk:ver* " / " *mk:build*))
+  (mk:emit "\n  Порядок: выборка -> витражи -> (сбор, стойки, ригели) по каждому -> ведомость.")
+  (mk:emit (strcat "\n  [LOG] Протокол: " (mk:log-path)))
+  (if *mk:log-failed*
+    (mk:emit "\n  [WARN] Файл протокола недоступен; сообщения только в командной строке."))
   (setq *mk:batch* nil *mk:batch-ss* nil *mk:batch-mode* nil
         *mk:last-groups* nil *mk:last-extra* nil *mk:last-frames* nil)
   (mk:diag-reset)
@@ -5421,7 +5485,7 @@
         *mk:manual-vitrage-prefix* nil *mk:allowance-unknown* nil)
   (setq ss (mk:select-scope))
   (if (null ss)
-    (prompt "\n[INFO] Ничего не выбрано — пакет прерван.")
+    (mk:emit "\n[INFO] Ничего не выбрано — пакет прерван.")
     (progn
       (setq *mk:run-scope* ss)
       ;; режим каркаса и судьбу сетки спрашиваем один раз
@@ -5446,13 +5510,13 @@
       (setq r (mk:run-stage "ЭТАП 2/4" "МАРКАВСТ" (mk:stage-sym "МАРКАВСТ")))
       (setq r (mk:run-stage "ЭТАП 3/4" "МАРКАВРГ" (mk:stage-sym "МАРКАВРГ")))
       (if *mk:batch-keep-grid*
-        (prompt (strcat "\n\n  [INFO] Сетки витражей оставлены на слое «"
+        (mk:emit (strcat "\n\n  [INFO] Сетки витражей оставлены на слое «"
                         *mk:layer-model* "» (группы «" *mk:group-model-base*
                         "_<витраж>»)."))
         (progn
-          (prompt "\n\n  Удаление сеток витражей перед вставкой таблицы...")
+          (mk:emit "\n\n  Удаление сеток витражей перед вставкой таблицы...")
           (setq n (mk:erase-all-models))
-          (prompt (strcat "\n  [OK] Сетка удалена, объектов: " (itoa n)))))
+          (mk:emit (strcat "\n  [OK] Сетка удалена, объектов: " (itoa n)))))
       ;; точка вставки ведомости фиксируется один раз за пакет:
       ;; по умолчанию спрашивается, при *mk:ask-table-pt* = nil — считается сама
       (setq pt0 (mk:auto-table-point))
@@ -5465,20 +5529,23 @@
           (if r (setq pt0 r))))
       (if pt0 (setq *mk:table-ins-pt* pt0))
       (if *mk:table-ins-pt*
-        (prompt (strcat "\n  Ведомость: точка вставки X="
+        (mk:emit (strcat "\n  Ведомость: точка вставки X="
                         (rtos (car *mk:table-ins-pt*) 2 1)
                         ", Y=" (rtos (cadr *mk:table-ins-pt*) 2 1)))
-        (prompt "\n\n  [WARN] Точка вставки ведомости не задана — таблицы пропущены."))
+        (mk:emit "\n\n  [WARN] Точка вставки ведомости не задана — таблицы пропущены."))
       (mk:run-stage "ЭТАП 4/4" "МАРКАВТАБЛ" (mk:stage-sym "МАРКАВТАБЛ"))
       (setq *mk:batch* nil *mk:batch-ss* nil *mk:run-scope* nil)
       (setq *mk:run-errors* (reverse *mk:run-errors*))
       (mk:print-run-errors)
       (if doc (vl-catch-all-apply 'vlax-invoke-method (list doc "EndUndoMark")))
       (setq n (length *mk:last-groups*))
-      (prompt (strcat "\n\n[ГОТОВО] Пакет МАРКАВ завершён: витражей "
+      (mk:emit (strcat "\n\n[ГОТОВО] Пакет МАРКАВ завершён: витражей "
                       (itoa n) ", объектов вне рамок "
                       (itoa (length *mk:last-extra*)) "."))
-      (prompt "\n  Откат всего пакета — один U.")))
+      (mk:emit "\n  Откат всего пакета — один U.")))
+  (mk:emit (strcat "\n  [LOG] Протокол: " (mk:log-path)))
+  (if *mk:log-failed*
+    (mk:emit "\n  [WARN] Файл протокола недоступен; сообщения только в командной строке."))
   (setq *mk:batch* nil)
   (princ))
 ;;;=====================================================================
@@ -5491,23 +5558,23 @@
     (progn
       (setq res (vl-catch-all-apply 'load (list f)))
       (if (vl-catch-all-error-p res)
-        (prompt (strcat "\n  [WARN] Файл баз не загружен: " f))
-        (prompt (strcat "\n  [OK] Базы профилей: " f)))))
+        (mk:emit (strcat "\n  [WARN] Файл баз не загружен: " f))
+        (mk:emit (strcat "\n  [OK] Базы профилей: " f)))))
   f)
 
 (defun c:МАРКАВБАЗЫ (/ n)
-  (prompt "\n[МАРКАВБАЗЫ] Зарегистрированные базы профилей:")
+  (mk:emit "\n[МАРКАВБАЗЫ] Зарегистрированные базы профилей:")
   (if (null *mk:size-bases*)
-    (prompt "\n  (пусто)")
+    (mk:emit "\n  (пусто)")
     (foreach b *mk:size-bases*
-      (prompt (strcat "\n  " (car b) " — записей: " (itoa (length (cdr b)))))))
-  (prompt (strcat "\n  Префиксы артикулов: "
+      (mk:emit (strcat "\n  " (car b) " — записей: " (itoa (length (cdr b)))))))
+  (mk:emit (strcat "\n  Префиксы артикулов: "
                   (mk:join *mk:article-prefixes* ", ")))
   (if *mk:art-guess-log*
     (progn
-      (prompt "\n  Артикулы, подобранные по похожести имени:")
-      (foreach r (reverse *mk:art-guess-log*) (prompt (strcat "\n    " r)))))
-  (prompt (strcat "\n  Файл внешних баз: " *mk:bases-file*
+      (mk:emit "\n  Артикулы, подобранные по похожести имени:")
+      (foreach r (reverse *mk:art-guess-log*) (mk:emit (strcat "\n    " r)))))
+  (mk:emit (strcat "\n  Файл внешних баз: " *mk:bases-file*
                   (if (findfile *mk:bases-file*) " (найден)" " (не найден)")))
   (princ))
 
@@ -5568,7 +5635,7 @@
   (reverse out))
 
 (defun c:MARKVGEOMDIAG (/ ss data panels p pt w h)
-  (prompt "\n[MARKVGEOMDIAG] Panel geometry diagnostic.")
+  (mk:emit "\n[MARKVGEOMDIAG] Panel geometry diagnostic.")
   (initget "M B A")
   (setq *mk:scope-mode* (mk:norm-mode
                            (getkword "\nMode [M=MLINE/B=BLOCK/A=ALL] <A>: ")))
@@ -5578,21 +5645,21 @@
     (progn
       (setq data (mk:collect-scope ss)
             panels (cdr (assoc 'PANELS data)))
-      (prompt (strcat "\n  Panels: " (itoa (length panels))))
+      (mk:emit (strcat "\n  Panels: " (itoa (length panels))))
       (foreach p panels
         (setq pt (cdr (assoc 'INS_PT p))
               w (mk:rec-get p 'WIDTH)
               h (mk:rec-get p 'HEIGHT))
-        (prompt (strcat "\n  " (if pt (strcat "X=" (rtos (car pt) 2 1)
+        (mk:emit (strcat "\n  " (if pt (strcat "X=" (rtos (car pt) 2 1)
                                   " Y=" (rtos (cadr pt) 2 1)) "X/Y=nil")
                         " W=" (rtos (if (numberp w) w 0.0) 2 1)
                         " H=" (rtos (if (numberp h) h 0.0) 2 1))))
-      (prompt "\n[OK] Panel geometry diagnostic complete."))
-    (prompt "\n[INFO] Selection cancelled."))
+      (mk:emit "\n[OK] Panel geometry diagnostic complete."))
+    (mk:emit "\n[INFO] Selection cancelled."))
   (princ))
 
 (defun c:MARKVSUBCELLS (/ ss data beams panels scale pairs v idx)
-  (prompt "\n[MARKVSUBCELLS] Subcell index assignment.")
+  (mk:emit "\n[MARKVSUBCELLS] Subcell index assignment.")
   (setq *mk:scope-mode* (mk:norm-mode "A"))
   (setq ss (ssget))
   (if ss
@@ -5605,16 +5672,16 @@
       (if pairs
         (foreach v pairs
           (setq idx (mk:scale-index (nth 2 v) scale))
-          (prompt (strcat "\n  " (itoa idx) ".1=" (rtos (nth 0 v) 2 1)
+          (mk:emit (strcat "\n  " (itoa idx) ".1=" (rtos (nth 0 v) 2 1)
                           ", " (itoa idx) ".2=" (rtos (nth 1 v) 2 1)
                           " [base=" (rtos (nth 2 v) 2 1) "]")))
-        (prompt "\n  [INFO] Subcell pairs not found."))
-      (prompt "\n[OK] Subcell assignment complete."))
-    (prompt "\n[INFO] Selection cancelled."))
+        (mk:emit "\n  [INFO] Subcell pairs not found."))
+      (mk:emit "\n[OK] Subcell assignment complete."))
+    (mk:emit "\n[INFO] Selection cancelled."))
   (princ))
 
 (defun c:MARKVFRAME (/ ss data posts beams r pt n)
-  (prompt "\n[MARKVFRAME] Frame geometry diagnostic.")
+  (mk:emit "\n[MARKVFRAME] Frame geometry diagnostic.")
   (initget "M B A")
   (setq *mk:scope-mode* (mk:norm-mode
                            (getkword "\nMode [M=MLINE/B=BLOCK/A=ALL] <A>: ")))
@@ -5625,28 +5692,28 @@
       (setq data (mk:collect-scope ss)
             posts (cdr (assoc 'POSTS data))
             beams (cdr (assoc 'BEAMS data)))
-      (prompt (strcat "\n  Posts: " (itoa (length posts))))
+      (mk:emit (strcat "\n  Posts: " (itoa (length posts))))
       (foreach r posts
         (setq pt (cdr (assoc 'INS_PT r)))
-        (prompt (strcat "\n  POST X=" (rtos (if pt (car pt) 0.0) 2 1)
+        (mk:emit (strcat "\n  POST X=" (rtos (if pt (car pt) 0.0) 2 1)
                         " Y=" (rtos (if pt (cadr pt) 0.0) 2 1)
                         " L=" (rtos (if (numberp (mk:rec-get r 'LENGTH))
                                          (mk:rec-get r 'LENGTH) 0.0) 2 1))) )
-      (prompt (strcat "\n  Beams: " (itoa (length beams))))
+      (mk:emit (strcat "\n  Beams: " (itoa (length beams))))
       (foreach r beams
         (setq pt (cdr (assoc 'INS_PT r)))
-        (prompt (strcat "\n  BEAM X=" (rtos (if pt (car pt) 0.0) 2 1)
+        (mk:emit (strcat "\n  BEAM X=" (rtos (if pt (car pt) 0.0) 2 1)
                         " Y=" (rtos (if pt (cadr pt) 0.0) 2 1)
                         " L=" (rtos (if (numberp (mk:rec-get r 'LENGTH))
                                          (mk:rec-get r 'LENGTH) 0.0) 2 1)
                         " H=" (rtos (if (numberp (mk:rec-get r 'CROSS))
                                          (mk:rec-get r 'CROSS) 0.0) 2 1))))
-      (prompt "\n[OK] Frame geometry diagnostic complete."))
-    (prompt "\n[INFO] Selection cancelled."))
+      (mk:emit "\n[OK] Frame geometry diagnostic complete."))
+    (mk:emit "\n[INFO] Selection cancelled."))
   (princ))
 
 (defun c:MARKVSYNC (/ ss data beams panels scale pscale pairs v idx mode-kw)
-  (prompt "\n[MARKVSYNC] Scale diagnostic.")
+  (mk:emit "\n[MARKVSYNC] Scale diagnostic.")
   (initget "M B A")
   (setq mode-kw (getkword "\nMode [M=MLINE/B=BLOCK/A=ALL] <A>: "))
   (setq *mk:scope-mode* (mk:norm-mode (if mode-kw mode-kw "A")))
@@ -5659,28 +5726,28 @@
             scale (mk:length-scale beams panels)
             pscale (mk:panel-width-scale panels)
             pairs (mk:subcell-pairs pscale panels beams))
-      (prompt (strcat "\n  Beam scale count: " (itoa (length scale))))
-      (prompt (strcat "\n  Panel width scale count: " (itoa (length pscale))))
-      (foreach v pscale (prompt (strcat "\n    panel = " (rtos v 2 1))))
+      (mk:emit (strcat "\n  Beam scale count: " (itoa (length scale))))
+      (mk:emit (strcat "\n  Panel width scale count: " (itoa (length pscale))))
+      (foreach v pscale (mk:emit (strcat "\n    panel = " (rtos v 2 1))))
       (foreach v pairs
-        (prompt (strcat "\n    candidate subcells: " (rtos (nth 0 v) 2 1)
+        (mk:emit (strcat "\n    candidate subcells: " (rtos (nth 0 v) 2 1)
                         " + " (rtos (nth 1 v) 2 1)
                         " + 50 = " (rtos (nth 2 v) 2 1))))
       (foreach v pairs
-        (prompt (strcat "\n    proposed: " (rtos (nth 2 v) 2 1)
+        (mk:emit (strcat "\n    proposed: " (rtos (nth 2 v) 2 1)
                         ".1=" (rtos (nth 0 v) 2 1)
                         ", .2=" (rtos (nth 1 v) 2 1))))
       (foreach v pairs
-        (prompt (strcat "\n    index assignment: "
+        (mk:emit (strcat "\n    index assignment: "
                         (itoa (mk:scale-index (nth 2 v) scale))
                         ".1=" (rtos (nth 0 v) 2 1)
                         ", .2=" (rtos (nth 1 v) 2 1))))
       (setq idx 1)
       (foreach v scale
-        (prompt (strcat "\n    " (itoa idx) " = " (rtos v 2 1)))
+        (mk:emit (strcat "\n    " (itoa idx) " = " (rtos v 2 1)))
         (setq idx (1+ idx)))
-      (prompt "\n[OK] MarkV scale diagnostic complete."))
-    (prompt "\n[INFO] Selection cancelled."))
+      (mk:emit "\n[OK] MarkV scale diagnostic complete."))
+    (mk:emit "\n[INFO] Selection cancelled."))
   (princ))
 
 (defun mk:diag-bulk-line (f text)
@@ -5915,7 +5982,7 @@
 
 (defun c:MARKVFRAMEASSIGN (/ ss frames f i e d o n typ bb fr ar best besta mark)
   (vl-load-com)
-  (prompt "\n[MARKVFRAMEASSIGN] Проверка принадлежности объектов рамкам...")
+  (mk:emit "\n[MARKVFRAMEASSIGN] Проверка принадлежности объектов рамкам...")
   (setq frames (mk:frame-list)
         ss (ssget)
         ss (if ss ss (ssget "_X" '((0 . "INSERT"))))
@@ -5941,13 +6008,13 @@
           (setq i (1+ i)))
         (write-line "NO INSERTS FOUND" f))
       (close f)
-      (prompt "\n[OK] Привязка: D:/MARKV_FRAME_ASSIGN.txt"))
-    (prompt "\n[ERROR] Не удалось открыть отчёт."))
+      (mk:emit "\n[OK] Привязка: D:/MARKV_FRAME_ASSIGN.txt"))
+    (mk:emit "\n[ERROR] Не удалось открыть отчёт."))
   (princ))
 
 (defun c:MARKVFRAMEINFO (/ ss f i e d o n bb cbb pr)
   (vl-load-com)
-  (prompt "\n[MARKVFRAMEINFO] Сбор рамок Атрибуты витража...")
+  (mk:emit "\n[MARKVFRAMEINFO] Сбор рамок Атрибуты витража...")
   (setq f (open "D:/MARKV_FRAMES.txt" "w") ss (ssget "_X" '((0 . "INSERT"))) i 0)
   (if f
     (progn
@@ -5973,12 +6040,12 @@
           (setq i (1+ i)))
         (write-line "NO INSERTS FOUND" f))
       (close f)
-      (prompt "\n[OK] Рамки: D:/MARKV_FRAMES.txt"))
-    (prompt "\n[ERROR] Не удалось открыть D:/MARKV_FRAMES.txt"))
+      (mk:emit "\n[OK] Рамки: D:/MARKV_FRAMES.txt"))
+    (mk:emit "\n[ERROR] Не удалось открыть D:/MARKV_FRAMES.txt"))
   (princ))
 
 (defun c:MARKVBULKDIAG (/ ss f i e d typ counts styles blocks layers x)
-  (prompt "\n[МАРКАВДИАГНОЗОПТОМ] Массовая диагностика выбранных объектов...")
+  (mk:emit "\n[МАРКАВДИАГНОЗОПТОМ] Массовая диагностика выбранных объектов...")
   (vl-load-com)
   (setq ss (ssget))
   (if ss
@@ -6021,8 +6088,8 @@
         (mk:diag-bulk-line f (strcat "  " (car x) " = " (itoa (cdr x)))))
       (mk:diag-layout f ss)
       (if f (close f))
-      (prompt (strcat "\n[OK] Отчёт: " *mk:diag-all-file*)))
-    (prompt "\n[INFO] Объекты не выбраны."))
+      (mk:emit (strcat "\n[OK] Отчёт: " *mk:diag-all-file*)))
+    (mk:emit "\n[INFO] Объекты не выбраны."))
   (princ))
 
 (defun c:МАРКАВДИАГНОЗОПТОМ () (c:MARKVBULKDIAG))
@@ -6039,17 +6106,17 @@
   (setq s (if (mk:strp s) s "") d (- w (strlen s)))
   (if (> d 0) (strcat s (mk:repeat " " d)) s))
 (defun mk:help-row (cmd desc)
-  (prompt (strcat "\n  | " (mk:ljust cmd 25) "| " (mk:ljust desc 34) " |")))
+  (mk:emit (strcat "\n  | " (mk:ljust cmd 25) "| " (mk:ljust desc 34) " |")))
 (defun mk:help-border ()
-  (prompt (strcat "\n  +" (mk:repeat "-" 26) "+" (mk:repeat "-" 36) "+")))
+  (mk:emit (strcat "\n  +" (mk:repeat "-" 26) "+" (mk:repeat "-" 36) "+")))
 (defun mk:help-header ()
-  (prompt (strcat "\n  | " (mk:ljust "КОМАНДА" 25) "| " (mk:ljust "ЧТО ДЕЛАЕТ" 34) " |")))
+  (mk:emit (strcat "\n  | " (mk:ljust "КОМАНДА" 25) "| " (mk:ljust "ЧТО ДЕЛАЕТ" 34) " |")))
 
 ;; (прежние mk:local-kind / mk:local-less удалены: не вызывались ниоткуда,
 ;;  а mk:local-kind к тому же опирался на кириллические маски в wcmatch —
 ;;  такой разбор ненадёжен, тип объекта даёт mk:obj-kind)
 
-(prompt (strcat "\n[MarkV] Загружен " *mk:ver* " / " *mk:build*))
+(mk:emit (strcat "\n[MarkV] Загружен " *mk:ver* " / " *mk:build*))
 (mk:help-border)
 (mk:help-header)
 (mk:help-border)

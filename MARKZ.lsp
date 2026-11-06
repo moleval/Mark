@@ -119,7 +119,7 @@
 
 ;; Редакция модуля — видно в консоли при загрузке и в баннерах
 (setq *mark:rev*    "Ред. 48.37")
-(setq *mark:build*  "Ред. 36.4")
+(setq *mark:build*  "Ред. 36.5")
 
 ;; МАРКАЗАП: один выбор; один UNDO на весь пакет
 (setq *mark:reuse-sel* nil)
@@ -180,13 +180,81 @@
 
 ;;;--------------------- Сообщения ------------------------------------
 
+;; Ред. 36.5: сообщения дублируются в файл. Раньше mark:out был только
+;; prompt, поэтому при закрытой/обрезанной консоли протокол терялся.
+;; nil — автоматический путь: <папка текущего DWG>/MARKZ_LOG.txt.
+(setq *mark:log-file*   nil)
+(setq *mark:log-failed* nil)
+
+(defun mark:log-path (/ dir ch)
+  (if (and (mark:strp *mark:log-file*)
+           (> (strlen *mark:log-file*) 0))
+    *mark:log-file*
+    (progn
+      (setq dir (vl-catch-all-apply 'getvar (list "DWGPREFIX")))
+      (if (or (vl-catch-all-error-p dir)
+              (not (mark:strp dir)))
+        (setq dir ""))
+      (if (> (strlen dir) 0)
+        (progn
+          (setq ch (substr dir (strlen dir) 1))
+          (if (and (/= ch "/") (/= ch "\\"))
+            (setq dir (strcat dir "/")))))
+      (strcat dir "MARKZ_LOG.txt"))))
+
+;; Файл открывается на каждую строку: даже при Esc/сбое уже напечатанное
+;; не остаётся в незакрытом буфере. Ошибка записи не должна ронять маркировку.
+(defun mark:log-write (msg / path f r text)
+  (if (not *mark:log-failed*)
+    (progn
+      (setq path (mark:log-path))
+      (if (and (mark:strp path) (> (strlen path) 0)
+               (mark:strp msg))
+        (progn
+          (setq f (vl-catch-all-apply 'open (list path "a")))
+          (if (or (null f) (vl-catch-all-error-p f))
+            (setq *mark:log-failed* t)
+            (progn
+              ;; Если сообщение уже заканчивается \n, не удваиваем пустую строку.
+              (setq text msg)
+              (if (and (> (strlen text) 0)
+                       (= (substr text (strlen text) 1) "\n"))
+                (setq text (substr text 1 (1- (strlen text)))))
+              (setq r (vl-catch-all-apply 'write-line (list text f)))
+              (vl-catch-all-apply 'close (list f))
+              (if (vl-catch-all-error-p r)
+                (setq *mark:log-failed* t))))))))
+  nil)
+
+;; Каждый пакет добавляет свой блок; одиночные команды дописывают в него.
+(defun mark:log-start (/ path f)
+  (setq *mark:log-failed* nil
+        path (mark:log-path)
+        f (vl-catch-all-apply 'open (list path "a")))
+  (if (or (null f) (vl-catch-all-error-p f))
+    (setq *mark:log-failed* t)
+    (vl-catch-all-apply 'close (list f)))
+  (if (not *mark:log-failed*)
+    (mark:log-write
+      (strcat "=== MARKZ " *mark:rev* " / " *mark:build* " ===")))
+  path)
+
+;; Единственная точка вывода: princ сохраняет сообщение в командной строке,
+;; а log-write оставляет его в файле. Возврат nil — как у prompt.
+(defun mark:emit (msg)
+  (if (not (mark:strp msg))
+    (setq msg (vl-princ-to-string msg)))
+  (mark:log-write msg)
+  (princ msg)
+  nil)
+
 (defun mark:out (msg)
-  (prompt (strcat msg "\n")))
+  (mark:emit (strcat msg "\n")))
 
 ;; Одна строка в командной строке при старте. В пакете МАРКАЗАП не повторяем.
 (defun mark:cmd-line (text)
   (if (not *mark:reuse-sel*)
-    (prompt (strcat "\n" text "\n"))))
+    (mark:emit (strcat "\n" text "\n"))))
 
 (defun mark:note-error ()
   (setq *mark:errors* (1+ *mark:errors*)))
@@ -619,7 +687,7 @@
       t)
     (progn
   (mark:out "")
-  (prompt
+  (mark:emit
     "\nВыберите блоки «Заполнение в витраж» (стойки не нужны): ")
   (setq ss (vl-catch-all-apply 'ssget nil))
   (cond
@@ -2408,7 +2476,7 @@
       t)
     (progn
   (mark:out "")
-  (prompt "\nВыберите блоки «Заполнение в витраж» для ведомости: ")
+  (mark:emit "\nВыберите блоки «Заполнение в витраж» для ведомости: ")
   (setq ss (vl-catch-all-apply 'ssget nil))
   (cond
     ((vl-catch-all-error-p ss)
@@ -7060,7 +7128,7 @@
   (if (and msg
            (/= msg "Function cancelled")
            (/= msg "quit / exit abort"))
-    (princ (strcat "\n" msg)))
+    (mark:emit (strcat "\n" msg)))
   (princ))
 
 (defun mark:fill-points-loop (modefn start done / going r n ins one acc-cells acc-pts doc)
@@ -7575,12 +7643,16 @@
     r))
 
 (defun mark:a-all (/ kw mode doc r cells pts new-fills)
+  (mark:log-start)
   (mark:cmd-line
     "МАРКАЗАП — полный цикл. Сетка: вставка, марки, рядовка, ведомость. Заполнения: без вставки.")
   (mark:reset-state)
   (mark:out "========================================")
   (mark:out (strcat " МАРКАЗАП — универсальный пакет  " *mark:rev*))
   (mark:out "========================================")
+  (mark:out (strcat "[LOG] Протокол: " (mark:log-path)))
+  (if *mark:log-failed*
+    (mark:out "[WARN] Файл протокола недоступен; сообщения только в командной строке."))
   (initget "Сетка Заполнения С З S Z 1 2")
   (setq kw (getkword "\nИсточник [Сетка/Заполнения] <Сетка>: "))
   (cond
@@ -7634,6 +7706,9 @@
     (mark:ax-invoke-ok doc "EndUndoMark" nil))
   (setq *mark:reuse-sel*  nil
         *mark:batch-undo* nil)
+  (mark:out (strcat "[LOG] Протокол: " (mark:log-path)))
+  (if *mark:log-failed*
+    (mark:out "[WARN] Файл протокола недоступен; сообщения только в командной строке."))
   (princ))
 ;;;=====================================================================
 ;;;  РЕД. 48.0: СЕКЦИИ, ЯРУСЫ, ПОДЫНДЕКСЫ, ШКАЛА «В СВЕТУ»
@@ -9030,10 +9105,10 @@
   (princ))
 
 (defun c:SNAPSHOT (/ ss i e bb lst fn f ed typ p0 p1 rad w h)
-  (prompt "\nВыберите элементы для снятия геометрии (SNAPSHOT): ")
+  (mark:emit "\nВыберите элементы для снятия геометрии (SNAPSHOT): ")
   (setq ss (ssget))
   (if (null ss)
-    (prompt "\n[INFO] Ничего не выбрано.")
+    (mark:emit "\n[INFO] Ничего не выбрано.")
     (progn
       (setq i (sslength ss)
             lst nil)
@@ -9054,8 +9129,8 @@
           (foreach item lst
             (write-line (vl-prin1-to-string item) f))
           (close f)
-          (prompt (strcat "\n[OK] Снапшот геометрии сохранен в " fn "\n")))
-        (prompt (strcat "\n[ERROR] Не удалось открыть файл " fn "\n")))))
+          (mark:emit (strcat "\n[OK] Снапшот геометрии сохранен в " fn "\n")))
+        (mark:emit (strcat "\n[ERROR] Не удалось открыть файл " fn "\n")))))
   (princ))
 
 ;;; ---- TEST 00 + сообщение загрузки ------------------------------------
@@ -9069,13 +9144,13 @@
   (setq s (if (mark:strp s) s "") d (- w (strlen s)))
   (if (> d 0) (strcat s (mark:repeat " " d)) s))
 (defun mark:help-row (cmd desc)
-  (princ (strcat "\n  | " (mark:ljust cmd 25) "| " (mark:ljust desc 34) " |")))
+  (mark:emit (strcat "\n  | " (mark:ljust cmd 25) "| " (mark:ljust desc 34) " |")))
 (defun mark:help-border ()
-  (princ (strcat "\n  +" (mark:repeat "-" 26) "+" (mark:repeat "-" 36) "+")))
+  (mark:emit (strcat "\n  +" (mark:repeat "-" 26) "+" (mark:repeat "-" 36) "+")))
 (defun mark:help-header ()
-  (princ (strcat "\n  | " (mark:ljust "КОМАНДА" 25) "| " (mark:ljust "ЧТО ДЕЛАЕТ" 34) " |")))
+  (mark:emit (strcat "\n  | " (mark:ljust "КОМАНДА" 25) "| " (mark:ljust "ЧТО ДЕЛАЕТ" 34) " |")))
 (mark:test-parens)
-(princ (strcat "\n[MARKZ] " (if (mark:strp *mark:rev*) *mark:rev* "Ред. неизвестна")
+(mark:emit (strcat "\n[MARKZ] " (if (mark:strp *mark:rev*) *mark:rev* "Ред. неизвестна")
   " / " (if (mark:strp *mark:build*) *mark:build* "Ред. неизвестна") " загружена."))
 (mark:help-border)
 (mark:help-header)
