@@ -119,7 +119,7 @@
 ;;;--------------------- Состояние сеанса -----------------------------
 
 ;; Редакция модуля — видно в консоли при загрузке и в баннерах
-(setq *mark:rev*    "Ред. 48.40")
+(setq *mark:rev*    "Ред. 48.41")
 (setq *mark:build*  "Ред. 36.6")
 
 ;; МАРКАЗАП: один выбор; один UNDO на весь пакет
@@ -6192,6 +6192,66 @@
               (setq out (cons s out))))
           (reverse out))))))
 
+;; Ред. 48.41: в определении профиля несколько MLINE могут задавать
+;; параллельные линии одного и того же элемента, а не независимые оси сетки.
+;; Фактический протокол: 124 стойки дают 1364 = 124 x 11 вертикалей,
+;; 439 ригелей — 4829 = 439 x 11 горизонталей. Экстремум «ось +/- полуширина»
+;; по такому набору сдвигает грань на смещение внутренней линии (10–25 мм).
+;; Для именованного MLINE-блока оставляем одну рабочую ось в точке вставки —
+;; тем же базисе, который MarkV хранит как INS_PT стойки/ригеля. Пролёт —
+;; объединение пролётов продольных отрезков; полуширина — у ближайшего к оси
+;; вставки отрезка. Если точка вставки дальше допуска от всех отрезков, исходный
+;; набор сохраняем: это уже другая схема блока, её нельзя сдвигать без данных.
+(defun mark:fill-frame-axis-segs (e segs / ed nm main p ax s pos a b d
+                                  best-d best-hw lo hi out)
+  (setq ed (if e (entget e) nil)
+        nm (if ed (cdr (assoc 2 ed)) nil))
+  (if (or (null segs)
+          (not (mark:fill-frame-role? e))
+          (not (mark:fill-mline-p nm)))
+    segs
+    (progn
+      (setq main   (mark:fill-main-axis segs)
+            p      (if ed (cdr (assoc 10 ed)) nil)
+            ax     (if (and main p)
+                     (if (eq main 'v) (float (car p)) (float (cadr p)))
+                     nil)
+            best-d nil
+            best-hw nil
+            lo     nil
+            hi     nil)
+      (if (null ax)
+        segs
+        (progn
+          (foreach s segs
+            (if (eq (mark:fill-axis s) main)
+              (progn
+                (if (eq main 'v)
+                  (setq pos (/ (+ (float (nth 0 s)) (float (nth 2 s))) 2.0)
+                        a   (min (float (nth 1 s)) (float (nth 3 s)))
+                        b   (max (float (nth 1 s)) (float (nth 3 s))))
+                  (setq pos (/ (+ (float (nth 1 s)) (float (nth 3 s))) 2.0)
+                        a   (min (float (nth 0 s)) (float (nth 2 s)))
+                        b   (max (float (nth 0 s)) (float (nth 2 s)))))
+                (setq d (abs (- pos ax)))
+                (if (or (null best-d) (< d best-d))
+                  (setq best-d  d
+                        best-hw (if (and (> (length s) 4)
+                                         (numberp (nth 4 s)))
+                                  (float (nth 4 s))
+                                  nil)))
+                (setq lo (if (null lo) a (min lo a))
+                      hi (if (null hi) b (max hi b))))))
+          (if (and (numberp best-d) (<= best-d *mark:fill-tol*))
+            (progn
+              (setq out (if (eq main 'v)
+                          (list ax lo ax hi)
+                          (list lo ax hi ax)))
+              (if (numberp best-hw)
+                (setq out (append out (list best-hw))))
+              (list out))
+            segs))))))
+
 (defun mark:fill-owned-axes (hits / i n vs hs part s x0 y0 x1 y1 dx dy ln hw nm ed
                                  hwmin hwmax)
   (setq i 0
@@ -6216,7 +6276,8 @@
           ed (entget (cadr hit))
           nm (if ed (cdr (assoc 2 ed)) nil)
           part (mark:fill-frame-segs
-                 (cadr hit) (mark:fill-segs-of-ins (cadr hit))))
+                 (cadr hit) (mark:fill-segs-of-ins (cadr hit)))
+          part (mark:fill-frame-axis-segs (cadr hit) part))
     (if (and part (not (mark:fill-mline-p nm)))
       (setq *mark:line-vis* (1+ *mark:line-vis*)))
     (if (and (> n 100) (= (rem i 250) 0))
