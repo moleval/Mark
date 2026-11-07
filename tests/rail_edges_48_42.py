@@ -100,7 +100,7 @@ if nearest != (2940.0, 4040.0):
     failures.append(f"должен выбираться ближайший наружный конец: {nearest}")
 
 # Структурные якоря реальной правки в CP1251-файле.
-mz = (Path(__file__).resolve().parents[1] / "MARKZ.lsp").read_bytes().decode("cp1251")
+mz = (Path(__file__).resolve().parents[1] / "backup" / "MARKZ.lsp").read_bytes().decode("cp1251")
 rev = re.search(r'\*mark:rev\*\s+"Ред\. (\d+)\.(\d+)"', mz)
 if not rev or tuple(map(int, rev.groups())) < (48, 42):
     failures.append("редакция MARKZ старше 48.42")

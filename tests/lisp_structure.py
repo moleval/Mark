@@ -126,11 +126,15 @@ def check_file(path):
 
 def main():
     root = Path(__file__).resolve().parents[1]
-    paths = [Path(arg) for arg in sys.argv[1:]] or [
-        root / "MARKCORE.lsp",
-        root / "MARKZ.lsp",
-        root / "MarkV.lsp",
+    default = [
+        root / "backup" / "MARKCORE.lsp",
+        root / "backup" / "MARKZ.lsp",
+        root / "backup" / "MarkV.lsp",
     ]
+    # Сборка проверяется, если она собрана (build_single.py).
+    if (root / "MARK.lsp").exists():
+        default.append(root / "MARK.lsp")
+    paths = [Path(arg) for arg in sys.argv[1:]] or default
     ok = True
     for path in paths:
         try:

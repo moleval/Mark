@@ -8,9 +8,10 @@ from pathlib import Path
 import re
 
 ROOT = Path(__file__).resolve().parents[1]
-mz = (ROOT / "MARKZ.lsp").read_bytes().decode("cp1251")
-mv = (ROOT / "MarkV.lsp").read_bytes().decode("cp1251")
-core = (ROOT / "MARKCORE.lsp").read_bytes().decode("cp1251")
+SRC = ROOT / "backup"
+mz = (SRC / "MARKZ.lsp").read_bytes().decode("cp1251")
+mv = (SRC / "MarkV.lsp").read_bytes().decode("cp1251")
+core = (SRC / "MARKCORE.lsp").read_bytes().decode("cp1251")
 
 checks = [
     ("MARKZ build", bool(re.search(r'\*mark:build\*\s+"Ред\. \d+\.\d+"', mz))),

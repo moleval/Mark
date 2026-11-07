@@ -3,3 +3,4 @@
 *.lsp text working-tree-encoding=CP1251 eol=crlf
 *.md  text eol=lf
 *.py  text eol=lf
+dist/*.zip binary

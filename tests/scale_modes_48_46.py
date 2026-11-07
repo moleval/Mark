@@ -11,8 +11,9 @@ from pathlib import Path
 import re
 
 ROOT = Path(__file__).resolve().parents[1]
-MZ = (ROOT / "MARKZ.lsp").read_bytes().decode("cp1251").replace("\r\n", "\n")
-MV = (ROOT / "MarkV.lsp").read_bytes().decode("cp1251").replace("\r\n", "\n")
+SRC = ROOT / "backup"
+MZ = (SRC / "MARKZ.lsp").read_bytes().decode("cp1251").replace("\r\n", "\n")
+MV = (SRC / "MarkV.lsp").read_bytes().decode("cp1251").replace("\r\n", "\n")
 failures = []
 
 

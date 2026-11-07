@@ -3,7 +3,8 @@
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-RAW = (ROOT / "MARKZ.lsp").read_bytes()
+SRC = ROOT / "backup"
+RAW = (SRC / "MARKZ.lsp").read_bytes()
 TEXT = RAW.decode("cp1251").replace("\r\n", "\n")
 assert not RAW.startswith(b"\xef\xbb\xbf") and b"\r\n" in RAW
 start = TEXT.index("(defun mark:vz-marks")

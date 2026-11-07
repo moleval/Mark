@@ -100,7 +100,7 @@ check(scale.index(1100) + 1 == 17 and scale.index(2245) + 1 == 19
 
 # Структурные якоря реальной CP1251-правки.
 root = Path(__file__).resolve().parents[1]
-mz_bytes = (root / "MARKZ.lsp").read_bytes()
+mz_bytes = (root / "backup" / "MARKZ.lsp").read_bytes()
 check(mz_bytes.count(b"\r\n") == mz_bytes.count(b"\n"),
       "MARKZ.lsp потерял CRLF")
 mz = mz_bytes.decode("cp1251").replace("\r\n", "\n")

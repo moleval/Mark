@@ -103,7 +103,7 @@ expect("цифра и ширина", plain.split()[-1].split(".")[-1] ==
 
 # Структурные якоря: правило находится в build-marks, а TEST 16 не
 # скрывает геометрические подъячейки, у которых литера не понадобилась.
-mz = (Path(__file__).resolve().parents[1] / "MARKZ.lsp").read_bytes().decode("cp1251")
+mz = (Path(__file__).resolve().parents[1] / "backup" / "MARKZ.lsp").read_bytes().decode("cp1251")
 build = mz[mz.index("(defun mark:build-marks"):mz.index("(defun mark:num-scale")]
 expect("исходник", "fullH" in build and "(> (length lst) 1)" in build)
 test16 = mz[mz.index("(defun mark:test-16"):mz.index("(defun mark:ar-parse2")]

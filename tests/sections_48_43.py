@@ -209,7 +209,7 @@ check(width_subindexes([(1425.0, 700.0), (1425.0, 710.0)]) ==
       "две разные подширины потеряли различение .1/.2")
 
 # Структурные якоря реальной CP1251-правки.
-mz = (Path(__file__).resolve().parents[1] / "MARKZ.lsp").read_bytes().decode("cp1251")
+mz = (Path(__file__).resolve().parents[1] / "backup" / "MARKZ.lsp").read_bytes().decode("cp1251")
 mz = mz.replace("\r\n", "\n")
 rev = re.search(r'\*mark:rev\*\s+"Ред\. (\d+)\.(\d+)"', mz)
 check(bool(rev) and tuple(map(int, rev.groups())) >= (48, 43),

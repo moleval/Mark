@@ -9,7 +9,8 @@ from pathlib import Path
 import re
 
 ROOT = Path(__file__).resolve().parents[1]
-raw = (ROOT / "MARKZ.lsp").read_bytes()
+SRC = ROOT / "backup"
+raw = (SRC / "MARKZ.lsp").read_bytes()
 mz = raw.decode("cp1251")
 failures = []
 
@@ -62,8 +63,8 @@ expect("путь снимка", "(mark:find-source)" in snapshot and
        'MARKZ_SNAPSHOT.txt' in snapshot)
 
 # В пользовательских и агентских документах не остаётся старого критерия.
-for name in ("README.md", "TZ.md", "AGENTS.md"):
-    doc = (ROOT / name).read_text(encoding="utf-8")
+for name in ("README-modules.md", "TZ-48.48.md", "AGENTS-48.48.md"):
+    doc = (ROOT / "docs" / "legacy" / name).read_text(encoding="utf-8")
     expect(name + " без старого теста", stale_test not in doc)
     expect(name + " с новой редакцией", "48.40" in doc)
 

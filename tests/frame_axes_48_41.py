@@ -94,7 +94,7 @@ if collapse_axis(far, (100.0, 0.0), "v") != far:
     failures.append("удалённая точка вставки: исходные отрезки не сохранены")
 
 # Структурные якоря реальной правки в CP1251-файле.
-mz = (Path(__file__).resolve().parents[1] / "MARKZ.lsp").read_bytes().decode("cp1251")
+mz = (Path(__file__).resolve().parents[1] / "backup" / "MARKZ.lsp").read_bytes().decode("cp1251")
 rev = re.search(r'\*mark:rev\*\s+"Ред\. (\d+)\.(\d+)"', mz)
 if not rev or tuple(map(int, rev.groups())) < (48, 41):
     failures.append("редакция MARKZ старше 48.41")

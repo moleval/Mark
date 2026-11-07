@@ -19,6 +19,7 @@ import re
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / "backup"
 sys.path.insert(0, str(ROOT / "tests"))
 from lisp_structure import parse  # noqa: E402
 
@@ -31,7 +32,7 @@ def check(name, ok, detail=""):
 
 
 def read(name):
-    return (ROOT / name).read_bytes()
+    return (SRC / name).read_bytes()
 
 
 core_raw = read("MARKCORE.lsp")
