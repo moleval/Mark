@@ -10,7 +10,7 @@ AutoCAD в CI не запускается. Числовая часть повт�
 from pathlib import Path
 import re
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "backup"
 MZ = (SRC / "MARKZ.lsp").read_bytes().decode("cp1251").replace("\r\n", "\n")
 MV = (SRC / "MarkV.lsp").read_bytes().decode("cp1251").replace("\r\n", "\n")

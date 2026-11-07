@@ -7,7 +7,7 @@ AutoCAD здесь не запускается. Проверяются устр�
 """
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 PATH = ROOT / "backup" / "MARKZ.lsp"
 RAW = PATH.read_bytes()
 assert not RAW.startswith(b"\xef\xbb\xbf"), "MARKZ.lsp не должен иметь BOM"

@@ -3,7 +3,7 @@
 
 Проверяет не только баланс, но и преждевременно закрытые формы, незакрытые
 строки и минимальную/максимальную арность основных специальных форм.
-Запуск без аргументов проверяет MARKCORE.lsp, MARKZ.lsp и MarkV.lsp; можно
+Запуск без аргументов проверяет MARK.lsp; можно
 передать свои файлы: python3 tests/lisp_structure.py MARKZ.lsp
 """
 from pathlib import Path
@@ -126,14 +126,7 @@ def check_file(path):
 
 def main():
     root = Path(__file__).resolve().parents[1]
-    default = [
-        root / "backup" / "MARKCORE.lsp",
-        root / "backup" / "MARKZ.lsp",
-        root / "backup" / "MarkV.lsp",
-    ]
-    # Сборка проверяется, если она собрана (build_single.py).
-    if (root / "MARK.lsp").exists():
-        default.append(root / "MARK.lsp")
+    default = [root / "MARK.lsp"]
     paths = [Path(arg) for arg in sys.argv[1:]] or default
     ok = True
     for path in paths:
