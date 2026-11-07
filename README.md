@@ -2,12 +2,12 @@
 
 **Рабочий файл:** [`MARK.lsp`](MARK.lsp) — один загрузочный файл для AutoCAD.
 **Версии:** MarkZ `Ред. 48.48 / Ред. 36.7`, MarkV `Ред. 7.0 / Ред. 33.19`,
-ядро `Ред. 1.0`. Сборка одного файла — `1.0`.
+ядро `Ред. 1.0`. Версия одного файла — `1.0`.
 
 `MARK.lsp` содержит ядро `mc:*`, заполнения (MarkZ), каркас (MarkV) и общий
-цикл. Отдельные `MARKCORE.lsp`, `MARKZ.lsp`, `MarkV.lsp` больше не загружаются:
-они лежат в [`backup/`](backup/) как исходники для пересборки и исторический
-бэкап.
+цикл. Это **единственный источник истины**: файл правится напрямую.
+`MARKCORE.lsp`, `MARKZ.lsp`, `MarkV.lsp` — исторический архив в
+[`backup/`](backup/), в сборке и загрузке не участвуют.
 
 ## Установка
 
@@ -144,31 +144,26 @@
 ## Репозиторий
 
 ```text
-MARK.lsp        — рабочий файл (генерируется)
-backup/         — исходники и исторический бэкап
-tools/          — build_single.py
-tests/          — 23 offline-теста
+MARK.lsp        — единственный рабочий файл и источник истины
+backup/         — исторический архив исходников 48.48
+tests/          — 8 активных продуктовых тестов
+legacy/         — архив: старые исходники, тесты, сборщик
 docs/           — MERGE.md, CHANGELOG.md, история
 acceptance/     — протоколы приёмки
 dist/           — MARK.lsp.zip для скачивания
 ```
 
-`MARK.lsp` не редактируется руками. Правки — в `backup/` и/или
-`tools/build_single.py`, затем:
-
-```bat
-python tools\build_single.py
-python tools\build_single.py --check
-```
-
-Проверки:
+`MARK.lsp` правится напрямую. Перед коммитом:
 
 ```bat
 python tests\lisp_structure.py
 python tests\bundle_48_50.py
+python tests\production_48_55.py
 ```
 
-Полный список — [`tests/README.md`](tests/README.md).
+Полный список активных тестов — [`tests/README.md`](tests/README.md).
+Исторические тесты 48.38–48.50 — в [`legacy/tests/`](legacy/tests/), в
+приёмку не входят.
 
 ## Лицензия и статус
 

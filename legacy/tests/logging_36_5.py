@@ -7,7 +7,7 @@ AutoCAD в CI недоступен, поэтому проверяются име
 from pathlib import Path
 import re
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "backup"
 mz = (SRC / "MARKZ.lsp").read_bytes().decode("cp1251")
 mv = (SRC / "MarkV.lsp").read_bytes().decode("cp1251")

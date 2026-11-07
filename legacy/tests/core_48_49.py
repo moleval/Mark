@@ -18,7 +18,7 @@ from pathlib import Path
 import re
 import sys
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "backup"
 sys.path.insert(0, str(ROOT / "tests"))
 from lisp_structure import parse  # noqa: E402

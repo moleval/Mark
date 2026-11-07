@@ -187,7 +187,7 @@ check(not {1425, 2850, 2900, 3085}.intersection(scale),
       "фантомная З-секция осталась в шкале")
 
 # Структурные якоря реальной CP1251-правки.
-mz = (Path(__file__).resolve().parents[1] / "backup" / "MARKZ.lsp").read_bytes().decode("cp1251")
+mz = (Path(__file__).resolve().parents[2] / "backup" / "MARKZ.lsp").read_bytes().decode("cp1251")
 mz = mz.replace("\r\n", "\n")
 rev = re.search(r'\*mark:rev\*\s+"Ред\. (\d+)\.(\d+)"', mz)
 check(bool(rev) and tuple(map(int, rev.groups())) >= (48, 47),

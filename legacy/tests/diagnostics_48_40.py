@@ -8,7 +8,7 @@ AutoExtraction сам диагностирует файл при ошибке з
 from pathlib import Path
 import re
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "backup"
 raw = (SRC / "MARKZ.lsp").read_bytes()
 mz = raw.decode("cp1251")

@@ -2,7 +2,7 @@
 """Ред. 48.45: fill-geo после готовых блоков и шкала LOG-11."""
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "backup"
 RAW = (SRC / "MARKZ.lsp").read_bytes()
 TEXT = RAW.decode("cp1251").replace("\r\n", "\n")

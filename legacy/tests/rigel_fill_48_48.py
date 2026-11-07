@@ -99,7 +99,7 @@ check(scale.index(1100) + 1 == 17 and scale.index(2245) + 1 == 19
       "номера 1100/2245/2250 неверны")
 
 # Структурные якоря реальной CP1251-правки.
-root = Path(__file__).resolve().parents[1]
+root = Path(__file__).resolve().parents[2]
 mz_bytes = (root / "backup" / "MARKZ.lsp").read_bytes()
 check(mz_bytes.count(b"\r\n") == mz_bytes.count(b"\n"),
       "MARKZ.lsp потерял CRLF")
