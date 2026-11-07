@@ -4,7 +4,7 @@
 Проверяет не только баланс, но и преждевременно закрытые формы, незакрытые
 строки и минимальную/максимальную арность основных специальных форм.
 Запуск без аргументов проверяет MARK.lsp; можно
-передать свои файлы: python3 tests/lisp_structure.py MARKZ.lsp
+передать свои файлы: python3 tests/lisp_structure.py MARK.lsp
 """
 from pathlib import Path
 import collections
