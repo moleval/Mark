@@ -26,7 +26,7 @@ MarkV `Ред. 7.1 / Ред. 33.20` (`*mk:ver*`, `*mk:build*`), ядро `Ред
    `defun` из ≥3 элементов, `if` из ≤3, `foreach`/`while`/`repeat` из 2–3.
    Основной внешний тестер — AutoExtraction (`CHKALL`/`CHKFILE`/`CHKLOAD`);
    `MARK.lsp` не должен запускать его при `load`.
-3. Любая правка проверяется активными тестами (9) и `lisp_structure`.
+3. Любая правка проверяется активными тестами (10) и `lisp_structure`.
    В ответе указывать: строки, байты, `defun`, команды, число тестов.
 4. Версия — как у заказчика: `Ред. N.N` для редакции, `Ред. M.N` для билда.
    В логах — `Ред. 7.1 / Ред. 33.20`. Если правка не меняет поведение на
@@ -52,7 +52,7 @@ MarkV `Ред. 7.1 / Ред. 33.20` (`*mk:ver*`, `*mk:build*`), ядро `Ред
 ```text
 MARK.lsp        единственный рабочий файл
 backup/         исторический архив 48.48 (не собирается)
-tests/          9 активных продуктовых тестов
+tests/          10 активных продуктовых тестов
 legacy/
   tests/        исторические тесты 48.38–48.50
   tools/        старый build_single.py
@@ -66,7 +66,7 @@ dist/           MARK.lsp.zip (CP1251)
 
 ## 2. Тесты
 
-Активные (9):
+Активные (10):
 
 ```bat
 python tests\lisp_structure.py
@@ -78,6 +78,7 @@ python tests\table_marks_48_53.py
 python tests\joint_scale_48_54.py
 python tests\log_t_halves_48_57.py
 python tests\scale_compact_48_58.py
+python tests\dist_48_58.py
 ```
 
 Исторические — `legacy/tests/`, запускаются вручную для справки; в приёмку
