@@ -1,0 +1,42 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 12 активных тестов
+        shell: pwsh
+        run: |
+          $tests = @(
+            "lisp_structure.py",
+            "bundle_48_50.py",
+            "production_48_55.py",
+            "compact_scale_48_56.py",
+            "scale_compact_48_58.py",
+            "dist_48_58.py",
+            "symbols_48_58.py",
+            "remark_codes_48_58.py",
+            "report_48_52.py",
+            "table_marks_48_53.py",
+            "joint_scale_48_54.py",
+            "log_t_halves_48_57.py"
+          )
+          foreach ($t in $tests) {
+            Write-Host "== $t"
+            python -X utf8 "tests/$t"
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+          }
+      - name: zip соответствует MARK.lsp
+        shell: pwsh
+        run: |
+          python -X utf8 dist/make_zip.py
+          git diff --exit-code -- dist

@@ -74,7 +74,8 @@ assert "(defun mark:cycle-body (" in text, "mark:cycle-body не создан"
 assert "(defun c:МАРКАВСЕ () (mark:all-cycle))" in text, "c:МАРКАВСЕ не создан"
 assert "(defun c:MARKALL () (mark:all-cycle))" in text, "c:MARKALL не создан"
 assert "*mark:cycle-ss*" in text, "нет единой выборки цикла"
-assert "=== MARK.lsp: MarkZ " in text, "нет метки цикла в журналах"
+assert '(strcat "=== MARK.lsp " *mark:file-rev* ": MarkZ "' in text, \
+    "нет метки цикла с редакцией файла"
 
 # --- Т-соединения: симметрия узла считается по заполнениям --------------
 assert "(mk:split-tjoints posts beams (append fills windows doors))" in text, \
@@ -127,8 +128,13 @@ assert "(mk:load-bases)" not in text, "внешние базы MarkV не отк
 assert "(findfile" not in text, "остался поиск внешних файлов"
 assert "MarkV-bases" not in text, "осталась внешняя база MarkV"
 assert "(mark:reset-state)" in text, "потеряна инициализация MarkZ"
-assert 'Mark.lsp загружен (' in text and '*mark:file-rev*' in text, \
-    "нет короткого баннера загрузки"
+for part in ('"Mark.lsp " *mark:file-rev*',
+             '" — MarkZ " *mark:rev*',
+             '" + MarkV " *mk:ver*'):
+    assert part in text, "в баннере нет редакции: " + part
+assert '*mark:file-note*' not in text, "в баннер вернулась changelog-заметка"
+assert '"Mark.lsp " *mark:file-rev* " | MarkZ "' in text, \
+    "в отчёте нет редакции файла"
 assert "BUILD:CUT-" not in text, "в сборке остались служебные маркеры"
 
 print("OK: MARK.lsp — %d функций, %d команд, формы закрыты"

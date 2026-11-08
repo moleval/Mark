@@ -791,11 +791,10 @@
 
 ;;;--------------------- Состояние сеанса -----------------------------
 
-;; Редакция модуля — видно в консоли при загрузке и в баннерах
+;; Редакции модулей и файла — видны в баннере, журналах и отчёте
 (setq *mark:rev*    "Ред. 48.49")
 (setq *mark:build*  "Ред. 36.8")
-(setq *mark:file-rev* "Ред. 1.3")
-(setq *mark:file-note* "короткий баннер, логика без изменений")
+(setq *mark:file-rev* "Ред. 1.4")
 
 ;; МАРКАЗАП: один выбор; один UNDO на весь пакет
 (setq *mark:reuse-sel* nil)
@@ -891,7 +890,8 @@
     (setq *mark:log-failed* t))
   (if (not *mark:log-failed*)
     (mark:log-write
-      (strcat "=== MARKZ " *mark:rev* " / " *mark:build* " ===")))
+      (strcat "=== MARK.lsp " *mark:file-rev* " | MARKZ "
+              *mark:rev* " / " *mark:build* " ===")))
   path)
 
 ;; Единственная точка вывода: princ сохраняет сообщение в командной строке,
@@ -10038,7 +10038,8 @@
     (setq *mk:log-failed* t))
   (if (not *mk:log-failed*)
     (mk:log-write
-      (strcat "=== MarkV " *mk:ver* " / " *mk:build* " ===")))
+      (strcat "=== MARK.lsp " *mark:file-rev* " | MarkV "
+              *mk:ver* " / " *mk:build* " ===")))
   path)
 
 ;; Возвращаем nil, как prompt; princ не добавляет лишних кавычек/строк.
@@ -15486,7 +15487,8 @@
 
 (defun mark:report-lines (/ out r n codes c)
   (setq out (list (strcat "=== ОТЧЁТ ПРОГОНА: " (getvar "DWGNAME") " ===")
-                  (strcat "MarkZ " *mark:rev* " / " *mark:build*
+                  (strcat "Mark.lsp " *mark:file-rev* " | MarkZ "
+                          *mark:rev* " / " *mark:build*
                           " + MarkV " *mk:ver* " / " *mk:build*)
                   ""))
   (foreach r (mark:report-stats)
@@ -15596,11 +15598,13 @@
       ;; метка цикла в оба журнала (модули уже создали их)
       (mc:log-append
         (mark:log-path)
-        (strcat "=== MARK.lsp: MarkZ " *mark:rev* " / " *mark:build*
+        (strcat "=== MARK.lsp " *mark:file-rev* ": MarkZ " *mark:rev*
+                " / " *mark:build*
                 " + MarkV " *mk:ver* " / " *mk:build* " ==="))
       (mc:log-append
         (mk:log-path)
-        (strcat "=== MARK.lsp: MarkZ " *mark:rev* " / " *mark:build*
+        (strcat "=== MARK.lsp " *mark:file-rev* ": MarkZ " *mark:rev*
+                " / " *mark:build*
                 " + MarkV " *mk:ver* " / " *mk:build* " ==="))))
   (princ))
 
@@ -15612,8 +15616,9 @@
 ;;;=====================================================================
 (setq *mc:core-ready* t)
 
-(mark:emit (strcat (chr 10) "Mark.lsp загружен ("
-                   *mark:file-rev* ": " *mark:file-note* ")"))
+(mark:emit (strcat (chr 10) "Mark.lsp " *mark:file-rev*
+                   " — MarkZ " *mark:rev* " / " *mark:build*
+                   " + MarkV " *mk:ver* " / " *mk:build*))
 (mark:help-border)
 (mark:help-header)
 (mark:help-row "МАРКАВСЕ / MARKALL" "Полный цикл: всё за один запуск")
