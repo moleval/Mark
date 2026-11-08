@@ -14,6 +14,7 @@ python tests\joint_scale_48_54.py
 python tests\log_t_halves_48_57.py
 python tests\scale_compact_48_58.py
 python tests\dist_48_58.py
+python tests\symbols_48_58.py
 ```
 
 | Тест | Что проверяет |
@@ -24,6 +25,7 @@ python tests\dist_48_58.py
 | `compact_scale_48_56.py` | нет резерва `sec-reserve`; компактная шкала |
 | `scale_compact_48_58.py` | числовая модель: 1100=16, 1250=17, 2250=18, 2245 нет |
 | `dist_48_58.py` | zip содержит текущий MARK.lsp, SHA256 совпадает |
+| `symbols_48_58.py` | все вызовы project-функций имеют defun; нет запрещённых имён |
 | `report_48_52.py` | отчёт, спецмарки, локальная шкала |
 | `table_marks_48_53.py` | марки MLINE в ведомости, м.п. от целой длины |
 | `joint_scale_48_54.py` | совместная шкала: общий probe → union |
@@ -38,7 +40,7 @@ Get-ChildItem tests\*.py | ForEach-Object {
 }
 ```
 
-Ожидаемо: **10 из 10 exit=0**.
+Ожидаемо: **11 из 11 exit=0**.
 
 ## История
 
