@@ -1540,9 +1540,13 @@ require(b"MARK_LOG.txt" not in raw, "единый журнал не должен
 if "--check" in sys.argv:
     current = OUT.read_bytes() if OUT.exists() else b""
     if current != raw:
-        raise SystemExit("MARK.lsp устарел: пересоберите tools/build_single.py")
+        raise SystemExit("MARK.lsp устарел: пересоберите legacy/tools/build_single.py")
     print("MARK.lsp актуален")
 else:
+    if OUT.exists() and "--force" not in sys.argv:
+        raise SystemExit(
+            "MARK.lsp уже существует и правится напрямую. "
+            "Сборщик не перезаписывает его без --force.")
     OUT.write_bytes(raw)
     print("MARK.lsp: строк %d, байт %d, defun %d"
           % (raw.count(b"\n"), len(raw), len(names(text))))
