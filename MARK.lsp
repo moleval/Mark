@@ -794,6 +794,7 @@
 ;; Редакция модуля — видно в консоли при загрузке и в баннерах
 (setq *mark:rev*    "Ред. 48.49")
 (setq *mark:build*  "Ред. 36.8")
+(setq *mark:file-rev* "Ред. 1.2")
 
 ;; МАРКАЗАП: один выбор; один UNDO на весь пакет
 (setq *mark:reuse-sel* nil)
@@ -15610,9 +15611,6 @@
 ;;;=====================================================================
 (setq *mc:core-ready* t)
 
-(mark:emit (strcat (chr 10) "[MARK] Сборка MARKCORE " (mc:core-version)
-                   " + MarkZ " *mark:rev* " / " *mark:build*
-                   " + MarkV " *mk:ver* " / " *mk:build*))
 (mark:help-border)
 (mark:help-header)
 (mark:help-row "МАРКАВСЕ / MARKALL" "Полный цикл: всё за один запуск")
