@@ -794,7 +794,8 @@
 ;; Редакция модуля — видно в консоли при загрузке и в баннерах
 (setq *mark:rev*    "Ред. 48.49")
 (setq *mark:build*  "Ред. 36.8")
-(setq *mark:file-rev* "Ред. 1.2")
+(setq *mark:file-rev* "Ред. 1.3")
+(setq *mark:file-note* "короткий баннер, логика без изменений")
 
 ;; МАРКАЗАП: один выбор; один UNDO на весь пакет
 (setq *mark:reuse-sel* nil)
@@ -15611,6 +15612,8 @@
 ;;;=====================================================================
 (setq *mc:core-ready* t)
 
+(mark:emit (strcat (chr 10) "Mark.lsp загружен ("
+                   *mark:file-rev* ": " *mark:file-note* ")"))
 (mark:help-border)
 (mark:help-header)
 (mark:help-row "МАРКАВСЕ / MARKALL" "Полный цикл: всё за один запуск")
